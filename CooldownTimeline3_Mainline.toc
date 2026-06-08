@@ -1,0 +1,25 @@
+## Interface: 120005
+## Title: |cFF54a3ffCDTL3|r |cffffffff(CooldownTimeline)|r
+## IconTexture: Interface\AddOns\CooldownTimeline3\Media\icon-128.png
+## Author: cliffclive
+## Notes: Track cooldowns as icons along a timeline. Original by Vreenak. V2 rewrite by cliffclive. Midnight 12.0.5 patch and CDTL3 continuation by Nelnamara.
+## Version: 3.0.0
+## SavedVariables: CDTL2DB
+## OptionalDeps: Masque
+## X-Curse-Project-ID:
+## X-Wago-ID:
+## X-Website: https://github.com/Nelnamara/cdtl3-dev
+## X-License: All Rights Reserved
+
+embeds.xml
+
+CDTL2.lua
+Data.lua
+Options.lua
+Helpers.lua
+Media.lua
+Holders.lua
+Lanes.lua
+BarFrames.lua
+Ready.lua
+Cooldown.lua

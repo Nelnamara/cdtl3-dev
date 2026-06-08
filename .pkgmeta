@@ -1,0 +1,8 @@
+package-as: CooldownTimeline3
+
+ignore:
+  - .pkgmeta
+  - .gitignore
+  - .github
+  - README.md
+  - docs
