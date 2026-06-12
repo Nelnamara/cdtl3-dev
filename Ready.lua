@@ -322,7 +322,7 @@ function CDTL2:RefreshReady(i)
 	-- DEBUG/UNLOCK
 	f.db:ClearAllPoints()
 	f.db:SetPoint("CENTER", 0, 0)
-	f.db.text:SetFont(CDTL2.LSM:Fetch("font", "Fira Sans Condensed"), 12, "NONE")
+	f.db.text:SetFont(CDTL2.LSM:Fetch("font", "Fira Sans Condensed"), 12)
 	f.db.text:ClearAllPoints()
 	f.db.text:SetPoint("CENTER", 0, 0)
 	f.db.text:SetText(f.name)

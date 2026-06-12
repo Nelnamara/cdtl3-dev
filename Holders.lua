@@ -83,7 +83,7 @@ private.CreateHolder = function(d)
 	end)
 		
 	f.text = f:CreateFontString(nil,"ARTWORK")
-	f.text:SetFont(CDTL2.LSM:Fetch("font", "Fira Sans Condensed"), 12, "NONE")
+	f.text:SetFont(CDTL2.LSM:Fetch("font", "Fira Sans Condensed"), 12)
 	f.text:SetShadowColor( 0, 0, 0, 1 )
 	f.text:SetShadowOffset(1.5, -1)
 	f.text:SetText(d["dName"])
