@@ -422,7 +422,8 @@ private.RefreshText = function(f, s)
 		
 		local _outline = tSettings["outline"]
 		if type(_outline) ~= "string" or _outline == "NONE" or _outline == "" then _outline = nil end
-		tObject:SetFont(CDTL2.LSM:Fetch("font", tSettings["font"]), tSettings["size"], _outline)
+		local _fnt, _sz = CDTL2.LSM:Fetch("font", tSettings["font"]), tonumber(tSettings["size"]) or 0
+		if _fnt and _sz > 0 then tObject:SetFont(_fnt, _sz, _outline) end
 		tObject:SetTextColor(
 				tSettings["color"]["r"],
 				tSettings["color"]["g"],

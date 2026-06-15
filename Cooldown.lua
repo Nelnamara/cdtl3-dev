@@ -344,7 +344,8 @@ function CDTL2:RefreshBar(cd)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			t:SetFont(CDTL2.LSM:Fetch("font", ts["font"]), ts["size"], _ol)
+			local _fnt, _sz = CDTL2.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
 			t:SetText(CDTL2:ConvertTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
@@ -384,7 +385,8 @@ function CDTL2:RefreshBar(cd)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			t:SetFont(CDTL2.LSM:Fetch("font", ts["font"]), ts["size"], _ol)
+			local _fnt, _sz = CDTL2.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
 			t:SetText(CDTL2:ConvertTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
@@ -424,7 +426,8 @@ function CDTL2:RefreshBar(cd)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			t:SetFont(CDTL2.LSM:Fetch("font", ts["font"]), ts["size"], _ol)
+			local _fnt, _sz = CDTL2.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
 			t:SetText(CDTL2:ConvertTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
@@ -621,7 +624,8 @@ function CDTL2:RefreshIcon(cd)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			t:SetFont(CDTL2.LSM:Fetch("font", ts["font"]), ts["size"], _ol)
+			local _fnt, _sz = CDTL2.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
 			t:SetText(CDTL2:ConvertTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
@@ -661,7 +665,8 @@ function CDTL2:RefreshIcon(cd)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			t:SetFont(CDTL2.LSM:Fetch("font", ts["font"]), ts["size"], _ol)
+			local _fnt, _sz = CDTL2.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
 			t:SetText(CDTL2:ConvertTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
@@ -701,7 +706,8 @@ function CDTL2:RefreshIcon(cd)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			t:SetFont(CDTL2.LSM:Fetch("font", ts["font"]), ts["size"], _ol)
+			local _fnt, _sz = CDTL2.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
 			t:SetText(CDTL2:ConvertTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
