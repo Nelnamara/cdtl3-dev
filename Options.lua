@@ -8,34 +8,14 @@ local private = {}
 function CDTL2:GetChangeLog()
 	local changeLog = ""
 	changeLog = changeLog.."\n"
-	changeLog = changeLog.."Changelog 2.6:\n\n"
-	changeLog = changeLog.."  - Updated versions to be in-date\n"
-	changeLog = changeLog.."  - ICDs are no longer supported\n"
-	changeLog = changeLog.."  - Replacing ICDs is a the ability to add custom cooldowns\n"
-	changeLog = changeLog.."      - You can access the new options in Filters > Custom\n"
-	changeLog = changeLog.."      - You can specify if a custom cooldown is triggered by a spell cast, or gaining an aura\n"
-	changeLog = changeLog.."      - You then specify a spell/aura ID and it should\n"
-	changeLog = changeLog.."      - This should allow you to detect and track ICDs from trinkets, tier sets, or other such items\n"
-	changeLog = changeLog.."  - Spells that don't get detected can now be added manually as a 'custom'\n"
-	changeLog = changeLog.."  - Testing has been done on this on all versions of the game, but if there are any issues let me know\n"
-	changeLog = changeLog.."  - The active filter should now default to the first entry for its type\n"
-	changeLog = changeLog.."  - Some unused filter data will be removed next time the profile is loaded\n"
-	changeLog = changeLog.."\n\n"
-	changeLog = changeLog.."Changelog 2.6r1:\n\n"
-	changeLog = changeLog.."  - Added an icon and colouring to display in the retail addon screen\n"
-	changeLog = changeLog.."  - Added 'Test Mode', which allows you to generate test cooldowns\n"
-	changeLog = changeLog.."      - These test cooldowns can be used to show how cooldowns of various types will appear\n"
-	changeLog = changeLog.."      - You can access 'Test Mode' via the main options page or with the '/cdtl2 test' command\n"
-	changeLog = changeLog.."  - Fixed an issue preventing cooldowns from resetting correctly\n"
-	changeLog = changeLog.."  - Did some futher cleanup to remove references to ICDs and early custom framework\n"
-	changeLog = changeLog.."\n\n"
-	changeLog = changeLog.."Changelog 2.6r2:\n\n"
-	changeLog = changeLog.."  - Updated for the latest versions of the game\n"
-	changeLog = changeLog.."  - It appears to work out of the box in Mists of Pandaria, but let me know if there are errors\n"
-	changeLog = changeLog.."\n\n"
-	changeLog = changeLog.."Changelog 2.6r3:\n\n"
-	changeLog = changeLog.."  - Updated for the latest versions of the game\n"
-	changeLog = changeLog.."  - It appears to work out of the box in TBC Anniversary, but let me know if there are errors\n"
+	changeLog = changeLog.."CDTL3 is the Midnight (12.x) continuation of Cooldown Timeline,\n"
+	changeLog = changeLog.."based on the original by Vreenak and the v2 rewrite by cliffclive.\n\n"
+	changeLog = changeLog.."Changelog 3.0.2:\n\n"
+	changeLog = changeLog.."  - Fixed profiles not saving on MoP / TBC / Vanilla Classic\n"
+	changeLog = changeLog.."  - Added a minimap button and an AddOns-list icon\n"
+	changeLog = changeLog.."  - Fixed the options command erroring on Midnight 12.0.7\n\n"
+	changeLog = changeLog.."Changelog 3.0.1:\n\n"
+	changeLog = changeLog.."  - Midnight 12.0.7 compatibility\n"
 		
 	return changeLog
 end
@@ -730,7 +710,7 @@ function CDTL2:GetMainOptions()
 				childGroups  = "tab",
 				args = {
 					spacer100 = {
-						name = function() return "CDTL2 v"..CDTL2.version.."\n\n" end,
+						name = function() return "CDTL3 v"..CDTL2.version.."\n\n" end,
 						fontSize = "large",
 						type = "description",
 						order = 100,

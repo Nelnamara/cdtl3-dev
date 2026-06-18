@@ -14,10 +14,10 @@ CDTL2.GUI = LibStub("AceGUI-3.0")
 local _, _, _, tocversion = GetBuildInfo()
 CDTL2.tocversion = tocversion
 
-CDTL2.version = "2.6"
+CDTL2.version = "3.0.2"
 CDTL2.noticeVersion = "2.6"
 CDTL2.cdUID = 999
-CDTL2.discordlink = "https://discord.gg/4s6xUSq3qQ"
+CDTL2.discordlink = ""
 CDTL2.lanes = {}
 CDTL2.barFrames = {}
 CDTL2.readyFrames = {}
@@ -2114,23 +2114,10 @@ function CDTL2:BuildMinimapButton()
 	btn:RegisterForDrag("LeftButton")
 	btn:RegisterForClicks("AnyUp")
 
-	local icon = btn:CreateTexture(nil, "BACKGROUND")
+	-- Self-contained round icon (gold ring baked in) — SetAllPoints centers it cleanly.
+	local icon = btn:CreateTexture(nil, "ARTWORK")
 	icon:SetAllPoints()
 	icon:SetTexture("Interface\\AddOns\\CooldownTimeline3\\Media\\minimap.png")
-	icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-
-	if btn.CreateMaskTexture then
-		local mask = btn:CreateMaskTexture()
-		mask:SetAllPoints(icon)
-		mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask",
-			"CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-		icon:AddMaskTexture(mask)
-	end
-
-	local border = btn:CreateTexture(nil, "OVERLAY")
-	border:SetSize(54, 54)
-	border:SetPoint("CENTER")
-	border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
 
 	btn:SetPoint("CENTER", Minimap, "CENTER", offset((self.db.global and self.db.global.minimapAngle) or 225))
 
@@ -2237,7 +2224,7 @@ end
 
 function CDTL2:ChatCommand(input)
     if not input or input:trim() == "" then
-        Settings.OpenToCategory("CDTL2")
+        LibStub("AceConfigDialog-3.0"):Open("CDTL2")
 	elseif input:trim() == "lock" then
 		CDTL2:ToggleFrameLock()
 	elseif input:trim() == "unlock" then
