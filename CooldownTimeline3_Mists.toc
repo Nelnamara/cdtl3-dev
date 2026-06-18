@@ -3,7 +3,7 @@
 ## IconTexture: Interface\AddOns\CooldownTimeline3\Media\icon-128.png
 ## Author: cliffclive
 ## Notes: Track cooldowns as icons along a timeline
-## Version: 2.x
+## Version: 3.0.2
 ## SavedVariables: CDTL2DB
 ## OptionalDeps: Masque
 
