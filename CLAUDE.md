@@ -23,6 +23,7 @@ the Classic TOCs once said `CDTL3DB`, which silently wiped Classic profiles. Kee
 
 ## Midnight gotchas
 - `Settings.OpenToCategory("CDTL2")` (string) **errors** on Midnight — use `LibStub("AceConfigDialog-3.0"):Open("CDTL2")` (the slash + minimap button do this).
+- **Cooldown values are SECRET when tainted.** `C_Spell.GetSpellCooldown(id).startTime`/`.duration` can be *read* without error, but **comparing or doing arithmetic on them throws** ("attempt to compare a secret number value"). In `Helpers.lua:GetSpellCooldown` the `duration > 0` check is done **inside** the `pcall`; on failure it falls back to event-tracked cast time + `GetSpellBaseCooldown` (static, non-secret). Never compare/use these outside the protected closure (this was the v3.0.4 fix — Lane view spammed 167× before).
 - IconTexture → `Media\icon-128.png`; minimap button texture → `Media\minimap.png`.
 
 ## Slash
@@ -31,7 +32,7 @@ the Classic TOCs once said `CDTL3DB`, which silently wiped Classic profiles. Kee
 ## Build / release / deploy
 - BigWigs packager on **`v*` tag push** (multi-TOC single package). CurseForge secret: **`CURSFORGE_API_KEY`** (misspelled, leave as-is).
 - Local test (retail): copy to `D:\World of Warcraft\_retail_\Interface\AddOns\CooldownTimeline3\`.
-- Current version: **3.0.3** (TOCs + `CDTL2.version`).
+- Current version: **3.0.4** (TOCs + `CDTL2.version`). v3.0.4 = the secret-cooldown crash fix; committed + pushed, **tag `v3.0.4` once verified in-game** (Lane view clean, no error).
 
 ## Conventions
 - **Never** append a `Co-Authored-By` trailer to commits. Tabs for indentation (match the existing file).
