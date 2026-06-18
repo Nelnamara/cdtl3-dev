@@ -2094,6 +2094,9 @@ function CDTL2:OnInitialize()
 	self.optionsFrame.oFilter = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2Filters", "Filters", "CDTL2")
 	self.optionsFrame.profile = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2Profiles", "Profiles", "CDTL2")
 	
+	self:RegisterChatCommand("cdtl3", "ChatCommand")
+	self:RegisterChatCommand("cooldowntimeline3", "ChatCommand")
+	-- legacy aliases (kept so long-time users' muscle memory still works)
 	self:RegisterChatCommand("cdtl2", "ChatCommand")
     self:RegisterChatCommand("cooldowntimeline2", "ChatCommand")
 end
@@ -2177,7 +2180,7 @@ function CDTL2:OnEnable()
 	private.CreateDebugFrame()
 	
 	CDTL2:Print("Loaded version: "..CDTL2.version)
-	CDTL2:Print("Type /cdtl2 or /cooldowntimeline2 for options")
+	CDTL2:Print("Type /cdtl3 or /cooldowntimeline3 for options")
 	
 	CDTL2.tracking["manaTime"] = GetTime()
 	CDTL2.tracking["manaPrevious"] = 0
