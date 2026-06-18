@@ -4,7 +4,7 @@
 ## Author: cliffclive
 ## Notes: Track cooldowns as icons along a timeline
 ## Version: 2.x
-## SavedVariables: CDTL3DB
+## SavedVariables: CDTL2DB
 ## OptionalDeps: Masque
 
 embeds.xml
