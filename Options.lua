@@ -44,7 +44,7 @@ end
 
 function CDTL2:GetMainOptions()
 	local options = {
-		name = "CDTL2",
+		name = "CDTL3",
 		type = "group",
 		childGroups  = "tab",
 		args = {

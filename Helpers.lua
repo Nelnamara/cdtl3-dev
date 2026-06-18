@@ -1824,7 +1824,7 @@ function CDTL2:ToggleFrameLock()
 
 	-- Guard: unlockFrame may be nil if OnEnable errored before CreateUnlockFrame ran.
 	if not CDTL2.unlockFrame then
-		CDTL2:Print("CDTL2: unlockFrame not ready — try reloading the UI.")
+		CDTL2:Print("CDTL3: unlockFrame not ready — try reloading the UI.")
 		return
 	end
 	

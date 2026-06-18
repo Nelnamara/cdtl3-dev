@@ -14,7 +14,7 @@ CDTL2.GUI = LibStub("AceGUI-3.0")
 local _, _, _, tocversion = GetBuildInfo()
 CDTL2.tocversion = tocversion
 
-CDTL2.version = "3.0.2"
+CDTL2.version = "3.0.3"
 CDTL2.noticeVersion = "2.6"
 CDTL2.cdUID = 999
 CDTL2.discordlink = ""
@@ -2087,12 +2087,12 @@ function CDTL2:OnInitialize()
 	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL2Filters", CDTL2:GetFilterOptions())
 	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL2Profiles", self.profile)
 	
-	self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2", "CDTL2")
-	self.optionsFrame.oLanes = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2Lanes", "Lanes", "CDTL2")
-	self.optionsFrame.oReady = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2Ready", "Ready", "CDTL2")
-	self.optionsFrame.oBarFrames = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2BarFrames", "Bars", "CDTL2")
-	self.optionsFrame.oFilter = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2Filters", "Filters", "CDTL2")
-	self.optionsFrame.profile = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2Profiles", "Profiles", "CDTL2")
+	self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2", "CDTL3")
+	self.optionsFrame.oLanes = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2Lanes", "Lanes", "CDTL3")
+	self.optionsFrame.oReady = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2Ready", "Ready", "CDTL3")
+	self.optionsFrame.oBarFrames = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2BarFrames", "Bars", "CDTL3")
+	self.optionsFrame.oFilter = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2Filters", "Filters", "CDTL3")
+	self.optionsFrame.profile = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL2Profiles", "Profiles", "CDTL3")
 	
 	self:RegisterChatCommand("cdtl3", "ChatCommand")
 	self:RegisterChatCommand("cooldowntimeline3", "ChatCommand")
@@ -2110,7 +2110,7 @@ function CDTL2:BuildMinimapButton()
 	end
 
 	local btn = CreateFrame("Button", "CDTL3MinimapButton", Minimap)
-	btn:SetSize(32, 32)
+	btn:SetSize(24, 24)
 	btn:SetFrameStrata("MEDIUM")
 	btn:SetFrameLevel(8)
 	btn:EnableMouse(true)
