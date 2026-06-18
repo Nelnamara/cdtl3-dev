@@ -872,9 +872,15 @@ function CDTL2:GetSpellCooldown(id)
 				-- Attempt to read secret timing fields inside an anonymous pcall so
 				-- the closure protects the access (pcall(f, arg) form evaluates args
 				-- BEFORE entering pcall, which is why we need the wrapper function).
+				-- Compare the secret value INSIDE the pcall so the throw is caught
+				-- here. A bare read of a secret value does NOT error (ok stays true);
+				-- only comparing/using it later does — which is why the old check at
+				-- `duration == 0` outside the pcall threw "compare a secret number".
 				local ok = pcall(function()
-					start    = data["startTime"]
-					duration = data["duration"]
+					if data["duration"] and data["duration"] > 0 then
+						start    = data["startTime"]
+						duration = data["duration"]
+					end
 				end)
 
 				if not ok or duration == 0 then

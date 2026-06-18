@@ -14,7 +14,7 @@ CDTL2.GUI = LibStub("AceGUI-3.0")
 local _, _, _, tocversion = GetBuildInfo()
 CDTL2.tocversion = tocversion
 
-CDTL2.version = "3.0.3"
+CDTL2.version = "3.0.4"
 CDTL2.noticeVersion = "2.6"
 CDTL2.cdUID = 999
 CDTL2.discordlink = ""
