@@ -1,18 +1,8 @@
 # CooldownTimeline 3 (CDTL3)
 
-> **WoW:** 12.0.5 (Midnight) · **Maintainer:** Nelnamara · **Original V2 author:** cliffclive · **Original author:** Vreenak (US-Remulos)
+> **WoW:** 12.0.7 (Midnight) · **Maintainer:** Nelnamara · **Original V2 author:** cliffclive · **Original author:** Vreenak (US-Remulos)
 
 CooldownTimeline tracks your ability cooldowns as moving icons along a horizontal timeline bar. As a cooldown expires it slides toward a "ready" zone on the right; when it fires, a configurable alert plays. Supports all spec cooldowns, ICDs, auto-attack swings, and optional Masque skinning.
-
----
-
-## Screenshots
-
-> *Replace the placeholders below with your own screenshots.*
-
-| Timeline Bar | Config Panel | Ready Alert |
-|:---:|:---:|:---:|
-| ![Timeline bar showing active cooldowns](docs/screenshot-bar.png) | ![AceConfig options panel](docs/screenshot-config.png) | ![Ready alert firing](docs/screenshot-ready.png) |
 
 ---
 
@@ -28,7 +18,8 @@ CooldownTimeline tracks your ability cooldowns as moving icons along a horizonta
 - **Auto-hide** — bar hides when out of combat (configurable)
 - **Masque support** — skins all cooldown icons through Masque if installed
 - **LibSharedMedia-3.0** — custom fonts, textures, sounds, and borders via LSM
-- **AceConfig options panel** — in-game GUI at `/cdtl config` with full profile support
+- **Minimap button** — left-click opens settings, right-click toggles frame lock, drag to reposition
+- **AceConfig options panel** — full in-game GUI with profile support
 
 ---
 
@@ -46,10 +37,10 @@ CooldownTimeline tracks your ability cooldowns as moving icons along a horizonta
 1. Download the latest release zip
 2. Extract to `World of Warcraft\_retail_\Interface\AddOns\`
    - The folder should be named **`CooldownTimeline3`**
-   - It should contain `CDTL2.lua`, the `.toc` file, and subdirectories
-3. Log in and type `/cdtl` to open options, or `/cdtl config`
+   - It should contain `CDTL3.lua`, the `.toc` files, and subdirectories
+3. Log in and type `/cdtl3` to open options
 
-> **First run:** The bar appears in the center of your screen, unlocked. Drag it to your preferred position, then lock it via `/cdtl lock`.
+> **First run:** The bar appears in the center of your screen, unlocked. Drag it to your preferred position, then lock it via `/cdtl3 lock`.
 
 ---
 
@@ -57,30 +48,28 @@ CooldownTimeline tracks your ability cooldowns as moving icons along a horizonta
 
 ### Slash Commands
 
-All commands start with `/cdtl`.
+Primary command is `/cdtl3` (or `/cooldowntimeline3`). The old `/cdtl2` / `/cooldowntimeline2` remain as legacy aliases so long-time users' muscle memory still works.
 
 | Command | Description |
 |---|---|
-| `/cdtl` | Open the options panel |
-| `/cdtl config` | Open the options panel |
-| `/cdtl lock` | Lock all frames (disable dragging) |
-| `/cdtl unlock` | Unlock all frames |
-| `/cdtl test` | Toggle test mode (fills bar with sample icons) |
-| `/cdtl reset` | Reset bar position to center screen |
+| `/cdtl3` | Open the options panel |
+| `/cdtl3 lock` / `/cdtl3 unlock` | Toggle frame lock (enable/disable dragging) |
+| `/cdtl3 test` | Toggle test mode (fills the bar with sample icons) |
+| `/cdtl3 debug` | Toggle the debug frame |
 
 ### Options Panel
 
-Open with `/cdtl config`. Key settings:
+Open with `/cdtl3` or the minimap button. Key sections:
 
 - **Lanes** — configure each lane's size, position, icon scale, and direction
-- **Detection** — enable/disable auto-detection; add custom spells by name or spell ID
-- **Ready zone** — set sound, flash color, and display duration for ready alerts
-- **Appearance** — background, border, bar texture via LibSharedMedia
+- **Bars** — bar texture, dimensions, and ready marker
+- **Ready** — sound, flash color, and display duration for ready alerts
+- **Filters** — choose what to track or hide
 - **Profiles** — AceDB profiles for per-character or shared configs
 
 ### Auto-Detection
 
-On login and spec change, CDTL3 scans your spellbook and builds a cooldown list automatically. You can supplement this with the custom detection list in options, or force-track a spell with its ID.
+On login and spec change, CDTL3 scans your spellbook and builds a cooldown list automatically. You can supplement this with the custom detection list in options, or force-track a spell by ID.
 
 ---
 
@@ -96,32 +85,42 @@ On login and spec change, CDTL3 scans your spellbook and builds a cooldown list 
 
 ## Changelog
 
+### v3.0.4
+- **Fixed secret-value crashes (Midnight 12.0.7)** — `C_Spell.GetSpellCooldown`/`GetSpellCharges` timing fields are secret when execution is tainted; comparing them threw "attempt to compare a secret number value" and spammed the Lane view. Both now compare *inside* a `pcall` and fall back to event-tracked cast time on failure
+- **Completed the CDTL2 → CDTL3 rename** — object, AceAddon name, AceConfig keys, frame names, and Masque group are all `CDTL3` now. The saved DB migrates `CDTL2DB → CDTL3DB` automatically on first load, so existing profiles carry over
+- Added `/cdtl3` + `/cooldowntimeline3` slash commands (`/cdtl2` kept as a legacy alias)
+
+### v3.0.3
+- Minimap button and AddOns-list icon (new artwork, standard 24px)
+- Rebranded remaining CDTL2 labels to CDTL3
+
+### v3.0.2
+- **Fixed MoP Classic profile wipe** — the Classic TOCs declared the wrong SavedVariables name, silently wiping profiles; all TOCs now agree
+- Fixed an `OpenToCategory` error on Midnight by opening options through `AceConfigDialog:Open`
+- Unified Classic TOC versions
+
+### v3.0.1
+- 12.0.7 compatibility patch; guarded `SetFont` asset/height
+
 ### v3.0.0 (CDTL3 continuation)
 - Renamed project to CooldownTimeline 3 (CDTL3) for continued development
-- Updated for Midnight (WoW 12.0.5): SetFont secret-value fix, ba-nil nil-check fixes
-- Added GitHub repository and automated release pipeline
-- Media paths updated for CooldownTimeline3 folder name
+- Updated for Midnight: SetFont secret-value fix, nil-check fixes
+- Added GitHub repository and automated release pipeline (CurseForge + Wago)
 
 ### v2.6r3 (cliffclive)
-- Near-complete V2 rewrite by cliffclive
-- Multi-lane support, AceConfig options, auto-detection overhaul
-- Masque and LibSharedMedia integration
-- ICD tracking, shared cooldown handling
-- AceDB profiles
+- Near-complete V2 rewrite: multi-lane support, AceConfig options, auto-detection overhaul, Masque + LibSharedMedia integration, ICD tracking, shared cooldown handling, AceDB profiles
 
 ### v1.x (Vreenak)
-- Original Cooldown Timeline addon
-- Basic cooldown icon timeline concept
+- Original Cooldown Timeline addon — the cooldown-icon timeline concept
 
 ---
 
 ## Roadmap
 
-- [ ] **CDTL3 global variable rename** — migrate internal globals from `CDTL2` to `CDTL3` namespace
-- [ ] **SavedVariables migration** — migrate `CDTL2DB` → `CDTL3DB` with import helper
+- [ ] **Drop the legacy `CDTL2DB` declaration** — once users have migrated, remove it from the TOCs
 - [ ] **Improved spell detection** — catch more proc ICDs automatically
 - [ ] **Compact mode** — smaller single-row layout option
-- [ ] **CurseForge / Wago packaging** — automated release pipeline (in progress)
+- [ ] **Per-lane layout swap** — quick switch between setups (raid ST vs M+ AoE)
 
 ---
 
