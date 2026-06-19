@@ -841,10 +841,20 @@ function CDTL2:GetSpellCharges(id)
     	local data = C_Spell.GetSpellCharges(id)
 
 		if data then
-			currentCharges = data["currentCharges"]
-			maxCharges = data["maxCharges"]
-			cooldownStart = data["cooldownStart"]
-			cooldownDuration = data["cooldownDuration"]
+			-- Midnight: these fields can be SECRET when execution is tainted. A bare
+			-- read is fine, but callers compare them (~= 0, > 1), which throws on a
+			-- secret value. Validate inside a pcall; keep them only if they're real
+			-- numbers, else leave the 0 defaults so the caller's comparisons stay safe.
+			pcall(function()
+				local cc, mc = data["currentCharges"], data["maxCharges"]
+				local cs, cd = data["cooldownStart"], data["cooldownDuration"]
+				if cc and mc and cd and cd >= 0 then
+					currentCharges   = cc
+					maxCharges       = mc
+					cooldownStart    = cs
+					cooldownDuration = cd
+				end
+			end)
 		end
 	else
 		currentCharges, maxCharges, cooldownStart, cooldownDuration, _ = GetSpellCharges(id)
