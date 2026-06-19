@@ -7,48 +7,48 @@ local private = {}
 private.updatePollRate = 2
 private.autohidePollRate = 5
 
-function CDTL2:CreateBarFrames()
-	local frame1Enabled = CDTL2.db.profile.barFrames["frame1"]["enabled"]
-	local frame2Enabled = CDTL2.db.profile.barFrames["frame2"]["enabled"]
-	local frame3Enabled = CDTL2.db.profile.barFrames["frame3"]["enabled"]
+function CDTL3:CreateBarFrames()
+	local frame1Enabled = CDTL3.db.profile.barFrames["frame1"]["enabled"]
+	local frame2Enabled = CDTL3.db.profile.barFrames["frame2"]["enabled"]
+	local frame3Enabled = CDTL3.db.profile.barFrames["frame3"]["enabled"]
 	
 	if frame1Enabled then
-		if CDTL2_BarFrame_1 then
-			CDTL2:RefreshBarFrame(1)
+		if CDTL3_BarFrame_1 then
+			CDTL3:RefreshBarFrame(1)
 		else
 			private.CreateBarFrame(1)
 		end
 	end
 	
 	if frame2Enabled then
-		if CDTL2_BarFrame_2 then
-			CDTL2:RefreshBarFrame(2)
+		if CDTL3_BarFrame_2 then
+			CDTL3:RefreshBarFrame(2)
 		else
 			private.CreateBarFrame(2)
 		end
 	end
 	
 	if frame3Enabled then
-		if CDTL2_BarFrame_3 then
-			CDTL2:RefreshBarFrame(3)
+		if CDTL3_BarFrame_3 then
+			CDTL3:RefreshBarFrame(3)
 		else
 			private.CreateBarFrame(3)
 		end
 	end
 end
 
-function CDTL2:RefreshBarFrame(i)
+function CDTL3:RefreshBarFrame(i)
 	local f = nil
 	local s = nil
 	if i == 1 then
-		f = CDTL2_BarFrame_1
-		s = CDTL2.db.profile.barFrames["frame1"]
+		f = CDTL3_BarFrame_1
+		s = CDTL3.db.profile.barFrames["frame1"]
 	elseif i == 2 then
-		f = CDTL2_BarFrame_2
-		s = CDTL2.db.profile.barFrames["frame2"]
+		f = CDTL3_BarFrame_2
+		s = CDTL3.db.profile.barFrames["frame2"]
 	elseif i == 3 then
-		f = CDTL2_BarFrame_3
-		s = CDTL2.db.profile.barFrames["frame3"]
+		f = CDTL3_BarFrame_3
+		s = CDTL3.db.profile.barFrames["frame3"]
 	end
 	
 	if not f then
@@ -73,7 +73,7 @@ function CDTL2:RefreshBarFrame(i)
 	f.mf:SetSize(s["width"], s["height"])
 	
 	-- MOVE FRAME BACKGROUND
-	f.mf.bg:SetTexture(CDTL2.LSM:Fetch("statusbar", s["bgTexture"]))
+	f.mf.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["bgTexture"]))
 	f.mf.bg:SetAllPoints(true)
 	f.mf.bg:SetVertexColor(
 		s["bgTextureColor"]["r"],
@@ -89,7 +89,7 @@ function CDTL2:RefreshBarFrame(i)
 			f.mf.bd:SetParent(f)
 		end
 	
-		CDTL2:SetBorder(f.mf.bd, s["border"])
+		CDTL3:SetBorder(f.mf.bd, s["border"])
 		f.mf.bd:SetFrameLevel(f.mf:GetFrameLevel() + 1)
 	else
 		if f.mf.bd then
@@ -121,41 +121,41 @@ function CDTL2:RefreshBarFrame(i)
 	-- DEBUG/UNLOCK
 	f.db:ClearAllPoints()
 	f.db:SetPoint("CENTER", 0, 0)
-	f.db.text:SetFont(CDTL2.LSM:Fetch("font", "Fira Sans Condensed"), 12)
+	f.db.text:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 12)
 	f.db.text:ClearAllPoints()
 	f.db.text:SetPoint("CENTER", 0, 0)
 	f.db.text:SetText(f.name)
 	f.db:SetSize(s["width"] + (s["padding"] * 2), s["height"] + (s["padding"] * 2))
 	f.db.bg:SetAllPoints(true)
 	f.db.bg:SetColorTexture( 
-		CDTL2.colors["db"]["r"],
-		CDTL2.colors["db"]["g"],
-		CDTL2.colors["db"]["b"],
-		CDTL2.colors["db"]["a"]
+		CDTL3.colors["db"]["r"],
+		CDTL3.colors["db"]["g"],
+		CDTL3.colors["db"]["b"],
+		CDTL3.colors["db"]["a"]
 	)
 	
 	if s["enabled"] then
 		f:Show()
-		CDTL2:Autohide(f, s)
+		CDTL3:Autohide(f, s)
 	else
 		f:Hide()
 	end
 	
-	if CDTL2.db.profile.global["unlockFrames"] then
-		CDTL2:FrameUnlock(f)
+	if CDTL3.db.profile.global["unlockFrames"] then
+		CDTL3:FrameUnlock(f)
 	else
-		CDTL2:FrameLock(f)
+		CDTL3:FrameLock(f)
 	end
 	
-	if CDTL2.db.profile.global["debugMode"] then
-		CDTL2:DebugOn(f)
+	if CDTL3.db.profile.global["debugMode"] then
+		CDTL3:DebugOn(f)
 	else
-		CDTL2:DebugOff(f)
+		CDTL3:DebugOff(f)
 	end
 end
 
 private.CreateBarFrame = function(frameNumber)
-	local frameName = "CDTL2_BarFrame_"..frameNumber
+	local frameName = "CDTL3_BarFrame_"..frameNumber
 	local f = CreateFrame("Frame", frameName, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	
 	f.number = frameNumber
@@ -189,18 +189,18 @@ private.CreateBarFrame = function(frameNumber)
 	f:SetScript("OnDragStart", f.StartMoving)
 	f:SetScript("OnDragStop", f.StopMovingOrSizing)
 	
-	CDTL2:RefreshBarFrame(frameNumber)
-	table.insert(CDTL2.barFrames, f)
+	CDTL3:RefreshBarFrame(frameNumber)
+	table.insert(CDTL3.barFrames, f)
 end
 
 private.BarFrameUpdate = function(f, elapsed)
 	local s = nil
 	if f.number == 1 then
-		s = CDTL2.db.profile.barFrames["frame1"]
+		s = CDTL3.db.profile.barFrames["frame1"]
 	elseif f.number == 2 then
-		s = CDTL2.db.profile.barFrames["frame2"]
+		s = CDTL3.db.profile.barFrames["frame2"]
 	elseif f.number == 3 then
-		s = CDTL2.db.profile.barFrames["frame3"]
+		s = CDTL3.db.profile.barFrames["frame3"]
 	end
 
 	f.forceShow = false
@@ -331,7 +331,7 @@ private.BarFrameUpdate = function(f, elapsed)
 		f.childCount = count
 		
 		if s["enabled"] then
-			CDTL2:Autohide(f, s)
+			CDTL3:Autohide(f, s)
 		else
 			f:SetAlpha(0)
 		end
@@ -341,7 +341,7 @@ private.BarFrameUpdate = function(f, elapsed)
 	
 	if f:GetAlpha() ~= 0 then
 		-- FRAME (UN)LOCKING
-		if CDTL2.db.profile.global["unlockFrames"] then
+		if CDTL3.db.profile.global["unlockFrames"] then
 			local _, _, relativeTo, xOfs, yOfs = f:GetPoint()
 			
 			s["relativeTo"] = relativeTo

@@ -5,7 +5,7 @@
 
 local private = {}
 
-CDTL2.icons = {
+CDTL3.icons = {
 	era = {
 		--R
 		134153,		-- Head of Onyxia
@@ -111,43 +111,43 @@ CDTL2.icons = {
 	}
 }
 
-function CDTL2:GetAllSpellData(class, race)
+function CDTL3:GetAllSpellData(class, race)
 	local d = {}
 	
 	for _, spell in pairs(private.GetRacialData()) do
 		table.insert(d, spell)
-		--CDTL2:Print("    RACIAL ADDED: "..spell["id"].." - "..spell["name"].." - "..spell["rank"])
+		--CDTL3:Print("    RACIAL ADDED: "..spell["id"].." - "..spell["name"].." - "..spell["rank"])
 	end
 	
 	for _, spell in pairs(private.GetOtherData()) do
 		table.insert(d, spell)
-		--CDTL2:Print("    RACIAL ADDED: "..spell["id"].." - "..spell["name"].." - "..spell["rank"])
+		--CDTL3:Print("    RACIAL ADDED: "..spell["id"].." - "..spell["name"].." - "..spell["rank"])
 	end
 	
 	for _, spell in pairs(private.GetClassData(class)) do
 		table.insert(d, spell)
-		--CDTL2:Print("    SPELL ADDED: "..spell["id"].." - "..spell["name"].." - "..spell["rank"])
+		--CDTL3:Print("    SPELL ADDED: "..spell["id"].." - "..spell["name"].." - "..spell["rank"])
 	end
 	
 	if class == "DEATHKNIGHT" or class == "HUNTER" or class == "WARLOCK" then
 		for _, spell in pairs(private.GetPetData(class)) do
 			table.insert(d, spell)
-			--CDTL2:Print("    PETSPELL ADDED: "..spell["id"].." - "..spell["name"].." - "..spell["rank"])
+			--CDTL3:Print("    PETSPELL ADDED: "..spell["id"].." - "..spell["name"].." - "..spell["rank"])
 		end
 	end
 	
 	return d
 end
 
-function CDTL2:GetSpellData(id, name)
+function CDTL3:GetSpellData(id, name)
 	if name then
-		for _, spell in pairs(CDTL2.spellData) do
+		for _, spell in pairs(CDTL3.spellData) do
 			if spell["name"] == name then
 				return spell
 			end
 		end
 	else
-		for _, spell in pairs(CDTL2.spellData) do
+		for _, spell in pairs(CDTL3.spellData) do
 			if spell["id"] == id then
 				return spell
 			end
@@ -155,27 +155,27 @@ function CDTL2:GetSpellData(id, name)
 	end
 end
 
-function CDTL2:ScanSpellData(class)
+function CDTL3:ScanSpellData(class)
 	for _, spell in pairs(private.GetRacialData()) do
 		local baseCD, _ = GetSpellBaseCooldown(spell["id"])
-		CDTL2:Print(spell["id"]..",,"..tostring(baseCD))
+		CDTL3:Print(spell["id"]..",,"..tostring(baseCD))
 	end
 	
 	for _, spell in pairs(private.GetOtherData()) do
 		local baseCD, _ = GetSpellBaseCooldown(spell["id"])
-		CDTL2:Print(spell["id"]..",,"..tostring(baseCD))
+		CDTL3:Print(spell["id"]..",,"..tostring(baseCD))
 	end
 	
 	for _, spell in pairs(private.GetClassData(class)) do
 		local baseCD, _ = GetSpellBaseCooldown(spell["id"])
-		--CDTL2:Print(spell["id"]..",,"..tostring(baseCD))
+		--CDTL3:Print(spell["id"]..",,"..tostring(baseCD))
 	end
 	
 	if class == "DEATHKNIGHT" or class == "HUNTER" or class == "WARLOCK" then
 		for _, pspell in pairs(private.GetPetData(class)) do
 			local pbaseCD, _ = GetSpellBaseCooldown(pspell["id"])
 			
-			--CDTL2:Print(pspell["id"]..",,"..pbaseCD)
+			--CDTL3:Print(pspell["id"]..",,"..pbaseCD)
 		end
 	end
 end
@@ -203,15 +203,15 @@ private.GetOtherData = function()
 	local d = {}
 	
 	-- CLASSIC
-	if CDTL2.tocversion < 20000 then
+	if CDTL3.tocversion < 20000 then
 		table.insert(d, { id = 818, name = "Basic Campfire", rank = "", bCD = 300000 } )
 		
 	-- TBC
-	elseif CDTL2.tocversion < 30000 then
+	elseif CDTL3.tocversion < 30000 then
 		table.insert(d, { id = 818, name = "Basic Campfire", rank = "", bCD = 300000 } )
 	
 	-- WOTLK
-	elseif CDTL2.tocversion < 40000 then
+	elseif CDTL3.tocversion < 40000 then
 		table.insert(d, { id = 818, name = "Basic Campfire", rank = "", bCD = 300000 } )
 		table.insert(d, { id = 55428, name = "Lifeblood", rank = "1", bCD = 180000 } )
 		table.insert(d, { id = 55480, name = "Lifeblood", rank = "2", bCD = 180000 } )
@@ -230,7 +230,7 @@ private.GetRacialData = function()
 	local d = {}
 	
 	-- CLASSIC
-	if CDTL2.tocversion < 20000 then
+	if CDTL3.tocversion < 20000 then
 		table.insert(d, { id = 20554, name = "Berserking", race = "Troll", rank = "", bCD = 180000 } )
 		table.insert(d, { id = 26296, name = "Berserking", race = "Troll", rank = "", bCD = 180000 } )
 		table.insert(d, { id = 26297, name = "Berserking", race = "Troll", rank = "", bCD = 180000 } )
@@ -244,7 +244,7 @@ private.GetRacialData = function()
 		table.insert(d, { id = 7744, name = "Will of the Forsaken", race = "Undead", rank = "", bCD = 120000 } )
 		
 	-- TBC
-	elseif CDTL2.tocversion < 30000 then
+	elseif CDTL3.tocversion < 30000 then
 		table.insert(d, { id = 25046, name = "Arcane Torrent", race = "Bloodelf", rank = "", bCD = 120000 } )
 		table.insert(d, { id = 28730, name = "Arcane Torrent", race = "Bloodelf", rank = "", bCD = 120000 } )
 		table.insert(d, { id = 20554, name = "Berserking", race = "Troll", rank = "", bCD = 180000 } )
@@ -264,7 +264,7 @@ private.GetRacialData = function()
 		table.insert(d, { id = 7744, name = "Will of the Forsaken", race = "Undead", rank = "", bCD = 120000 } )
 	
 	-- WOTLK
-	elseif CDTL2.tocversion < 40000 then
+	elseif CDTL3.tocversion < 40000 then
 		table.insert(d, { id = 25046, name = "Arcane Torrent", race = "Bloodelf", rank = "", bCD = 120000 } )
 		table.insert(d, { id = 28730, name = "Arcane Torrent", race = "Bloodelf", rank = "", bCD = 120000 } )
 		table.insert(d, { id = 50613, name = "Arcane Torrent", race = "Bloodelf", rank = "", bCD = 120000 } )
@@ -350,7 +350,7 @@ private.GetClassData = function(class)
 	-- Druid
 	if class == "DRUID" then		
 		-- CLASSIC
-		if CDTL2.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 then
 			-- SPELLS
 			table.insert(d, { id = 22812, name = "Barkskin", rank = "", bCD = 60000 } )
 			table.insert(d, { id = 5211, name = "Bash", rank = "1", bCD = 60000 } )
@@ -414,7 +414,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 408024, name = "Survival Instincts", rank = "", bCD = 180000 } )
 			
 		-- TBC
-		elseif CDTL2.tocversion < 30000 then
+		elseif CDTL3.tocversion < 30000 then
 			-- SPELLS
 			table.insert(d, { id = 22812, name = "Barkskin", rank = "", bCD = 60000 } )
 			table.insert(d, { id = 5211, name = "Bash", rank = "1", bCD = 60000 } )
@@ -482,7 +482,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 18562, name = "Swiftmend", rank = "", bCD = 15000 } )
 			
 		-- WOTLK
-		elseif CDTL2.tocversion < 40000 then
+		elseif CDTL3.tocversion < 40000 then
 			-- SPELLS
 			table.insert(d, { id = 22812, name = "Barkskin", rank = "", bCD = 60000 } )
 			table.insert(d, { id = 5211, name = "Bash", rank = "1", bCD = 60000 } )
@@ -568,7 +568,7 @@ private.GetClassData = function(class)
 	-- Hunter
 	if class == "HUNTER" then		
 		-- CLASSIC
-		if CDTL2.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 then
 			-- SPELLS
 			table.insert(d, { id = 3044, name = "Arcane Shot", rank = "1", bCD = 6000 } )
 			table.insert(d, { id = 14281, name = "Arcane Shot", rank = "2", bCD = 6000 } )
@@ -681,7 +681,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 409755, name = "Raptor Strike", rank = "8", bCD = 6000 } )
 			
 		-- TBC
-		elseif CDTL2.tocversion < 30000 then
+		elseif CDTL3.tocversion < 30000 then
 			-- SPELLS
 			table.insert(d, { id = 3044, name = "Arcane Shot", rank = "1", bCD = 6000 } )
 			table.insert(d, { id = 14281, name = "Arcane Shot", rank = "2", bCD = 6000 } )
@@ -781,7 +781,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 27068, name = "Wyvern Sting", rank = "4", bCD = 120000 } )
 				
 		-- WOTLK
-		elseif CDTL2.tocversion < 40000 then
+		elseif CDTL3.tocversion < 40000 then
 			-- SPELLS
 			table.insert(d, { id = 3044, name = "Arcane Shot", rank = "1", bCD = 6000 } )
 			table.insert(d, { id = 14281, name = "Arcane Shot", rank = "2", bCD = 6000 } )
@@ -930,7 +930,7 @@ private.GetClassData = function(class)
 	-- Mage
 	if class == "MAGE" then	
 		-- CLASSIC
-		if CDTL2.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 then
 			-- SPELLS
 			table.insert(d, { id = 1953, name = "Blink", rank = "", bCD = 15000 } )
 			table.insert(d, { id = 120, name = "Cone of Cold", rank = "1", bCD = 10000 } )
@@ -992,7 +992,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 401462, name = "Rewind Time", rank = "", bCD = 30000 } )
 
 		-- TBC
-		elseif CDTL2.tocversion < 30000 then
+		elseif CDTL3.tocversion < 30000 then
 			-- SPELLS
 			table.insert(d, { id = 1953, name = "Blink", rank = "", bCD = 15000 } )
 			table.insert(d, { id = 120, name = "Cone of Cold", rank = "1", bCD = 10000 } )
@@ -1071,7 +1071,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 31687, name = "Summon Water Elemental", rank = "", bCD = 180000 } )
 			
 		-- WOTLK
-		elseif CDTL2.tocversion < 40000 then
+		elseif CDTL3.tocversion < 40000 then
 			-- SPELLS
 			table.insert(d, { id = 1953, name = "Blink", rank = "", bCD = 15000 } )
 			table.insert(d, { id = 120, name = "Cone of Cold", rank = "1", bCD = 10000 } )
@@ -1175,7 +1175,7 @@ private.GetClassData = function(class)
 	-- Paladin
 	if class == "PALADIN" then		
 		-- CLASSIC
-		if CDTL2.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 then
 			-- SPELLS
 			table.insert(d, { id = 1044, name = "Blessing of Freedom", rank = "", bCD = 20000 } )
 			table.insert(d, { id = 1022, name = "Blessing of Protection", rank = "1", bCD = 300000 } )
@@ -1240,7 +1240,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 425609, name = "Rebuke", rank = "", bCD = 10000 } )
 
 		-- TBC
-		elseif CDTL2.tocversion < 30000 then
+		elseif CDTL3.tocversion < 30000 then
 			-- SPELLS
 			table.insert(d, { id = 31884, name = "Avenging Wrath", rank = "", bCD = 180000 } )
 			table.insert(d, { id = 1044, name = "Blessing of Freedom", rank = "", bCD = 25000 } )
@@ -1309,7 +1309,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 20066, name = "Repentance", rank = "", bCD = 60000 } )
 			
 		-- WOTLK
-		elseif CDTL2.tocversion < 40000 then
+		elseif CDTL3.tocversion < 40000 then
 			-- SPELLS
 			table.insert(d, { id = 31884, name = "Avenging Wrath", rank = "", bCD = 180000 } )
 			table.insert(d, { id = 26573, name = "Consecration", rank = "1", bCD = 8000 } )
@@ -1400,7 +1400,7 @@ private.GetClassData = function(class)
 	-- Priest
 	if class == "PRIEST" then
 		-- CLASSIC
-		if CDTL2.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 then
 			-- SPELLS
 			table.insert(d, { id = 13908, name = "Desperate Prayer", rank = "1", bCD = 600000 } )
 			table.insert(d, { id = 19236, name = "Desperate Prayer", rank = "2", bCD = 600000 } )
@@ -1480,7 +1480,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 401977, name = "Shadowfiend", rank = "", bCD = 300000 } )
 
 		-- TBC
-		elseif CDTL2.tocversion < 30000 then
+		elseif CDTL3.tocversion < 30000 then
 			-- SPELLS
 			table.insert(d, { id = 44041, name = "Chastise", rank = "1", bCD = 30000 } )
 			table.insert(d, { id = 44043, name = "Chastise", rank = "2", bCD = 30000 } )
@@ -1573,7 +1573,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 15286, name = "Vampiric Embrace", rank = "", bCD = 10000 } )
 			
 		-- WOTLK
-		elseif CDTL2.tocversion < 40000 then
+		elseif CDTL3.tocversion < 40000 then
 			-- SPELLS
 			table.insert(d, { id = 64843, name = "Divine Hymn", rank = "1", bCD = 480000 } )
 			table.insert(d, { id = 586, name = "Fade", rank = "", bCD = 30000 } )
@@ -1671,7 +1671,7 @@ private.GetClassData = function(class)
 	-- Rogue
 	if class == "ROGUE" then		
 		-- CLASSIC
-		if CDTL2.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 then
 			-- SPELLS
 			table.insert(d, { id = 2094, name = "Blind", rank = "", bCD = 300000 } )
 			table.insert(d, { id = 1725, name = "Distract", rank = "", bCD = 30000 } )
@@ -1720,7 +1720,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 438040, name = "Redirect", rank = "", bCD = 60000 } )
 
 		-- TBC
-		elseif CDTL2.tocversion < 30000 then
+		elseif CDTL3.tocversion < 30000 then
 			-- SPELLS
 			table.insert(d, { id = 2094, name = "Blind", rank = "", bCD = 180000 } )
 			table.insert(d, { id = 31224, name = "Cloak of Shadows", rank = "", bCD = 60000 } )
@@ -1768,7 +1768,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 36554, name = "Shadowstep", rank = "", bCD = 30000 } )
 			
 		-- WOTLK
-		elseif CDTL2.tocversion < 40000 then
+		elseif CDTL3.tocversion < 40000 then
 			-- SPELLS
 			table.insert(d, { id = 2094, name = "Blind", rank = "", bCD = 180000 } )
 			table.insert(d, { id = 31224, name = "Cloak of Shadows", rank = "", bCD = 90000 } )
@@ -1814,7 +1814,7 @@ private.GetClassData = function(class)
 	-- Shaman
 	if class == "SHAMAN" then		
 		-- CLASSIC
-		if CDTL2.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 then
 			-- SPELLS
 			table.insert(d, { id = 556, name = "Astral Recall", rank = "", bCD = 900000 } )
 			table.insert(d, { id = 421, name = "Chain Lightning", rank = "1", bCD = 6000 } )
@@ -1871,7 +1871,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 437009, name = "Totemic Projection", rank = "", bCD = 10000 } )
 
 		-- TBC
-		elseif CDTL2.tocversion < 30000 then
+		elseif CDTL3.tocversion < 30000 then
 			-- SPELLS
 			table.insert(d, { id = 556, name = "Astral Recall", rank = "", bCD = 900000 } )
 			table.insert(d, { id = 2825, name = "Bloodlust", rank = "1", bCD = 600000 } )
@@ -1929,7 +1929,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 17364, name = "Stormstrike", rank = "", bCD = 10000 } )
 			
 		-- WOTLK
-		elseif CDTL2.tocversion < 40000 then
+		elseif CDTL3.tocversion < 40000 then
 			-- SPELLS
 			table.insert(d, { id = 556, name = "Astral Recall", rank = "", bCD = 900000 } )
 			table.insert(d, { id = 2825, name = "Bloodlust", rank = "", bCD = 300000 } )
@@ -2019,7 +2019,7 @@ private.GetClassData = function(class)
 	-- Warlock
 	if class == "WARLOCK" then		
 		-- CLASSIC
-		if CDTL2.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 then
 			-- SPELLS
 			table.insert(d, { id = 603, name = "Curse of Doom", rank = "", bCD = 60000 } )
 			table.insert(d, { id = 6789, name = "Death Coil", rank = "1", bCD = 120000 } )
@@ -2078,7 +2078,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 426320, name = "Shadowflame", rank = "", bCD = 15000 } )
 
 		-- TBC
-		elseif CDTL2.tocversion < 30000 then
+		elseif CDTL3.tocversion < 30000 then
 			-- SPELLS
 			table.insert(d, { id = 603, name = "Curse of Doom", rank = "1", bCD = 60000 } )
 			table.insert(d, { id = 30910, name = "Curse of Doom", rank = "2", bCD = 60000 } )
@@ -2123,7 +2123,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 30414, name = "Shadowfury", rank = "3", bCD = 20000 } )
 			
 		-- WOTLK
-		elseif CDTL2.tocversion < 40000 then
+		elseif CDTL3.tocversion < 40000 then
 			-- SPELLS
 			table.insert(d, { id = 59671, name = "Challenging Howl", rank = "", bCD = 15000 } )
 			table.insert(d, { id = 603, name = "Curse of Doom", rank = "1", bCD = 60000 } )
@@ -2189,7 +2189,7 @@ private.GetClassData = function(class)
 	-- Warrior
 	if class == "WARRIOR" then		
 		-- CLASSIC
-		if CDTL2.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 then
 			-- SPELLS
 			table.insert(d, { id = 2457, name = "Battle Stance", rank = "", bCD = 1000 } )
 			table.insert(d, { id = 18499, name = "Berserker Rage", rank = "", bCD = 30000 } )
@@ -2265,7 +2265,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 426490, name = "Rallying Cry", rank = "", bCD = 180000 } )
 
 		-- TBC
-		elseif CDTL2.tocversion < 30000 then
+		elseif CDTL3.tocversion < 30000 then
 			-- SPELLS
 			table.insert(d, { id = 2457, name = "Battle Stance", rank = "", bCD = 1000 } )
 			table.insert(d, { id = 18499, name = "Berserker Rage", rank = "", bCD = 30000 } )
@@ -2348,7 +2348,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 12328, name = "Sweeping Strikes", rank = "", bCD = 30000 } )
 			
 		-- WOTLK
-		elseif CDTL2.tocversion < 40000 then
+		elseif CDTL3.tocversion < 40000 then
 			-- SPELLS
 			table.insert(d, { id = 2457, name = "Battle Stance", rank = "", bCD = 1000 } )
 			table.insert(d, { id = 18499, name = "Berserker Rage", rank = "", bCD = 30000 } )
@@ -2435,7 +2435,7 @@ private.GetPetData = function(class)
 	-- Death Knight
 	if class == "DEATHKNIGHT" then			
 		-- WOTLK
-		if CDTL2.tocversion < 40000 then
+		if CDTL3.tocversion < 40000 then
 			table.insert(d, { id = 47481, name = "Gnaw", rank = "", bCD = 60000 } )
 			table.insert(d, { id = 47484, name = "Huddle", rank = "", bCD = 45000 } )
 			table.insert(d, { id = 47482, name = "Leap", rank = "", bCD = 20000 } )
@@ -2445,7 +2445,7 @@ private.GetPetData = function(class)
 	-- Hunter
 	if class == "HUNTER" then
 		-- CLASSIC
-		if CDTL2.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 then
 			table.insert(d, { id = 17253, name = "Bite", rank = "1", bCD = 10000 } )
 			table.insert(d, { id = 17255, name = "Bite", rank = "2", bCD = 10000 } )
 			table.insert(d, { id = 17256, name = "Bite", rank = "3", bCD = 10000 } )
@@ -2496,7 +2496,7 @@ private.GetPetData = function(class)
 			table.insert(d, { id = 26188, name = "Thunderstomp", rank = "3", bCD = 60000 } )
 			
 		-- TBC
-		elseif CDTL2.tocversion < 30000 then
+		elseif CDTL3.tocversion < 30000 then
 			table.insert(d, { id = 17253, name = "Bite", rank = "1", bCD = 10000 } )
 			table.insert(d, { id = 17255, name = "Bite", rank = "2", bCD = 10000 } )
 			table.insert(d, { id = 17256, name = "Bite", rank = "3", bCD = 10000 } )
@@ -2558,7 +2558,7 @@ private.GetPetData = function(class)
 			table.insert(d, { id = 35346, name = "Warp", rank = "", bCD = 15000 } )
 			
 		-- WOTLK
-		elseif CDTL2.tocversion < 40000 then
+		elseif CDTL3.tocversion < 40000 then
 			table.insert(d, { id = 55749, name = "Acid Spit", rank = "1", bCD = 10000 } )
 			table.insert(d, { id = 55750, name = "Acid Spit", rank = "2", bCD = 10000 } )
 			table.insert(d, { id = 55751, name = "Acid Spit", rank = "3", bCD = 10000 } )
@@ -2762,7 +2762,7 @@ private.GetPetData = function(class)
 	-- Warlock
 	if class == "WARLOCK" then
 		-- CLASSIC
-		if CDTL2.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 then
 			table.insert(d, { id = 19505, name = "Devour Magic", rank = "1", bCD = 8000 } )
 			table.insert(d, { id = 19731, name = "Devour Magic", rank = "2", bCD = 8000 } )
 			table.insert(d, { id = 19734, name = "Devour Magic", rank = "3", bCD = 8000 } )
@@ -2792,7 +2792,7 @@ private.GetPetData = function(class)
 			table.insert(d, { id = 11775, name = "Torment", rank = "6", bCD = 5000 } )
 			
 		-- TBC
-		elseif CDTL2.tocversion < 30000 then
+		elseif CDTL3.tocversion < 30000 then
 			table.insert(d, { id = 19505, name = "Devour Magic", rank = "1", bCD = 8000 } )
 			table.insert(d, { id = 19731, name = "Devour Magic", rank = "2", bCD = 8000 } )
 			table.insert(d, { id = 19734, name = "Devour Magic", rank = "3", bCD = 8000 } )
@@ -2829,7 +2829,7 @@ private.GetPetData = function(class)
 			table.insert(d, { id = 27270, name = "Torment", rank = "7", bCD = 5000 } )
 			
 		-- WOTLK
-		elseif CDTL2.tocversion < 40000 then
+		elseif CDTL3.tocversion < 40000 then
 			table.insert(d, { id = 33698, name = "Anguish", rank = "1", bCD = 5000 } )
 			table.insert(d, { id = 33699, name = "Anguish", rank = "2", bCD = 5000 } )
 			table.insert(d, { id = 33700, name = "Anguish", rank = "3", bCD = 5000 } )
@@ -2903,7 +2903,7 @@ private.GetPetData = function(class)
 end
 
 -- The String for the custom text tag description
-function CDTL2:GetCustomTextTagDescription()
+function CDTL3:GetCustomTextTagDescription()
 	local text = ""
 	
 	text = text.."Currently custom tags are in the following format:\n\n"
@@ -2935,7 +2935,7 @@ function CDTL2:GetCustomTextTagDescription()
 end
 
 -- The String for the icon text tag description
-function CDTL2:GetCustomIconTagDescription()
+function CDTL3:GetCustomIconTagDescription()
 	local text = ""
 	
 	text = text.."Currently custom tags are in the following format:\n\n"
@@ -2947,11 +2947,11 @@ function CDTL2:GetCustomIconTagDescription()
 	text = text.."    'cd.type' - Icon type (SPELL, ITEM, etc.)\n"
 	text = text.."    'cd.stacks' - Stack count\n"
 	
-	--CDTL2:Print(text)
+	--CDTL3:Print(text)
 	return text
 end
 
-function CDTL2:ScanForDynamicTags(iString)
+function CDTL3:ScanForDynamicTags(iString)
 	for _, tag in pairs(private.customTextDynamicTags) do
 		if tostring(iString):find(tag["tag"]) then
 			return true
@@ -2961,7 +2961,7 @@ function CDTL2:ScanForDynamicTags(iString)
 	return false
 end
 
-function CDTL2:ScanForTimeTags(iString)
+function CDTL3:ScanForTimeTags(iString)
 	for _, tag in pairs(private.customTextTimeTags) do
 		if tostring(iString):find(tag["tag"]) then
 			return true
@@ -2971,7 +2971,7 @@ function CDTL2:ScanForTimeTags(iString)
 	return false
 end
 
-function CDTL2:ConvertTextTags(iString, frame)
+function CDTL3:ConvertTextTags(iString, frame)
 	local oString = iString
 			
 	for _, tag in pairs(private.customTextTags) do
@@ -2985,7 +2985,7 @@ function CDTL2:ConvertTextTags(iString, frame)
 	return oString
 end
 
-function CDTL2:ConvertTextDynamicTags(iString, frame)
+function CDTL3:ConvertTextDynamicTags(iString, frame)
 	local oString = iString
 			
 	for _, tag in pairs(private.customTextDynamicTags) do
@@ -2999,7 +2999,7 @@ function CDTL2:ConvertTextDynamicTags(iString, frame)
 	return oString
 end
 
-function CDTL2:ConvertTextTimeTags(iString, frame)
+function CDTL3:ConvertTextTimeTags(iString, frame)
 	local oString = iString
 			
 	for _, tag in pairs(private.customTextTimeTags) do
@@ -3127,7 +3127,7 @@ private.customTextDynamicTags = {
 					local name = ""
 					local lowestTime = 10000
 					
-					for _, cd in ipairs(CDTL2.cooldowns) do
+					for _, cd in ipairs(CDTL3.cooldowns) do
 						if cd.data["enabled"] == true then
 							if cd.icon.valid == true or cd.bar.valid == true then
 								if cd.data["currentCD"] > 0 then
@@ -3155,7 +3155,7 @@ private.customTextDynamicTags = {
 					local name = ""
 					local lowestTime = 0
 					
-					for _, cd in ipairs(CDTL2.cooldowns) do
+					for _, cd in ipairs(CDTL3.cooldowns) do
 						if cd.data["enabled"] == true then
 							if cd.icon.valid == true or cd.bar.valid == true then
 								if cd.data["currentCD"] > 0 then
@@ -3183,12 +3183,12 @@ private.customTextDynamicTags = {
 					local timeString = ""
 					local lowestTime = 10000
 					
-					for _, cd in ipairs(CDTL2.cooldowns) do
+					for _, cd in ipairs(CDTL3.cooldowns) do
 						if cd.data["enabled"] == true then
 							if cd.icon.valid == true or cd.bar.valid == true then
 								if cd.data["currentCD"] > 0 then
 									if cd.data["currentCD"] < lowestTime then
-										timeString = CDTL2:ConvertTime(cd.data["currentCD"], "XhYmZs")
+										timeString = CDTL3:ConvertTime(cd.data["currentCD"], "XhYmZs")
 										lowestTime = cd.data["currentCD"]
 									end
 								end
@@ -3207,12 +3207,12 @@ private.customTextDynamicTags = {
 					local timeString = ""
 					local lowestTime = 0
 					
-					for _, cd in ipairs(CDTL2.cooldowns) do
+					for _, cd in ipairs(CDTL3.cooldowns) do
 						if cd.data["enabled"] == true then
 							if cd.icon.valid == true or cd.bar.valid == true then
 								if cd.data["currentCD"] > 0 then
 									if cd.data["currentCD"] > lowestTime then
-										timeString = CDTL2:GetReadableTime(cd.data["currentCD"])
+										timeString = CDTL3:GetReadableTime(cd.data["currentCD"])
 										lowestTime = cd.data["currentCD"]
 									end
 								end
@@ -3231,7 +3231,7 @@ private.customTextDynamicTags = {
 					local name = ""
 					local lowestTime = 10000
 					
-					for _, cd in ipairs(CDTL2.cooldowns) do
+					for _, cd in ipairs(CDTL3.cooldowns) do
 						if cd.data["enabled"] == true then
 							if cd.icon.valid == true or cd.bar.valid == true then
 								if cd.data["highlighted"] == true then
@@ -3261,7 +3261,7 @@ private.customTextDynamicTags = {
 					local name = ""
 					local lowestTime = 0
 					
-					for _, cd in ipairs(CDTL2.cooldowns) do
+					for _, cd in ipairs(CDTL3.cooldowns) do
 						if cd.data["enabled"] == true then
 							if cd.icon.valid == true or cd.bar.valid == true then
 								if cd.data["highlighted"] == true then
@@ -3291,13 +3291,13 @@ private.customTextDynamicTags = {
 					local timeString = ""
 					local lowestTime = 10000
 					
-					for _, cd in ipairs(CDTL2.cooldowns) do
+					for _, cd in ipairs(CDTL3.cooldowns) do
 						if cd.data["enabled"] == true then
 							if cd.icon.valid == true or cd.bar.valid == true then
 								if cd.data["highlighted"] == true then
 									if cd.data["currentCD"] > 0 then
 										if cd.data["currentCD"] < lowestTime then
-											timeString = CDTL2:GetReadableTime(cd.data["currentCD"])
+											timeString = CDTL3:GetReadableTime(cd.data["currentCD"])
 											lowestTime = cd.data["currentCD"]
 										end
 									end
@@ -3317,13 +3317,13 @@ private.customTextDynamicTags = {
 					local timeString = ""
 					local lowestTime = 0
 					
-					for _, cd in ipairs(CDTL2.cooldowns) do
+					for _, cd in ipairs(CDTL3.cooldowns) do
 						if cd.data["enabled"] == true then
 							if cd.icon.valid == true or cd.bar.valid == true then
 								if cd.data["highlighted"] == true then
 									if cd.data["currentCD"] > 0 then
 										if cd.data["currentCD"] > lowestTime then
-											timeString = CDTL2:GetReadableTime(cd.data["currentCD"])
+											timeString = CDTL3:GetReadableTime(cd.data["currentCD"])
 											lowestTime = cd.data["currentCD"]
 										end
 									end
@@ -3343,7 +3343,7 @@ private.customTextDynamicTags = {
 		tag = "%[p.pow.cur%]",
 		func = function()
 					local className, _, _ = UnitClass("player")
-					local powerType = CDTL2:GetPlayerPower(className)
+					local powerType = CDTL3:GetPlayerPower(className)
 						
 					return UnitPower("player", powerType)
 				end,
@@ -3354,7 +3354,7 @@ private.customTextDynamicTags = {
 		tag = "%[p.pow.max%]",
 		func = function()
 					local className, _, _ = UnitClass("player")
-					local powerType = CDTL2:GetPlayerPower(className)
+					local powerType = CDTL3:GetPlayerPower(className)
 						
 					return UnitPowerMax("player", powerType)
 				end,
@@ -3417,7 +3417,7 @@ private.customTextDynamicTags = {
 		func = function()
 					if UnitExists("focus") then
 						local className, _, _ = UnitClass("focus")
-						local powerType = CDTL2:GetPlayerPower(className)
+						local powerType = CDTL3:GetPlayerPower(className)
 						
 						return UnitPower("focus", powerType)
 					end
@@ -3432,7 +3432,7 @@ private.customTextDynamicTags = {
 		func = function()
 					if UnitExists("focus") then
 						local className, _, _ = UnitClass("focus")
-						local powerType = CDTL2:GetPlayerPower(className)
+						local powerType = CDTL3:GetPlayerPower(className)
 						
 						return UnitPowerMax("focus", powerType)
 					end
@@ -3510,7 +3510,7 @@ private.customTextDynamicTags = {
 		func = function()
 					if UnitExists("target") then
 						local className, _, _ = UnitClass("target")
-						local powerType = CDTL2:GetPlayerPower(className)
+						local powerType = CDTL3:GetPlayerPower(className)
 						
 						return UnitPower("target", powerType)
 					end
@@ -3525,7 +3525,7 @@ private.customTextDynamicTags = {
 		func = function()
 					if UnitExists("target") then
 						local className, _, _ = UnitClass("target")
-						local powerType = CDTL2:GetPlayerPower(className)
+						local powerType = CDTL3:GetPlayerPower(className)
 						
 						return UnitPowerMax("target", powerType)
 					end
@@ -3597,7 +3597,7 @@ private.customTextTimeTags = {
 		tag = "%[cd.time%]",
 		func = function(frame)
 					if frame then
-						return tostring(CDTL2:GetReadableTime(frame.data["currentCD"]))
+						return tostring(CDTL3:GetReadableTime(frame.data["currentCD"]))
 					end
 					
 					return "Error"

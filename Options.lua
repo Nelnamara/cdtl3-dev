@@ -5,7 +5,7 @@
 
 local private = {}
 
-function CDTL2:GetChangeLog()
+function CDTL3:GetChangeLog()
 	local changeLog = ""
 	changeLog = changeLog.."\n"
 	changeLog = changeLog.."CDTL3 is the Midnight (12.x) continuation of Cooldown Timeline,\n"
@@ -20,10 +20,10 @@ function CDTL2:GetChangeLog()
 	return changeLog
 end
 
-function CDTL2:GetChangeLogMessage()
+function CDTL3:GetChangeLogMessage()
 	local message = ""
 	message = message.."\n"
-	message = message.."CDTL2 is an almost complete re-write of the mod\n\n"
+	message = message.."CDTL3 is an almost complete re-write of the mod\n\n"
 	message = message.."Version 1 settings are saved independent of version 2, so you can manually install and use old versions if you wish\n"
 	message = message.."This also means version 1 settings will not roll over into version 2\n\n"
 	message = message.."\n"
@@ -31,7 +31,7 @@ function CDTL2:GetChangeLogMessage()
 	return message
 end
 
-function CDTL2:GetSpecialMessage()
+function CDTL3:GetSpecialMessage()
 	local message = ""
 	--message = message.."\n"
 	--message = message.."Profile import/exporting testing is still ongoing.\n"
@@ -42,7 +42,7 @@ function CDTL2:GetSpecialMessage()
 	return message
 end
 
-function CDTL2:GetMainOptions()
+function CDTL3:GetMainOptions()
 	local options = {
 		name = "CDTL3",
 		type = "group",
@@ -66,17 +66,17 @@ function CDTL2:GetMainOptions()
 						type = "toggle",
 						--width = "full",
 						get = function(info, index)
-								return CDTL2.db.profile.global["enabledAlways"]
+								return CDTL3.db.profile.global["enabledAlways"]
 							end,
 						set = function(info, val)
-								CDTL2.db.profile.global["enabledAlways"] = val
+								CDTL3.db.profile.global["enabledAlways"] = val
 								
-								local turnOn = CDTL2:DetermineOnOff()
+								local turnOn = CDTL3:DetermineOnOff()
 	
 								if turnOn then
-									CDTL2:TurnOn()
+									CDTL3:TurnOn()
 								else
-									CDTL2:TurnOff()
+									CDTL3:TurnOff()
 								end
 							end,
 					},
@@ -87,20 +87,20 @@ function CDTL2:GetMainOptions()
 						type = "toggle",
 						--width = "full",
 						disabled = function(info)
-								return CDTL2.db.profile.global["enabledAlways"]
+								return CDTL3.db.profile.global["enabledAlways"]
 							end,
 						get = function(info, index)
-								return CDTL2.db.profile.global["enabledGroup"]
+								return CDTL3.db.profile.global["enabledGroup"]
 							end,
 						set = function(info, val)
-								CDTL2.db.profile.global["enabledGroup"] = val
+								CDTL3.db.profile.global["enabledGroup"] = val
 								
-								local turnOn = CDTL2:DetermineOnOff()
+								local turnOn = CDTL3:DetermineOnOff()
 	
 								if turnOn then
-									CDTL2:TurnOn()
+									CDTL3:TurnOn()
 								else
-									CDTL2:TurnOff()
+									CDTL3:TurnOff()
 								end
 							end,
 					},
@@ -111,20 +111,20 @@ function CDTL2:GetMainOptions()
 						type = "toggle",
 						--width = "full",
 						disabled = function(info)
-								return CDTL2.db.profile.global["enabledAlways"]
+								return CDTL3.db.profile.global["enabledAlways"]
 							end,
 						get = function(info, index)
-								return CDTL2.db.profile.global["enabledInstance"]
+								return CDTL3.db.profile.global["enabledInstance"]
 							end,
 						set = function(info, val)
-								CDTL2.db.profile.global["enabledInstance"] = val
+								CDTL3.db.profile.global["enabledInstance"] = val
 								
-								local turnOn = CDTL2:DetermineOnOff()
+								local turnOn = CDTL3:DetermineOnOff()
 	
 								if turnOn then
-									CDTL2:TurnOn()
+									CDTL3:TurnOn()
 								else
-									CDTL2:TurnOff()
+									CDTL3:TurnOff()
 								end
 							end,
 					},
@@ -140,10 +140,10 @@ function CDTL2:GetMainOptions()
 						type = "toggle",
 						width = "full",
 						get = function(info, index)
-								return CDTL2.db.profile.global["unlockFrames"]
+								return CDTL3.db.profile.global["unlockFrames"]
 							end,
 						set = function(info, val)
-								CDTL2:ToggleFrameLock()
+								CDTL3:ToggleFrameLock()
 							end,
 					},
 					autohide = {
@@ -153,15 +153,15 @@ function CDTL2:GetMainOptions()
 						type = "toggle",
 						width = "full",
 						get = function(info, index)
-								return CDTL2.db.profile.global["autohide"]
+								return CDTL3.db.profile.global["autohide"]
 							end,
 						set = function(info, val)
-								CDTL2.db.profile.global["autohide"] = val
+								CDTL3.db.profile.global["autohide"] = val
 								
 								for i = 1, 3, 1 do
-									CDTL2:RefreshLane(i)
-									CDTL2:RefreshReady(i)
-									CDTL2:RefreshBarFrame(i)
+									CDTL3:RefreshLane(i)
+									CDTL3:RefreshReady(i)
+									CDTL3:RefreshBarFrame(i)
 								end
 							end,
 					},
@@ -172,10 +172,10 @@ function CDTL2:GetMainOptions()
 						type = "toggle",
 						width = "full",
 						get = function(info, index)
-								return CDTL2.db.profile.global["enableTooltip"]
+								return CDTL3.db.profile.global["enableTooltip"]
 							end,
 						set = function(info, val)
-								CDTL2.db.profile.global["enableTooltip"] = val
+								CDTL3.db.profile.global["enableTooltip"] = val
 							end,
 					},
 					detectSharedCD = {
@@ -185,10 +185,10 @@ function CDTL2:GetMainOptions()
 						type = "toggle",
 						width = "full",
 						get = function(info, index)
-								return CDTL2.db.profile.global["detectSharedCD"]
+								return CDTL3.db.profile.global["detectSharedCD"]
 							end,
 						set = function(info, val)
-								CDTL2.db.profile.global["detectSharedCD"] = val
+								CDTL3.db.profile.global["detectSharedCD"] = val
 							end,
 					},
 					spacer500 = {
@@ -204,12 +204,12 @@ function CDTL2:GetMainOptions()
 						softMin = 1,
 						softMax = 1.5,
 						get = function(info, index)
-								return CDTL2.db.profile.global["zoom"]
+								return CDTL3.db.profile.global["zoom"]
 							end,
 						set = function(info, val)
-								CDTL2.db.profile.global["zoom"] = val
-								CDTL2:RefreshAllIcons()
-								CDTL2:RefreshAllBars()
+								CDTL3.db.profile.global["zoom"] = val
+								CDTL3:RefreshAllIcons()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					spacer600 = {
@@ -224,10 +224,10 @@ function CDTL2:GetMainOptions()
 						type = "toggle",
 						width = "full",
 						get = function(info, index)
-								return CDTL2.db.profile.global["notUsableTint"]
+								return CDTL3.db.profile.global["notUsableTint"]
 							end,
 						set = function(info, val)
-								CDTL2.db.profile.global["notUsableTint"] = val
+								CDTL3.db.profile.global["notUsableTint"] = val
 							end,
 					},
 					spacer602 = {
@@ -235,7 +235,7 @@ function CDTL2:GetMainOptions()
 						type = "description",
 						order = 602,
 						hidden = function(info)
-								return not CDTL2.db.profile.global["notUsableTint"]
+								return not CDTL3.db.profile.global["notUsableTint"]
 							end,
 					},
 					notUsableDesaturate = {
@@ -244,13 +244,13 @@ function CDTL2:GetMainOptions()
 						order = 603,
 						type = "toggle",
 						hidden = function(info)
-								return not CDTL2.db.profile.global["notUsableTint"]
+								return not CDTL3.db.profile.global["notUsableTint"]
 							end,
 						get = function(info, index)
-								return CDTL2.db.profile.global["notUsableDesaturate"]
+								return CDTL3.db.profile.global["notUsableDesaturate"]
 							end,
 						set = function(info, val)
-								CDTL2.db.profile.global["notUsableDesaturate"] = val
+								CDTL3.db.profile.global["notUsableDesaturate"] = val
 							end,
 					},
 					notUsableColor = {
@@ -259,20 +259,20 @@ function CDTL2:GetMainOptions()
 						order = 604,
 						type = "color",
 						hidden = function(info)
-								return not CDTL2.db.profile.global["notUsableTint"]
+								return not CDTL3.db.profile.global["notUsableTint"]
 							end,
 						hasAlpha = true,
 						get = function(info)
-								local r = CDTL2.db.profile.global["notUsableColor"]["r"]
-								local g = CDTL2.db.profile.global["notUsableColor"]["g"]
-								local b = CDTL2.db.profile.global["notUsableColor"]["b"]
-								local a = CDTL2.db.profile.global["notUsableColor"]["a"]
+								local r = CDTL3.db.profile.global["notUsableColor"]["r"]
+								local g = CDTL3.db.profile.global["notUsableColor"]["g"]
+								local b = CDTL3.db.profile.global["notUsableColor"]["b"]
+								local a = CDTL3.db.profile.global["notUsableColor"]["a"]
 								
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["notUsableColor"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL2:RefreshAllIcons()
+								CDTL3.db.profile.global["notUsableColor"] = { r = red, g = green, b = blue, a = alpha }							
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					spacer700 = {
@@ -291,7 +291,7 @@ function CDTL2:GetMainOptions()
 						--width = "half",
 						type = "execute",
 						func = function(info)
-								CDTL2:EnableTesting()
+								CDTL3:EnableTesting()
 							end,
 					},
 				},
@@ -320,14 +320,14 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						hidden = function(info)
-							if CDTL2.tocversion >= 30000 then
+							if CDTL3.tocversion >= 30000 then
 								return false
 							end
 							
 							return true
 						end,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["DEATHKNIGHT"]
+								local t = CDTL3.db.profile.global["classColors"]["DEATHKNIGHT"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -336,7 +336,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["DEATHKNIGHT"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["DEATHKNIGHT"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					demonhunterColor = {
@@ -346,14 +346,14 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						hidden = function(info)
-							if CDTL2.tocversion >= 70000 then
+							if CDTL3.tocversion >= 70000 then
 								return false
 							end
 							
 							return true
 						end,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["DEMONHUNTER"]
+								local t = CDTL3.db.profile.global["classColors"]["DEMONHUNTER"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -362,7 +362,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["DEMONHUNTER"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["DEMONHUNTER"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					druidColor = {
@@ -372,7 +372,7 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["DRUID"]
+								local t = CDTL3.db.profile.global["classColors"]["DRUID"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -381,7 +381,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["DRUID"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["DRUID"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					evokerColor = {
@@ -391,14 +391,14 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						hidden = function(info)
-							if CDTL2.tocversion >= 100000 then
+							if CDTL3.tocversion >= 100000 then
 								return false
 							end
 							
 							return true
 						end,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["EVOKER"]
+								local t = CDTL3.db.profile.global["classColors"]["EVOKER"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -407,7 +407,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["EVOKER"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["EVOKER"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					hunterColor = {
@@ -417,7 +417,7 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["HUNTER"]
+								local t = CDTL3.db.profile.global["classColors"]["HUNTER"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -426,7 +426,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["HUNTER"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["HUNTER"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					mageColor = {
@@ -436,7 +436,7 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["MAGE"]
+								local t = CDTL3.db.profile.global["classColors"]["MAGE"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -445,7 +445,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["MAGE"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["MAGE"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					monkColor = {
@@ -455,14 +455,14 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						hidden = function(info)
-							if CDTL2.tocversion >= 50000 then
+							if CDTL3.tocversion >= 50000 then
 								return false
 							end
 							
 							return true
 						end,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["MONK"]
+								local t = CDTL3.db.profile.global["classColors"]["MONK"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -471,7 +471,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["MONK"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["MONK"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					paladinColor = {
@@ -481,7 +481,7 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["PALADIN"]
+								local t = CDTL3.db.profile.global["classColors"]["PALADIN"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -490,7 +490,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["PALADIN"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["PALADIN"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					priestColor = {
@@ -500,7 +500,7 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["PRIEST"]
+								local t = CDTL3.db.profile.global["classColors"]["PRIEST"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -509,7 +509,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["PRIEST"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["PRIEST"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					rogueColor = {
@@ -519,7 +519,7 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["ROGUE"]
+								local t = CDTL3.db.profile.global["classColors"]["ROGUE"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -528,7 +528,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["ROGUE"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["ROGUE"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					shamanColor = {
@@ -538,7 +538,7 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["SHAMAN"]
+								local t = CDTL3.db.profile.global["classColors"]["SHAMAN"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -547,7 +547,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["SHAMAN"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["SHAMAN"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					warlockColor = {
@@ -557,7 +557,7 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["WARLOCK"]
+								local t = CDTL3.db.profile.global["classColors"]["WARLOCK"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -566,7 +566,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["WARLOCK"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["WARLOCK"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					warriorColor = {
@@ -576,7 +576,7 @@ function CDTL2:GetMainOptions()
 						type = "color",
 						hasAlpha = true,
 						get = function(info)
-								local t = CDTL2.db.profile.global["classColors"]["WARRIOR"]
+								local t = CDTL3.db.profile.global["classColors"]["WARRIOR"]
 								
 								local r = t["r"]
 								local g = t["g"]
@@ -585,7 +585,7 @@ function CDTL2:GetMainOptions()
 								return r, g, b, a
 							end,
 						set = function(info, red, green, blue, alpha)
-								CDTL2.db.profile.global["classColors"]["WARRIOR"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3.db.profile.global["classColors"]["WARRIOR"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 				},
@@ -611,13 +611,13 @@ function CDTL2:GetMainOptions()
 						values = {
 								["ALL"] = "All Settings and Data",
 								["CDDATA"] = "Cooldown Data Only",
-								["SETTINGS"] = "CDTL2 Settings Only",
+								["SETTINGS"] = "CDTL3 Settings Only",
 							},
 						get = function(info, index)
-								return CDTL2.db.profile.global["exportMode"]
+								return CDTL3.db.profile.global["exportMode"]
 							end,
 						set = function(info, val)
-								CDTL2.db.profile.global["exportMode"] = val
+								CDTL3.db.profile.global["exportMode"] = val
 							end,
 					},
 					exportbox = {
@@ -627,14 +627,14 @@ function CDTL2:GetMainOptions()
 						order = 200,
 						width = "full",
 						get = function(info)
-								local exportMode = CDTL2.db.profile.global["exportMode"]
+								local exportMode = CDTL3.db.profile.global["exportMode"]
 
 								local table = {}
 
 								if exportMode == "CDDATA" then
-									table = CDTL2:TableCopy(CDTL2.db.profile.tables)
+									table = CDTL3:TableCopy(CDTL3.db.profile.tables)
 								else
-									table = CDTL2:TableCopy(CDTL2.db.profile)
+									table = CDTL3:TableCopy(CDTL3.db.profile)
 
 									if exportMode == "SETTINGS" then
 										table.tables.spells = {}
@@ -679,13 +679,13 @@ function CDTL2:GetMainOptions()
 						values = {
 								["ALL"] = "All Settings and Data",
 								["CDDATA"] = "Cooldown Data Only",
-								["SETTINGS"] = "CDTL2 Settings Only",
+								["SETTINGS"] = "CDTL3 Settings Only",
 							},
 						get = function(info, index)
-								return CDTL2.db.profile.global["importMode"]
+								return CDTL3.db.profile.global["importMode"]
 							end,
 						set = function(info, val)
-								CDTL2.db.profile.global["importMode"] = val
+								CDTL3.db.profile.global["importMode"] = val
 							end,
 					},
 					importbox = {
@@ -698,7 +698,7 @@ function CDTL2:GetMainOptions()
 								return ""
 							end,
 						set = function(info, val)
-								return CDTL2:ImportHandler(val)
+								return CDTL3:ImportHandler(val)
 							end,
 					},
 				}
@@ -710,7 +710,7 @@ function CDTL2:GetMainOptions()
 				childGroups  = "tab",
 				args = {
 					spacer100 = {
-						name = function() return "CDTL3 v"..CDTL2.version.."\n\n" end,
+						name = function() return "CDTL3 v"..CDTL3.version.."\n\n" end,
 						fontSize = "large",
 						type = "description",
 						order = 100,
@@ -721,7 +721,7 @@ function CDTL2:GetMainOptions()
 						order = 200,
 						width = "full",
 						get = function(info)
-							return CDTL2.discordlink
+							return CDTL3.discordlink
 							end,
 						set = function(info, val)
 								return nil
@@ -730,8 +730,8 @@ function CDTL2:GetMainOptions()
 					spacer300 = {
 						name = function(info)
 							local info = ""
-							--info = info..CDTL2:GetChangeLogMessage()
-							info = info..CDTL2:GetChangeLog()
+							--info = info..CDTL3:GetChangeLogMessage()
+							info = info..CDTL3:GetChangeLog()
 							return info
 						end,
 						type = "description",
@@ -745,7 +745,7 @@ function CDTL2:GetMainOptions()
 	return options
 end
 
-function CDTL2:GetFilterOptions()
+function CDTL3:GetFilterOptions()
 	local options = {
 		name = "Filters",
 		type = "group",
@@ -776,64 +776,64 @@ function CDTL2:GetFilterOptions()
 									choices["PETSPELLS"] = "Pet Spells"
 									choices["CUSTOMS"] = "Customs"
 
-									--[[if CDTL2.db.profile.global["debugMode"] then
+									--[[if CDTL3.db.profile.global["debugMode"] then
 										choices["OTHER"] = "Other"
 									end]]--
 									
-								if CDTL2.player["class"] == "DEATHKNIGHT" then
+								if CDTL3.player["class"] == "DEATHKNIGHT" then
 									choices["RUNES"] = "Runes"
 								end
 								
 								return choices
 							end,
 						get = function(info)
-								return CDTL2.currentFilter["default"]
+								return CDTL3.currentFilter["default"]
 							end,
 						set = function(info, val)
-								CDTL2.currentFilter["default"] = val
-								CDTL2.currentFilterHidden["default"] = false
+								CDTL3.currentFilter["default"] = val
+								CDTL3.currentFilterHidden["default"] = false
 							end,
 					},
 					spacer102 = {
 						name = "\n",
 						type = "description",
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						order = 102,
 					},
 					clearAll = {
 						name = "Clear Settings",
 						desc = function(info)
-								return "This will clear all "..string.lower(CDTL2.currentFilter["default"]).." cooldown settings"
+								return "This will clear all "..string.lower(CDTL3.currentFilter["default"]).." cooldown settings"
 							end,
 						confirm = true,
 						order = 103,
 						type = "execute",
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						func = function(info)
-								local default = CDTL2.currentFilter["default"]
+								local default = CDTL3.currentFilter["default"]
 								
-								for k, v in pairs(CDTL2.db.profile.tables[string.lower(default)]) do
-									CDTL2.db.profile.tables[string.lower(default)][k]=nil
+								for k, v in pairs(CDTL3.db.profile.tables[string.lower(default)]) do
+									CDTL3.db.profile.tables[string.lower(default)][k]=nil
 								end
 								
-								CDTL2.currentFilter[string.lower(default)] = "<< Select >>"
-								CDTL2.currentFilterHidden[string.lower(default)] = true
+								CDTL3.currentFilter[string.lower(default)] = "<< Select >>"
+								CDTL3.currentFilterHidden[string.lower(default)] = true
 							end
 					},
 					clearQuestItems = {
 						name = "Clear Quest Items",
 						desc = function(info)
-								return "This will clear all "..string.lower(CDTL2.currentFilter["default"]).." cooldown settings"
+								return "This will clear all "..string.lower(CDTL3.currentFilter["default"]).." cooldown settings"
 							end,
 						confirm = true,
 						order = 104,
 						type = "execute",
 						hidden = function(info)
-								if string.lower(CDTL2.currentFilter["default"]) ~= "items" then
+								if string.lower(CDTL3.currentFilter["default"]) ~= "items" then
 									return true
 								end
 								
@@ -842,7 +842,7 @@ function CDTL2:GetFilterOptions()
 						func = function(info)
 								local cleanTable = {}
 						
-								for k, v in pairs(CDTL2.db.profile.tables["items"]) do
+								for k, v in pairs(CDTL3.db.profile.tables["items"]) do
 									local _, _, _, _, _, classID, subclassID = GetItemInfoInstant(v["itemID"])
 									
 									if classID == 12 then
@@ -851,14 +851,14 @@ function CDTL2:GetFilterOptions()
 									end
 								end
 								
-								CDTL2.db.profile.tables["items"] = cleanTable
+								CDTL3.db.profile.tables["items"] = cleanTable
 							end
 					},
 					spacer200 = {
 						name = "\n\n",
 						type = "description",
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						order = 200,
 					},
@@ -869,17 +869,17 @@ function CDTL2:GetFilterOptions()
 						type = "toggle",
 						--width = "half",
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						get = function(info, index)
-								local default = CDTL2.currentFilter["default"]
-								return CDTL2.db.profile.global[string.lower(default)]["enabled"]
+								local default = CDTL3.currentFilter["default"]
+								return CDTL3.db.profile.global[string.lower(default)]["enabled"]
 							end,
 						set = function(info, val)
-								local default = CDTL2.currentFilter["default"]
-								CDTL2.db.profile.global[string.lower(default)]["enabled"] = val
+								local default = CDTL3.currentFilter["default"]
+								CDTL3.db.profile.global[string.lower(default)]["enabled"] = val
 								
-								for _, cd in pairs(CDTL2.cooldowns) do
+								for _, cd in pairs(CDTL3.cooldowns) do
 									if cd.data["type"] == string.lower(default) then
 										cd.data["enabled"] = val
 									end
@@ -889,14 +889,14 @@ function CDTL2:GetFilterOptions()
 					onlyPlayer = {
 						name = "Player Only",
 						desc = function(info)
-								local default = string.lower(CDTL2.currentFilter["default"])
+								local default = string.lower(CDTL3.currentFilter["default"])
 								return "If selected only "..default.." applied by the player will be tracked"
 							end,
 						order = 201.2,
 						type = "toggle",
 						--width = "half",
 						hidden = function(info)
-								local default = string.lower(CDTL2.currentFilter["default"])
+								local default = string.lower(CDTL3.currentFilter["default"])
 								
 								if default == "buffs" or default == "debuffs" then
 									return false
@@ -905,19 +905,19 @@ function CDTL2:GetFilterOptions()
 								return true
 							end,
 						get = function(info, index)
-								local default = string.lower(CDTL2.currentFilter["default"])
+								local default = string.lower(CDTL3.currentFilter["default"])
 								
 								if default == "buffs" or default == "debuffs" then
-									return CDTL2.db.profile.global[default]["onlyPlayer"]
+									return CDTL3.db.profile.global[default]["onlyPlayer"]
 								end
 								
 								return false
 							end,
 						set = function(info, val)
-								local default = string.lower(CDTL2.currentFilter["default"])
+								local default = string.lower(CDTL3.currentFilter["default"])
 								
 								if default == "buffs" or default == "debuffs" then
-									CDTL2.db.profile.global[default]["onlyPlayer"] = val
+									CDTL3.db.profile.global[default]["onlyPlayer"] = val
 								end
 							end,
 					},
@@ -928,15 +928,15 @@ function CDTL2:GetFilterOptions()
 						type = "toggle",
 						--width = "half",
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						get = function(info, index)
-								local default = CDTL2.currentFilter["default"]
-								return CDTL2.db.profile.global[string.lower(default)]["showByDefault"]
+								local default = CDTL3.currentFilter["default"]
+								return CDTL3.db.profile.global[string.lower(default)]["showByDefault"]
 							end,
 						set = function(info, val)
-								local default = CDTL2.currentFilter["default"]
-								CDTL2.db.profile.global[string.lower(default)]["showByDefault"] = val
+								local default = CDTL3.currentFilter["default"]
+								CDTL3.db.profile.global[string.lower(default)]["showByDefault"] = val
 							end,
 					},
 					useItemIcon = {
@@ -946,7 +946,7 @@ function CDTL2:GetFilterOptions()
 						type = "toggle",
 						--width = "half",
 						hidden = function(info)
-								local default = string.lower(CDTL2.currentFilter["default"])
+								local default = string.lower(CDTL3.currentFilter["default"])
 								
 								if default == "items" then
 									return false
@@ -955,19 +955,19 @@ function CDTL2:GetFilterOptions()
 								return true
 							end,
 						get = function(info, index)
-								local default = string.lower(CDTL2.currentFilter["default"])
+								local default = string.lower(CDTL3.currentFilter["default"])
 								if default == "items" then
-									return CDTL2.db.profile.global[default]["useItemIcon"]
+									return CDTL3.db.profile.global[default]["useItemIcon"]
 								end
 								
 								return nil
 							end,
 						set = function(info, val)
-								local default = string.lower(CDTL2.currentFilter["default"])
+								local default = string.lower(CDTL3.currentFilter["default"])
 								if default == "items" then
-									CDTL2.db.profile.global[default]["useItemIcon"] = val
-									CDTL2:RefreshAllIcons()
-									CDTL2:RefreshAllBars()
+									CDTL3.db.profile.global[default]["useItemIcon"] = val
+									CDTL3:RefreshAllIcons()
+									CDTL3:RefreshAllBars()
 								end
 							end,
 					},
@@ -976,7 +976,7 @@ function CDTL2:GetFilterOptions()
 						type = "description",
 						order = 250,
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 					},
 					ignoreThreshold = {
@@ -988,29 +988,29 @@ function CDTL2:GetFilterOptions()
 						softMax = 1800,
 						bigStep = 1,
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						get = function(info, index)
-								local default = CDTL2.currentFilter["default"]
-								return CDTL2.db.profile.global[string.lower(default)]["ignoreThreshold"]
+								local default = CDTL3.currentFilter["default"]
+								return CDTL3.db.profile.global[string.lower(default)]["ignoreThreshold"]
 							end,
 						set = function(info, val)
-								local default = CDTL2.currentFilter["default"]
-								CDTL2.db.profile.global[string.lower(default)]["ignoreThreshold"] = val
+								local default = CDTL3.currentFilter["default"]
+								CDTL3.db.profile.global[string.lower(default)]["ignoreThreshold"] = val
 								
-								for _, spell in pairs(CDTL2.cooldowns) do
+								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
 										if spell.data["baseCD"] / 1000 > val then
-											CDTL2:SendToHolding(spell)
-											CDTL2:SendToBarHolding(spell)
+											CDTL3:SendToHolding(spell)
+											CDTL3:SendToBarHolding(spell)
 										else
-											CDTL2:SendToLane(spell)
-											CDTL2:SendToBarFrame(spell)
+											CDTL3:SendToLane(spell)
+											CDTL3:SendToBarFrame(spell)
 										end
 									end
 								end
 								
-								for _, spell in pairs(CDTL2.db.profile.tables[string.lower(default)]) do
+								for _, spell in pairs(CDTL3.db.profile.tables[string.lower(default)]) do
 									if spell["bCD"] / 1000 > 3 and spell["bCD"] / 1000 <= val then
 										spell["ignored"] = false
 									else
@@ -1018,7 +1018,7 @@ function CDTL2:GetFilterOptions()
 									end
 								end
 								
-								CDTL2:ScanCurrentCooldowns(CDTL2.player["class"], CDTL2.player["race"])
+								CDTL3:ScanCurrentCooldowns(CDTL3.player["class"], CDTL3.player["race"])
 							end,
 					},
 					spacer300 = {
@@ -1026,56 +1026,56 @@ function CDTL2:GetFilterOptions()
 						type = "description",
 						order = 300,
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 					},
 					defaultLane = {
 						name = "Default Lane",
 						desc = function(info)
-								return "Set the default lane all new "..string.lower(CDTL2.currentFilter["default"]).." icons will use"
+								return "Set the default lane all new "..string.lower(CDTL3.currentFilter["default"]).." icons will use"
 							end,
 						order = 301,
 						type = "select",
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						width = "half",
 						values = { [0] = "Hide", [1] = "1", [2] = "2", [3] = "3" },
 						get = function(info)
-								local default = CDTL2.currentFilter["default"]
-								return CDTL2.db.profile.global[string.lower(default)]["defaultLane"]
+								local default = CDTL3.currentFilter["default"]
+								return CDTL3.db.profile.global[string.lower(default)]["defaultLane"]
 							end,
 						set = function(info, val)
-								local default = CDTL2.currentFilter["default"]
-								CDTL2.db.profile.global[string.lower(default)]["defaultLane"] = val
+								local default = CDTL3.currentFilter["default"]
+								CDTL3.db.profile.global[string.lower(default)]["defaultLane"] = val
 							end,
 					},
 					setDefaultLane = {
 						name = "Set All",
 						desc = function(info)
-								return "This will override current settings, and set all "..string.lower(CDTL2.currentFilter["default"]).." cooldowns to the default value"
+								return "This will override current settings, and set all "..string.lower(CDTL3.currentFilter["default"]).." cooldowns to the default value"
 							end,
 						confirm = true,
 						order = 302,
 						type = "execute",hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						width = "half",
 						func = function(info)
-								local default = CDTL2.currentFilter["default"]
-								for _, spell in pairs(CDTL2.cooldowns) do
+								local default = CDTL3.currentFilter["default"]
+								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
-										if spell.data["baseCD"] > CDTL2.db.profile.global[string.lower(default)]["defaultLane"] then
+										if spell.data["baseCD"] > CDTL3.db.profile.global[string.lower(default)]["defaultLane"] then
 											spell.data["enabled"] = false
 										end
 									end
 								end
 								
-								for _, spell in pairs(CDTL2.db.profile.tables[string.lower(default)]) do
-									spell["lane"] = CDTL2.db.profile.global[string.lower(default)]["defaultLane"]
+								for _, spell in pairs(CDTL3.db.profile.tables[string.lower(default)]) do
+									spell["lane"] = CDTL3.db.profile.global[string.lower(default)]["defaultLane"]
 								end
 								
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end
 					},
 					spacer310 = {
@@ -1083,57 +1083,57 @@ function CDTL2:GetFilterOptions()
 						type = "description",
 						order = 310,
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 					},
 					defaultBar = {
 						name = "Default Bar",
 						desc = function(info)
-								return "Set the default bar frame all new "..string.lower(CDTL2.currentFilter["default"]).." will use"
+								return "Set the default bar frame all new "..string.lower(CDTL3.currentFilter["default"]).." will use"
 							end,
 						order = 311,
 						type = "select",
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						width = "half",
 						values = { [0] = "Hide", [1] = "1", [2] = "2", [3] = "3" },
 						get = function(info)
-								local default = CDTL2.currentFilter["default"]
-								return CDTL2.db.profile.global[string.lower(default)]["defaultBar"]
+								local default = CDTL3.currentFilter["default"]
+								return CDTL3.db.profile.global[string.lower(default)]["defaultBar"]
 							end,
 						set = function(info, val)
-								local default = CDTL2.currentFilter["default"]
-								CDTL2.db.profile.global[string.lower(default)]["defaultBar"] = val
+								local default = CDTL3.currentFilter["default"]
+								CDTL3.db.profile.global[string.lower(default)]["defaultBar"] = val
 							end,
 					},
 					setDefaultBar = {
 						name = "Set All",
 						desc = function(info)
-								return "This will override current settings, and set all "..string.lower(CDTL2.currentFilter["default"]).." cooldowns to the default value"
+								return "This will override current settings, and set all "..string.lower(CDTL3.currentFilter["default"]).." cooldowns to the default value"
 							end,
 						confirm = true,
 						order = 312,
 						type = "execute",
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						width = "half",
 						func = function(info)
-								local default = CDTL2.currentFilter["default"]
-								for _, spell in pairs(CDTL2.cooldowns) do
+								local default = CDTL3.currentFilter["default"]
+								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
-										if spell.data["baseCD"] > CDTL2.db.profile.global[string.lower(default)]["defaultBar"] then
+										if spell.data["baseCD"] > CDTL3.db.profile.global[string.lower(default)]["defaultBar"] then
 											spell.data["enabled"] = false
 										end
 									end
 								end
 								
-								for _, spell in pairs(CDTL2.db.profile.tables[string.lower(default)]) do
-									spell["barFrame"] = CDTL2.db.profile.global[string.lower(default)]["defaultBar"]
+								for _, spell in pairs(CDTL3.db.profile.tables[string.lower(default)]) do
+									spell["barFrame"] = CDTL3.db.profile.global[string.lower(default)]["defaultBar"]
 								end
 								
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end
 					},
 					spacer320 = {
@@ -1141,59 +1141,59 @@ function CDTL2:GetFilterOptions()
 						type = "description",
 						order = 320,
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 					},
 					defaultReady = {
 						name = "Default Ready",
 						desc = function(info)
-								return "Set the default ready frame all new "..string.lower(CDTL2.currentFilter["default"]).." icons will use"
+								return "Set the default ready frame all new "..string.lower(CDTL3.currentFilter["default"]).." icons will use"
 							end,
 						order = 321,
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						type = "select",
 						hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						width = "half",
 						values = { [0] = "Hide", [1] = "1", [2] = "2", [3] = "3" },
 						get = function(info)
-								local default = CDTL2.currentFilter["default"]
-								return CDTL2.db.profile.global[string.lower(default)]["defaultReady"]
+								local default = CDTL3.currentFilter["default"]
+								return CDTL3.db.profile.global[string.lower(default)]["defaultReady"]
 							end,
 						set = function(info, val)
-								local default = CDTL2.currentFilter["default"]
-								CDTL2.db.profile.global[string.lower(default)]["defaultReady"] = val
+								local default = CDTL3.currentFilter["default"]
+								CDTL3.db.profile.global[string.lower(default)]["defaultReady"] = val
 							end,
 					},
 					setDefaultReady = {
 						name = "Set All",
 						desc = function(info)
-								return "This will override current settings, and set all "..string.lower(CDTL2.currentFilter["default"]).." cooldowns to the default value"
+								return "This will override current settings, and set all "..string.lower(CDTL3.currentFilter["default"]).." cooldowns to the default value"
 							end,
 						confirm = true,
 						order = 322,
 						type = "execute",hidden = function(info)
-								return CDTL2.currentFilterHidden["default"]
+								return CDTL3.currentFilterHidden["default"]
 							end,
 						width = "half",
 						func = function(info)
-								local default = CDTL2.currentFilter["default"]
-								for _, spell in pairs(CDTL2.cooldowns) do
+								local default = CDTL3.currentFilter["default"]
+								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
-										if spell.data["baseCD"] > CDTL2.db.profile.global[string.lower(default)]["defaultReady"] then
+										if spell.data["baseCD"] > CDTL3.db.profile.global[string.lower(default)]["defaultReady"] then
 											spell.data["enabled"] = false
 										end
 									end
 								end
 								
-								for _, spell in pairs(CDTL2.db.profile.tables[string.lower(default)]) do
-									spell["readyFrame"] = CDTL2.db.profile.global[string.lower(default)]["defaultReady"]
+								for _, spell in pairs(CDTL3.db.profile.tables[string.lower(default)]) do
+									spell["readyFrame"] = CDTL3.db.profile.global[string.lower(default)]["defaultReady"]
 								end
 								
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end
 					},
 				},
@@ -1212,7 +1212,7 @@ function CDTL2:GetFilterOptions()
 	return options
 end
 
-function CDTL2:GetLaneOptions()
+function CDTL3:GetLaneOptions()
 	local options = {
 		name = "Lanes",
 		type = "group",
@@ -1228,7 +1228,7 @@ function CDTL2:GetLaneOptions()
 	return options
 end
 
-function CDTL2:GetReadyOptions()
+function CDTL3:GetReadyOptions()
 	local options = {
 		name = "Ready",
 		type = "group",
@@ -1243,7 +1243,7 @@ function CDTL2:GetReadyOptions()
 	return options	
 end
 
-function CDTL2:GetBarFrameOptions()
+function CDTL3:GetBarFrameOptions()
 	local options = {
 		name = "Bar Frames",
 		type = "group",
@@ -1289,12 +1289,12 @@ private.GetGlobalSet = function(t)
 						return "None"
 					end,
 				set = function(info, val)
-						CDTL2.db.profile.lanes["lane1"]["fgTexture"] = val
-						CDTL2.db.profile.lanes["lane2"]["fgTexture"] = val
-						CDTL2.db.profile.lanes["lane3"]["fgTexture"] = val
-						CDTL2:RefreshLane(1)
-						CDTL2:RefreshLane(2)
-						CDTL2:RefreshLane(3)
+						CDTL3.db.profile.lanes["lane1"]["fgTexture"] = val
+						CDTL3.db.profile.lanes["lane2"]["fgTexture"] = val
+						CDTL3.db.profile.lanes["lane3"]["fgTexture"] = val
+						CDTL3:RefreshLane(1)
+						CDTL3:RefreshLane(2)
+						CDTL3:RefreshLane(3)
 					end,
 			},
 			fgTextureColor = {
@@ -1305,19 +1305,19 @@ private.GetGlobalSet = function(t)
 				width = 0.4,
 				hasAlpha = true,
 				get = function(info)
-						return CDTL2.db.profile.lanes["global"]["fgTextureColor"]
+						return CDTL3.db.profile.lanes["global"]["fgTextureColor"]
 					end,
 				set = function(info, red, green, blue, alpha)
 						--lane["fgTextureColor"] = { r = red, g = green, b = blue, a = alpha }
 						local color = { r = red, g = green, b = blue, a = alpha }
 						
-						CDTL2.db.profile.lanes["global"]["fgTextureColor"] = color
-						CDTL2.db.profile.lanes["lane1"]["fgTextureColor"] = color
-						CDTL2.db.profile.lanes["lane2"]["fgTextureColor"] = color
-						CDTL2.db.profile.lanes["lane3"]["fgTextureColor"] = color
-						CDTL2:RefreshLane(1)
-						CDTL2:RefreshLane(2)
-						CDTL2:RefreshLane(3)
+						CDTL3.db.profile.lanes["global"]["fgTextureColor"] = color
+						CDTL3.db.profile.lanes["lane1"]["fgTextureColor"] = color
+						CDTL3.db.profile.lanes["lane2"]["fgTextureColor"] = color
+						CDTL3.db.profile.lanes["lane3"]["fgTextureColor"] = color
+						CDTL3:RefreshLane(1)
+						CDTL3:RefreshLane(2)
+						CDTL3:RefreshLane(3)
 					end,
 			},
 			fgClassColor = {
@@ -1331,12 +1331,12 @@ private.GetGlobalSet = function(t)
 					end,
 				set = function(info, val)
 						--lane["fgClassColor"] = val
-						CDTL2.db.profile.lanes["lane1"]["fgClassColor"] = val
-						CDTL2.db.profile.lanes["lane2"]["fgClassColor"] = val
-						CDTL2.db.profile.lanes["lane3"]["fgClassColor"] = val
-						CDTL2:RefreshLane(1)
-						CDTL2:RefreshLane(2)
-						CDTL2:RefreshLane(3)
+						CDTL3.db.profile.lanes["lane1"]["fgClassColor"] = val
+						CDTL3.db.profile.lanes["lane2"]["fgClassColor"] = val
+						CDTL3.db.profile.lanes["lane3"]["fgClassColor"] = val
+						CDTL3:RefreshLane(1)
+						CDTL3:RefreshLane(2)
+						CDTL3:RefreshLane(3)
 					end,
 			},
 			spacer600 = {
@@ -1356,12 +1356,12 @@ private.GetGlobalSet = function(t)
 						return "None"
 					end,
 				set = function(info, val)
-						CDTL2.db.profile.lanes["lane1"]["bgTexture"] = val
-						CDTL2.db.profile.lanes["lane2"]["bgTexture"] = val
-						CDTL2.db.profile.lanes["lane3"]["bgTexture"] = val
-						CDTL2:RefreshLane(1)
-						CDTL2:RefreshLane(2)
-						CDTL2:RefreshLane(3)
+						CDTL3.db.profile.lanes["lane1"]["bgTexture"] = val
+						CDTL3.db.profile.lanes["lane2"]["bgTexture"] = val
+						CDTL3.db.profile.lanes["lane3"]["bgTexture"] = val
+						CDTL3:RefreshLane(1)
+						CDTL3:RefreshLane(2)
+						CDTL3:RefreshLane(3)
 					end,
 			},
 		},
@@ -1374,11 +1374,11 @@ private.GetBarFrameSet = function(i)
 	local frame = nil
 	
 	if i == 1 then
-		frame = CDTL2.db.profile.barFrames["frame1"]
+		frame = CDTL3.db.profile.barFrames["frame1"]
 	elseif i == 2 then
-		frame = CDTL2.db.profile.barFrames["frame2"]
+		frame = CDTL3.db.profile.barFrames["frame2"]
 	elseif i == 3 then
-		frame = CDTL2.db.profile.barFrames["frame3"]
+		frame = CDTL3.db.profile.barFrames["frame3"]
 	end
 	
 	local options = {
@@ -1402,7 +1402,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["name"] = val
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshBarFrame(i)
 							end,
 					},
 					barFrameEnabled = {
@@ -1417,10 +1417,10 @@ private.GetBarFrameSet = function(i)
 								frame["enabled"] = val
 								
 								if val then
-									CDTL2:CreateBarFrames()
+									CDTL3:CreateBarFrames()
 								end
 								
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshBarFrame(i)
 							end,
 					},
 					spacer200 = {
@@ -1486,7 +1486,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["transition"]["showTI"] = val
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					style = {
@@ -1513,7 +1513,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["transition"]["style"] = val
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					spacer320 = {
@@ -1557,7 +1557,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["transition"]["texture"] = val
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					fgTextureColor = {
@@ -1587,7 +1587,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								frame["transition"]["textureColor"] = { r = red, g = green, b = blue, a = alpha }
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					spacer330 = {
@@ -1690,7 +1690,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["posX"] = val
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshBarFrame(i)
 							end,
 					},
 					posY = {
@@ -1706,7 +1706,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["posY"] = val
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshBarFrame(i)
 							end,
 					},
 					spacer113 = {
@@ -1735,7 +1735,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["relativeTo"] = val
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshBarFrame(i)
 							end,
 					},
 					spacer200 = {
@@ -1756,8 +1756,8 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["padding"] = val
-								CDTL2:RefreshAllIcons()
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshAllIcons()
+								CDTL3:RefreshBarFrame(i)
 						end,
 					},
 					spacer300 = {
@@ -1777,7 +1777,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["bgTexture"] = val
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshBarFrame(i)
 							end,
 					},
 					bgTextureColor = {
@@ -1795,7 +1795,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								frame["bgTextureColor"] = { r = red, g = green, b = blue, a = alpha }
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshBarFrame(i)
 							end,
 					},
 					spacer400 = {
@@ -1813,7 +1813,7 @@ private.GetBarFrameSet = function(i)
 						get = function(info) return frame["border"]["style"] end,
 						set = function(info, val)
 								frame["border"]["style"] = val
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshBarFrame(i)
 							end,
 					},
 					borderColor = {
@@ -1832,7 +1832,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								frame["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshBarFrame(i)
 							end,
 					},
 					spacer410 = {
@@ -1851,7 +1851,7 @@ private.GetBarFrameSet = function(i)
 						get = function(info) return frame["border"]["size"] end,
 						set = function(info, val)
 								frame["border"]["size"] = val
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshBarFrame(i)
 							end,
 					},
 					borderPadding = {
@@ -1865,7 +1865,7 @@ private.GetBarFrameSet = function(i)
 						get = function(info) return frame["border"]["padding"] end,
 						set = function(info, val)
 								frame["border"]["padding"] = val
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshBarFrame(i)
 							end,
 					},
 				}
@@ -1888,8 +1888,8 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["width"] = val
-								CDTL2:RefreshAllBars()
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshAllBars()
+								CDTL3:RefreshBarFrame(i)
 						end,
 					},
 					height = {
@@ -1905,8 +1905,8 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["height"] = val
-								CDTL2:RefreshAllBars()
-								CDTL2:RefreshBarFrame(i)
+								CDTL3:RefreshAllBars()
+								CDTL3:RefreshBarFrame(i)
 						end,
 					},
 					spacer102 = {
@@ -1927,7 +1927,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["bar"]["fgTexture"] = val
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					fgTextureColor = {
@@ -1947,7 +1947,7 @@ private.GetBarFrameSet = function(i)
 						get = function(info)
 								local c = frame["bar"]["fgTextureColor"] or { r=0.77647, g=0.11765, b=0.28235, a=1 }
 								if frame["bar"]["fgClassColor"] then
-									c = CDTL2.db.profile.global["classColors"][CDTL2.player["class"]]
+									c = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
 								end
 
 								local r = c["r"]
@@ -1958,7 +1958,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								frame["bar"]["fgTextureColor"] = { r = red, g = green, b = blue, a = alpha }
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					fgClassColor = {
@@ -1972,7 +1972,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["bar"]["fgClassColor"] = val
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					spacer109 = {
@@ -1993,7 +1993,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["bar"]["bgTexture"] = val
-								CDTL2:RefreshAllBars(i)
+								CDTL3:RefreshAllBars(i)
 							end,
 					},
 					bgTextureColor = {
@@ -2013,7 +2013,7 @@ private.GetBarFrameSet = function(i)
 						get = function(info)
 								local c = frame["bar"]["bgTextureColor"]
 								if frame["bar"]["bgClassColor"] then
-									c = CDTL2.db.profile.global["classColors"][CDTL2.player["class"]]
+									c = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
 								end
 						
 								local r = c["r"]
@@ -2024,7 +2024,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								frame["bar"]["bgTextureColor"] = { r = red, g = green, b = blue, a = alpha }
-								CDTL2:RefreshAllBars(i)
+								CDTL3:RefreshAllBars(i)
 							end,
 					},
 					bgClassColor = {
@@ -2038,7 +2038,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["bar"]["bgClassColor"] = val
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					spacer115 = {
@@ -2140,7 +2140,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["bar"]["iconEnabled"] = val
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					iconPosition = {
@@ -2157,7 +2157,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["bar"]["iconPosition"] = val
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					spacer400 = {
@@ -2175,7 +2175,7 @@ private.GetBarFrameSet = function(i)
 						get = function(info) return frame["bar"]["border"]["style"] end,
 						set = function(info, val)
 								frame["bar"]["border"]["style"] = val
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					borderColor = {
@@ -2194,7 +2194,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								frame["bar"]["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					spacer410 = {
@@ -2213,7 +2213,7 @@ private.GetBarFrameSet = function(i)
 						get = function(info) return frame["bar"]["border"]["size"] end,
 						set = function(info, val)
 								frame["bar"]["border"]["size"] = val
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					borderPadding = {
@@ -2227,7 +2227,7 @@ private.GetBarFrameSet = function(i)
 						get = function(info) return frame["bar"]["border"]["padding"] end,
 						set = function(info, val)
 								frame["bar"]["border"]["padding"] = val
-								CDTL2:RefreshAllBars()
+								CDTL3:RefreshAllBars()
 							end,
 					},
 				}
@@ -2251,7 +2251,7 @@ private.GetFilterSet = function(t, o)
 		order = o,
 		hidden = function(info)
 				if t == "runes" then
-					if CDTL2.player["class"] ~= "DEATHKNIGHT" then
+					if CDTL3.player["class"] ~= "DEATHKNIGHT" then
 						return true
 					end
 				end
@@ -2278,25 +2278,25 @@ private.GetFilterSet = function(t, o)
 				values = function(info)
 						local list = {}
 						if t == "items" then
-							list = CDTL2:LoadFilterList(t, true)
+							list = CDTL3:LoadFilterList(t, true)
 						else
-							list = CDTL2:LoadFilterList(t)
+							list = CDTL3:LoadFilterList(t)
 						end
 						return list
 					end,
 				get = function(info)
-						return CDTL2.currentFilter[t]
+						return CDTL3.currentFilter[t]
 					end,
 				set = function(info, val)
 						local list = {}
 						if t == "items" then
-							list = CDTL2:LoadFilterList(t, true)
+							list = CDTL3:LoadFilterList(t, true)
 						else
-							list = CDTL2:LoadFilterList(t)
+							list = CDTL3:LoadFilterList(t)
 						end
 
-						CDTL2.currentFilter[t] = list[val]
-						CDTL2.currentFilterHidden[t] = false
+						CDTL3.currentFilter[t] = list[val]
+						CDTL3.currentFilterHidden[t] = false
 					end,
 			},
 			spacer110 = {
@@ -2311,7 +2311,7 @@ private.GetFilterSet = function(t, o)
 				type = "description",
 				order = 110,
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 			},
 			triggerType = {
@@ -2320,7 +2320,7 @@ private.GetFilterSet = function(t, o)
 				order = 111,
 				hidden = function(info)
 						if t == "customs" then
-							return CDTL2.currentFilterHidden[t]
+							return CDTL3.currentFilterHidden[t]
 						end
 
 						return true
@@ -2336,12 +2336,12 @@ private.GetFilterSet = function(t, o)
 					end,
 				get = function(info)
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								if CDTL2.custom["triggerType"] then
-									return CDTL2.custom["triggerType"]
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								if CDTL3.custom["triggerType"] then
+									return CDTL3.custom["triggerType"]
 								end
 							else
-								local s = CDTL2:GetSpellSettings(CDTL2.currentFilter["customs"], t, false)
+								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["customs"], t, false)
 								if s then
 									return s["triggerType"]
 								end
@@ -2352,10 +2352,10 @@ private.GetFilterSet = function(t, o)
 					end,
 				set = function(info, val)
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								CDTL2.custom["triggerType"] = val
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								CDTL3.custom["triggerType"] = val
 							else
-								local s = CDTL2:GetSpellSettings(CDTL2.currentFilter["customs"], t, false)
+								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["customs"], t, false)
 								if s then
 									s["triggerType"] = val
 								end
@@ -2370,19 +2370,19 @@ private.GetFilterSet = function(t, o)
 				order = 112,
 				hidden = function(info)
 						if t == "customs" then
-							return CDTL2.currentFilterHidden[t]
+							return CDTL3.currentFilterHidden[t]
 						end
 
 						return true
 					end,
 				disabled = function ()
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								if not CDTL2.custom["triggerType"] then
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								if not CDTL3.custom["triggerType"] then
 									return true
 								end
 							else
-								local s = CDTL2:GetSpellSettings(CDTL2.currentFilter["customs"], "customs", false)
+								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["customs"], "customs", false)
 								if s then
 									if s["triggerType"] == "" then
 										return true
@@ -2395,12 +2395,12 @@ private.GetFilterSet = function(t, o)
 					end,
 				get = function(info)
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								if CDTL2.custom["id"] then
-									return CDTL2.custom["id"]
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								if CDTL3.custom["id"] then
+									return CDTL3.custom["id"]
 								end
 							else
-								local s = CDTL2:GetSpellSettings(CDTL2.currentFilter["customs"], "customs", false)
+								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["customs"], "customs", false)
 								if s then
 									return tostring(s["id"])
 								end
@@ -2410,35 +2410,35 @@ private.GetFilterSet = function(t, o)
 						return ""
 					end,
 				set = function(info, val)
-						if CDTL2.currentFilter[t] == "<< Add New >>" then
-							local spellName, icon, originalIcon = CDTL2:GetSpellInfo(val)
+						if CDTL3.currentFilter[t] == "<< Add New >>" then
+							local spellName, icon, originalIcon = CDTL3:GetSpellInfo(val)
 
 							if spellName then
-								CDTL2.custom["id"] = tonumber(val)
-								CDTL2.custom["name"] = spellName
-								CDTL2.custom["icon"] = icon
-								CDTL2.custom["type"] = "customs"
+								CDTL3.custom["id"] = tonumber(val)
+								CDTL3.custom["name"] = spellName
+								CDTL3.custom["icon"] = icon
+								CDTL3.custom["type"] = "customs"
 
-								CDTL2.custom["bCD"] = 60000
-								CDTL2.custom["usedBy"] = { CDTL2.player["guid"] }
-								CDTL2.custom["setCustomCD"] = false
+								CDTL3.custom["bCD"] = 60000
+								CDTL3.custom["usedBy"] = { CDTL3.player["guid"] }
+								CDTL3.custom["setCustomCD"] = false
 								
-								local link, _ = CDTL2:GetSpellLink(val)
-								CDTL2.custom["link"] = link
+								local link, _ = CDTL3:GetSpellLink(val)
+								CDTL3.custom["link"] = link
 
-								local cDefaults = CDTL2.db.profile.global["customs"]
-								CDTL2.custom["enabled"] = cDefaults["showByDefault"]
-								CDTL2.custom["highlight"] = false
-								CDTL2.custom["pinned"] = false
-								CDTL2.custom["ignored"] = false
-								CDTL2.custom["lane"] = cDefaults["defaultLane"]
-								CDTL2.custom["barFrame"] = cDefaults["defaultBar"]
-								CDTL2.custom["readyFrame"] = cDefaults["defaultReady"]
+								local cDefaults = CDTL3.db.profile.global["customs"]
+								CDTL3.custom["enabled"] = cDefaults["showByDefault"]
+								CDTL3.custom["highlight"] = false
+								CDTL3.custom["pinned"] = false
+								CDTL3.custom["ignored"] = false
+								CDTL3.custom["lane"] = cDefaults["defaultLane"]
+								CDTL3.custom["barFrame"] = cDefaults["defaultBar"]
+								CDTL3.custom["readyFrame"] = cDefaults["defaultReady"]
 
-								CDTL2.customIsValid = true
+								CDTL3.customIsValid = true
 							else
-								CDTL2.custom = {}
-								CDTL2.customIsValid = false
+								CDTL3.custom = {}
+								CDTL3.customIsValid = false
 							end
 						else
 							-- Setup editing
@@ -2451,7 +2451,7 @@ private.GetFilterSet = function(t, o)
 				order = 113,
 				hidden = function(info)
 						if t == "customs" then
-							return CDTL2.currentFilterHidden[t]
+							return CDTL3.currentFilterHidden[t]
 						end
 
 						return true
@@ -2467,7 +2467,7 @@ private.GetFilterSet = function(t, o)
 				order = 200,
 				width = 0.2,
 				hidden = function(info)
-						if not CDTL2.currentFilterHidden[t] then
+						if not CDTL3.currentFilterHidden[t] then
 							if t == "items" then
 								return false
 							end
@@ -2481,13 +2481,13 @@ private.GetFilterSet = function(t, o)
 						local n = ""
 						if t == "items" then
 							local specialCase = true
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 							
-							if CDTL2.currentFilter[t] then
+							if CDTL3.currentFilter[t] then
 								if s and s["link"] then
 									n = "  "..s["link"]
 								else
-									n = CDTL2.currentFilter[t]
+									n = CDTL3.currentFilter[t]
 								end
 							end
 						end
@@ -2499,7 +2499,7 @@ private.GetFilterSet = function(t, o)
 				width = 1.5,
 				fontSize = "large",
 				hidden = function(info)
-						if not CDTL2.currentFilterHidden[t] then
+						if not CDTL3.currentFilterHidden[t] then
 							if t == "items" then
 								return false
 							end
@@ -2512,7 +2512,7 @@ private.GetFilterSet = function(t, o)
 					if t == "items" then
 						specialCase = true
 					end
-					local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+					local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 					
 					if s then
 						return s["itemIcon"]
@@ -2529,7 +2529,7 @@ private.GetFilterSet = function(t, o)
 				type = "description",
 				order = 202,
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 			},
 			cdType = {
@@ -2552,7 +2552,7 @@ private.GetFilterSet = function(t, o)
 				order = 203,
 				width = 0.2,
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 			},
 			cdName = {
@@ -2560,31 +2560,31 @@ private.GetFilterSet = function(t, o)
 						local n = " "
 						
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								if CDTL2.custom["name"] then
-									n = CDTL2.custom["name"]
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								if CDTL3.custom["name"] then
+									n = CDTL3.custom["name"]
 								else
-									if CDTL2.customIsValid == false then
+									if CDTL3.customIsValid == false then
 										n = "Enter valid trigger ID"
 									else
 										n = "New Custom"
 									end
 								end
 							else
-								n = CDTL2.currentFilter[t]
+								n = CDTL3.currentFilter[t]
 							end
 						else
 							local specialCase = false
 							if t == "items" then
 								specialCase = true
 							end
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 							
-							if CDTL2.currentFilter[t] then
+							if CDTL3.currentFilter[t] then
 								if s then
 									n = "  "..s["name"]
 								else
-									n = CDTL2.currentFilter[t]
+									n = CDTL3.currentFilter[t]
 								end
 							end
 						end
@@ -2596,18 +2596,18 @@ private.GetFilterSet = function(t, o)
 				width = 1.5,
 				fontSize = "large",
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 				image = function(info)
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								if CDTL2.custom["icon"] then
-									return CDTL2.custom["icon"]
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								if CDTL3.custom["icon"] then
+									return CDTL3.custom["icon"]
 								else
 									return 134400
 								end
 							else
-								local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 							
 								if s then
 									return s["icon"]
@@ -2620,7 +2620,7 @@ private.GetFilterSet = function(t, o)
 							if t == "items" then
 								specialCase = true
 							end
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 							
 							if s then
 								return s["icon"]
@@ -2657,21 +2657,21 @@ private.GetFilterSet = function(t, o)
 				order = 301,
 				width = 0.3,
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 			},
 			cooldownValue = {
 				name = function(info)
 						local n = " "
 
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
 							n = 0
 						else
 							local specialCase = false
 							if t == "items" then
 								specialCase = true
 							end
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 							
 							if s then
 								n =	n.."  "..(s["bCD"] / 1000).." sec\n"
@@ -2686,14 +2686,14 @@ private.GetFilterSet = function(t, o)
 						if t == "customs" then
 							return true
 						else
-							if CDTL2.currentFilterHidden[t] then
+							if CDTL3.currentFilterHidden[t] then
 								return true
 							else
 								local specialCase = false
 								if t == "items" then
 									specialCase = true
 								end
-								local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 
 								if s then
 									if s["setCustomCD"] ~= nil then
@@ -2714,15 +2714,15 @@ private.GetFilterSet = function(t, o)
 				order = 303,
 				hidden = function(info)
 						if t == "customs" then
-							return CDTL2.currentFilterHidden[t]
+							return CDTL3.currentFilterHidden[t]
 						end
 
 						return true
 					end,
 				disabled = function ()
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								if not CDTL2.customIsValid then
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								if not CDTL3.customIsValid then
 									return true
 								end
 							end
@@ -2733,14 +2733,14 @@ private.GetFilterSet = function(t, o)
 				type = "input",
 				get = function(info, index)
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								if CDTL2.custom["bCD"] then
-									return tostring(CDTL2.custom["bCD"] / 1000)
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								if CDTL3.custom["bCD"] then
+									return tostring(CDTL3.custom["bCD"] / 1000)
 								else
 									return "60"
 								end
 							else
-								local s = CDTL2:GetSpellSettings(CDTL2.currentFilter["customs"], t, false)
+								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["customs"], t, false)
 								if s then
 									return tostring(s["bCD"] / 1000)
 								else
@@ -2753,16 +2753,16 @@ private.GetFilterSet = function(t, o)
 					end,
 				set = function(info, val)
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								CDTL2.custom["bCD"] = val * 1000
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								CDTL3.custom["bCD"] = val * 1000
 							else
-								CDTL2:SetSpellData(CDTL2.currentFilter[t], t, "bCD", val * 1000)
+								CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "bCD", val * 1000)
 								
-								local s = CDTL2:GetExistingCooldown(CDTL2.currentFilter[t], t)
+								local s = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
 								if s then
 									s.data["bCD"] = val * 1000
 								
-									CDTL2:RefreshIcon(s)
+									CDTL3:RefreshIcon(s)
 								end
 							end
 						end
@@ -2777,14 +2777,14 @@ private.GetFilterSet = function(t, o)
 						if t == "customs" then
 							return true
 						else
-							if CDTL2.currentFilterHidden[t] then
+							if CDTL3.currentFilterHidden[t] then
 								return true
 							else
 								local specialCase = false
 								if t == "items" then
 									specialCase = true
 								end
-								local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 
 								if s then
 									if s["setCustomCD"] ~= nil then
@@ -2806,7 +2806,7 @@ private.GetFilterSet = function(t, o)
 								specialCase = true
 							end
 							
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 
 							if s["customCDTime"] ~= nil then
 								return tostring(s["customCDTime"] / 1000)
@@ -2818,13 +2818,13 @@ private.GetFilterSet = function(t, o)
 						return ""
 					end,
 				set = function(info, val)				
-						CDTL2:SetSpellData(CDTL2.currentFilter[t], t, "customCDTime", val * 1000)
+						CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "customCDTime", val * 1000)
 
-						local e = CDTL2:GetExistingCooldown(CDTL2.currentFilter[t], t)
+						local e = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
 						if e then
 							e.data["customCDTime"] = val * 1000
-							CDTL2:RefreshIcon(e)
-							CDTL2:RefreshBar(e)
+							CDTL3:RefreshIcon(e)
+							CDTL3:RefreshBar(e)
 						end
 					end,
 			},
@@ -2837,7 +2837,7 @@ private.GetFilterSet = function(t, o)
 							return true
 						end
 
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 				type = "toggle",
 				get = function(info, index)
@@ -2846,7 +2846,7 @@ private.GetFilterSet = function(t, o)
 							if t == "items" then
 								specialCase = true
 							end
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 
 							return s["setCustomCD"]
 						end
@@ -2858,15 +2858,15 @@ private.GetFilterSet = function(t, o)
 						if t == "items" then
 							specialCase = true
 						end
-						local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+						local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 						
-						CDTL2:SetSpellData(CDTL2.currentFilter[t], t, "setCustomCD", val)
+						CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "setCustomCD", val)
 
-						local e = CDTL2:GetExistingCooldown(CDTL2.currentFilter[t], t)
+						local e = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
 						if e then
 							e.data["setCustomCD"] = val
-							CDTL2:RefreshIcon(e)
-							CDTL2:RefreshBar(e)
+							CDTL3:RefreshIcon(e)
+							CDTL3:RefreshBar(e)
 						end
 					end,
 			},
@@ -2879,7 +2879,7 @@ private.GetFilterSet = function(t, o)
 			clearSettings = {
 				--name = "Clear Individual Settings",
 				name = function(info)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
 							return "Clear"
 						end
 
@@ -2892,8 +2892,8 @@ private.GetFilterSet = function(t, o)
 
 						local s = ""
 						
-						if CDTL2.currentFilter[t] then
-							s = CDTL2.currentFilter[t]
+						if CDTL3.currentFilter[t] then
+							s = CDTL3.currentFilter[t]
 						end
 				
 						return "This will clear cooldown settings for "..s
@@ -2902,16 +2902,16 @@ private.GetFilterSet = function(t, o)
 				order = 401,
 				type = "execute",
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 				disabled = function ()
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								if not CDTL2.custom["triggerType"] then
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								if not CDTL3.custom["triggerType"] then
 									return true
 								end
 							else
-								local s = CDTL2:GetSpellSettings(CDTL2.currentFilter["customs"], t, false)
+								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["customs"], t, false)
 								if s then
 									if s["triggerType"] == "" then
 										return true
@@ -2923,18 +2923,18 @@ private.GetFilterSet = function(t, o)
 						return false
 					end,
 				func = function(info)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							CDTL2.custom = {}
-							CDTL2.customIsValid = false
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							CDTL3.custom = {}
+							CDTL3.customIsValid = false
 						else
 							local s = ""
 							
-							if CDTL2.currentFilter[t] then
-								s = CDTL2.currentFilter[t]
+							if CDTL3.currentFilter[t] then
+								s = CDTL3.currentFilter[t]
 							end
 							
 							local index = nil
-							for k, spell in pairs(CDTL2.db.profile.tables[t]) do
+							for k, spell in pairs(CDTL3.db.profile.tables[t]) do
 								--[[if spell["itemName"] == s then
 									index = k
 								end]]--
@@ -2944,11 +2944,11 @@ private.GetFilterSet = function(t, o)
 							end
 							
 							if index then
-								table.remove(CDTL2.db.profile.tables[t], index)
+								table.remove(CDTL3.db.profile.tables[t], index)
 
-								CDTL2.currentFilter[t] = "<< Add New >>"
-								CDTL2.customIsValid = false
-								CDTL2.currentFilterHidden[t] = false
+								CDTL3.currentFilter[t] = "<< Add New >>"
+								CDTL3.customIsValid = false
+								CDTL3.currentFilterHidden[t] = false
 							end
 						end
 					end,
@@ -2962,7 +2962,7 @@ private.GetFilterSet = function(t, o)
 				order = 402,
 				type = "execute",
 				hidden = function(info)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
 							return false
 						end
 
@@ -2970,8 +2970,8 @@ private.GetFilterSet = function(t, o)
 					end,
 				disabled = function ()
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								if not CDTL2.customIsValid then
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								if not CDTL3.customIsValid then
 									return true
 								end
 							end
@@ -2980,19 +2980,19 @@ private.GetFilterSet = function(t, o)
 						return false
 					end,
 				func = function(info)
-						local s = CDTL2:GetSpellSettings(CDTL2.currentFilter["customs"], "customs", false)
+						local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["customs"], "customs", false)
 
 						if not s then
-							local name = CDTL2.custom["name"]			
-							table.insert(CDTL2.db.profile.tables["customs"], CDTL2.custom)
+							local name = CDTL3.custom["name"]			
+							table.insert(CDTL3.db.profile.tables["customs"], CDTL3.custom)
 
-							CDTL2.custom = {}
-							CDTL2.customIsValid = false
-							CDTL2.currentFilter[t] = name
+							CDTL3.custom = {}
+							CDTL3.customIsValid = false
+							CDTL3.currentFilter[t] = name
 
-							CDTL2:Print("CUSTOM: "..name.." saved")
+							CDTL3:Print("CUSTOM: "..name.." saved")
 						else
-							CDTL2:Print("CUSTOM: "..tostring(s["name"]).." already saved")
+							CDTL3:Print("CUSTOM: "..tostring(s["name"]).." already saved")
 						end
 					end,
 			},
@@ -3001,7 +3001,7 @@ private.GetFilterSet = function(t, o)
 				type = "description",
 				order = 500,
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 			},
 			enabled = {
@@ -3011,12 +3011,12 @@ private.GetFilterSet = function(t, o)
 				type = "toggle",
 				width = "half",
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 				disabled = function ()
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								if not CDTL2.customIsValid then
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								if not CDTL3.customIsValid then
 									return true
 								end
 							end
@@ -3025,18 +3025,18 @@ private.GetFilterSet = function(t, o)
 						return false
 					end,
 				get = function(info, index)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							if CDTL2.custom["enabled"] then
-								return CDTL2.custom["enabled"]
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							if CDTL3.custom["enabled"] then
+								return CDTL3.custom["enabled"]
 							else
-								return CDTL2.db.profile.global["customs"]["showByDefault"]
+								return CDTL3.db.profile.global["customs"]["showByDefault"]
 							end
 						else
 							local specialCase = false
 							if t == "items" then
 								specialCase = true
 							end
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 							
 							if s then
 								return s["enabled"]
@@ -3046,17 +3046,17 @@ private.GetFilterSet = function(t, o)
 						end
 					end,
 				set = function(info, val)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							CDTL2.custom["enabled"] = val
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							CDTL3.custom["enabled"] = val
 						else
-							CDTL2:SetSpellData(CDTL2.currentFilter[t], t, "enabled", val)
+							CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "enabled", val)
 						
-							local s = CDTL2:GetExistingCooldown(CDTL2.currentFilter[t], t)
+							local s = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
 							if s then
 								s.data["enabled"] = val
 								
-								CDTL2:RefreshIcon(s)
-								CDTL2:RefreshBar(s)
+								CDTL3:RefreshIcon(s)
+								CDTL3:RefreshBar(s)
 							end
 						end
 					end,
@@ -3068,12 +3068,12 @@ private.GetFilterSet = function(t, o)
 				type = "toggle",
 				width = "half",
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 				disabled = function ()
 							if t == "customs" then
-								if CDTL2.currentFilter[t] == "<< Add New >>" then
-									if not CDTL2.customIsValid then
+								if CDTL3.currentFilter[t] == "<< Add New >>" then
+									if not CDTL3.customIsValid then
 										return true
 									end
 								end
@@ -3082,9 +3082,9 @@ private.GetFilterSet = function(t, o)
 							return false
 						end,
 				get = function(info, index)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							if CDTL2.custom["highlight"] then
-								return CDTL2.custom["highlight"]
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							if CDTL3.custom["highlight"] then
+								return CDTL3.custom["highlight"]
 							else
 								return false
 							end
@@ -3093,7 +3093,7 @@ private.GetFilterSet = function(t, o)
 							if t == "items" then
 								specialCase = true
 							end
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 							
 							if s then
 								return s["highlight"]
@@ -3103,16 +3103,16 @@ private.GetFilterSet = function(t, o)
 						end
 					end,
 				set = function(info, val)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							CDTL2.custom["highlight"] = val
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							CDTL3.custom["highlight"] = val
 						else
-							CDTL2:SetSpellData(CDTL2.currentFilter[t], t, "highlight", val)
+							CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "highlight", val)
 						
-							local s = CDTL2:GetExistingCooldown(CDTL2.currentFilter[t], t)
+							local s = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
 							if s then
 								s.data["highlight"] = val
 							
-								CDTL2:RefreshIcon(s)
+								CDTL3:RefreshIcon(s)
 							end
 						end
 					end,
@@ -3124,12 +3124,12 @@ private.GetFilterSet = function(t, o)
 				type = "toggle",
 				width = "half",
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 				disabled = function ()
 							if t == "customs" then
-								if CDTL2.currentFilter[t] == "<< Add New >>" then
-									if not CDTL2.customIsValid then
+								if CDTL3.currentFilter[t] == "<< Add New >>" then
+									if not CDTL3.customIsValid then
 										return true
 									end
 								end
@@ -3138,9 +3138,9 @@ private.GetFilterSet = function(t, o)
 							return false
 						end,
 				get = function(info, index)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							if CDTL2.custom["pinned"] then
-								return CDTL2.custom["pinned"]
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							if CDTL3.custom["pinned"] then
+								return CDTL3.custom["pinned"]
 							else
 								return false
 							end
@@ -3149,7 +3149,7 @@ private.GetFilterSet = function(t, o)
 							if t == "items" then
 								specialCase = true
 							end
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 							
 							if s then
 								return s["pinned"]
@@ -3159,16 +3159,16 @@ private.GetFilterSet = function(t, o)
 						end
 					end,
 				set = function(info, val)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							CDTL2.custom["pinned"] = val
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							CDTL3.custom["pinned"] = val
 						else
-							CDTL2:SetSpellData(CDTL2.currentFilter[t], t, "pinned", val)
+							CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "pinned", val)
 						
-							local s = CDTL2:GetExistingCooldown(CDTL2.currentFilter[t], t)
+							local s = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
 							if s then
 								s.data["pinned"] = val
 							
-								CDTL2:RefreshIcon(s)
+								CDTL3:RefreshIcon(s)
 							end
 						end
 					end,
@@ -3180,12 +3180,12 @@ private.GetFilterSet = function(t, o)
 				type = "toggle",
 				width = "half",
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 				disabled = function ()
 							if t == "customs" then
-								if CDTL2.currentFilter[t] == "<< Add New >>" then
-									if not CDTL2.customIsValid then
+								if CDTL3.currentFilter[t] == "<< Add New >>" then
+									if not CDTL3.customIsValid then
 										return true
 									end
 								end
@@ -3194,9 +3194,9 @@ private.GetFilterSet = function(t, o)
 							return false
 						end,
 				get = function(info, index)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							if CDTL2.custom["ignored"] then
-								return CDTL2.custom["ignored"]
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							if CDTL3.custom["ignored"] then
+								return CDTL3.custom["ignored"]
 							else
 								return false
 							end
@@ -3205,7 +3205,7 @@ private.GetFilterSet = function(t, o)
 							if t == "items" then
 								specialCase = true
 							end
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 							
 							if s then
 								return s["ignored"]
@@ -3215,16 +3215,16 @@ private.GetFilterSet = function(t, o)
 						end
 					end,
 				set = function(info, val)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							CDTL2.custom["ignored"] = val
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							CDTL3.custom["ignored"] = val
 						else
-							CDTL2:SetSpellData(CDTL2.currentFilter[t], t, "ignored", val)
+							CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "ignored", val)
 						
-							local s = CDTL2:GetExistingCooldown(CDTL2.currentFilter[t], t)
+							local s = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
 							if s then
 								s.data["ignored"] = val
 							
-								CDTL2:RefreshIcon(s)
+								CDTL3:RefreshIcon(s)
 							end
 						end
 					end,
@@ -3234,7 +3234,7 @@ private.GetFilterSet = function(t, o)
 				type = "description",
 				order = 600,
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 			},
 			lane = {
@@ -3243,12 +3243,12 @@ private.GetFilterSet = function(t, o)
 				order = 601,
 				type = "select",
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 				disabled = function ()
 							if t == "customs" then
-								if CDTL2.currentFilter[t] == "<< Add New >>" then
-									if not CDTL2.customIsValid then
+								if CDTL3.currentFilter[t] == "<< Add New >>" then
+									if not CDTL3.customIsValid then
 										return true
 									end
 								end
@@ -3259,18 +3259,18 @@ private.GetFilterSet = function(t, o)
 				width = "half",
 				values = { [0] = "Hide", [1] = "1", [2] = "2", [3] = "3" },
 				get = function(info)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							if CDTL2.custom["lane"] then
-								return CDTL2.custom["lane"]
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							if CDTL3.custom["lane"] then
+								return CDTL3.custom["lane"]
 							else
-								return CDTL2.db.profile.global["customs"]["defaultLane"]
+								return CDTL3.db.profile.global["customs"]["defaultLane"]
 							end
 						else
 							local specialCase = false
 							if t == "items" then
 								specialCase = true
 							end
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 							
 							if s then
 								return s["lane"]
@@ -3281,16 +3281,16 @@ private.GetFilterSet = function(t, o)
 						
 					end,
 				set = function(info, val)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							CDTL2.custom["lane"] = val
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							CDTL3.custom["lane"] = val
 						else
-							CDTL2:SetSpellData(CDTL2.currentFilter[t], t, "lane", tonumber(val))
+							CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "lane", tonumber(val))
 						
-							local s = CDTL2:GetExistingCooldown(CDTL2.currentFilter[t], t)
+							local s = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
 							if s then
 								s.data["lane"] = val
 								
-								CDTL2:SendToLane(s)
+								CDTL3:SendToLane(s)
 							end
 						end
 						
@@ -3302,12 +3302,12 @@ private.GetFilterSet = function(t, o)
 				order = 602,
 				type = "select",
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 				disabled = function ()
 							if t == "customs" then
-								if CDTL2.currentFilter[t] == "<< Add New >>" then
-									if not CDTL2.customIsValid then
+								if CDTL3.currentFilter[t] == "<< Add New >>" then
+									if not CDTL3.customIsValid then
 										return true
 									end
 								end
@@ -3318,18 +3318,18 @@ private.GetFilterSet = function(t, o)
 				width = "half",
 				values = { [0] = "Hide", [1] = "1", [2] = "2", [3] = "3" },
 				get = function(info)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							if CDTL2.custom["barFrame"] then
-								return CDTL2.custom["barFrame"]
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							if CDTL3.custom["barFrame"] then
+								return CDTL3.custom["barFrame"]
 							else
-								return CDTL2.db.profile.global["customs"]["defaultBar"]
+								return CDTL3.db.profile.global["customs"]["defaultBar"]
 							end
 						else
 							local specialCase = false
 							if t == "items" then
 								specialCase = true
 							end
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 							
 							if s then
 								return s["barFrame"]
@@ -3340,16 +3340,16 @@ private.GetFilterSet = function(t, o)
 						
 					end,
 				set = function(info, val)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							CDTL2.custom["barFrame"] = val
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							CDTL3.custom["barFrame"] = val
 						else
-							CDTL2:SetSpellData(CDTL2.currentFilter[t], t, "barFrame", tonumber(val))
+							CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "barFrame", tonumber(val))
 						
-							local s = CDTL2:GetExistingCooldown(CDTL2.currentFilter[t], t)
+							local s = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
 							if s then
 								s.data["barFrame"] = val
 								
-								CDTL2:SendToBarFrame(s)
+								CDTL3:SendToBarFrame(s)
 							end
 						end
 						
@@ -3360,12 +3360,12 @@ private.GetFilterSet = function(t, o)
 				desc = "",
 				order = 603,
 				hidden = function(info)
-						return CDTL2.currentFilterHidden[t]
+						return CDTL3.currentFilterHidden[t]
 					end,
 				disabled = function ()
 						if t == "customs" then
-							if CDTL2.currentFilter[t] == "<< Add New >>" then
-								if not CDTL2.customIsValid then
+							if CDTL3.currentFilter[t] == "<< Add New >>" then
+								if not CDTL3.customIsValid then
 									return true
 								end
 							end
@@ -3377,18 +3377,18 @@ private.GetFilterSet = function(t, o)
 				width = "half",
 				values = { [0] = "Hide", [1] = "1", [2] = "2", [3] = "3" },
 				get = function(info)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							if CDTL2.custom["readyFrame"] then
-								return CDTL2.custom["readyFrame"]
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							if CDTL3.custom["readyFrame"] then
+								return CDTL3.custom["readyFrame"]
 							else
-								return CDTL2.db.profile.global["customs"]["defaultReady"]
+								return CDTL3.db.profile.global["customs"]["defaultReady"]
 							end
 						else
 							local specialCase = false
 							if t == "items" then
 								specialCase = true
 							end
-							local s = CDTL2:GetSpellSettings(CDTL2.currentFilter[t], t, specialCase)
+							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 							
 							if s then
 								return s["readyFrame"]
@@ -3399,16 +3399,16 @@ private.GetFilterSet = function(t, o)
 						
 					end,
 				set = function(info, val)
-						if t == "customs" and CDTL2.currentFilter[t] == "<< Add New >>" then
-							CDTL2.custom["readyFrame"] = val
+						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+							CDTL3.custom["readyFrame"] = val
 						else
-							CDTL2:SetSpellData(CDTL2.currentFilter[t], t, "readyFrame", tonumber(val))
+							CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "readyFrame", tonumber(val))
 						
-							local s = CDTL2:GetExistingCooldown(CDTL2.currentFilter[t], t)
+							local s = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
 							if s then
 								s.data["readyFrame"] = val
 								
-								CDTL2:SendToReady(s)
+								CDTL3:SendToReady(s)
 							end
 						end
 						
@@ -3458,10 +3458,10 @@ private.GetCustomSet = function(t, o)
 						type = "toggle",
 						--width = "half",
 						get = function(info, index)
-							return CDTL2.db.profile.global["customDetection"]
+							return CDTL3.db.profile.global["customDetection"]
 							end,
 						set = function(info, val)
-								CDTL2.db.profile.global["customDetection"] = val
+								CDTL3.db.profile.global["customDetection"] = val
 							end,
 					},
 					clearAllDetected = {
@@ -3473,11 +3473,11 @@ private.GetCustomSet = function(t, o)
 						order = 102,
 						type = "execute",
 						func = function(info)
-								for k, v in pairs(CDTL2.db.profile.tables["detected"]) do
-									CDTL2.db.profile.tables["detected"][k] = nil
+								for k, v in pairs(CDTL3.db.profile.tables["detected"]) do
+									CDTL3.db.profile.tables["detected"][k] = nil
 								end
 								
-								CDTL2.currentFilter["detected"] = "<< Select Detected >>"
+								CDTL3.currentFilter["detected"] = "<< Select Detected >>"
 							end
 					},
 					spacer200 = {
@@ -3500,18 +3500,18 @@ private.GetCustomSet = function(t, o)
 						values = function(info)
 								local list = {}
 
-								list = CDTL2:LoadDetectedList("detected")
+								list = CDTL3:LoadDetectedList("detected")
 
 								return list
 							end,
 						get = function(info)
-								return CDTL2.currentFilter["detected"]
+								return CDTL3.currentFilter["detected"]
 							end,
 						set = function(info, val)
-								local list = CDTL2:LoadDetectedList("detected")
+								local list = CDTL3:LoadDetectedList("detected")
 		
-								CDTL2.currentFilter["detected"] = list[val]
-								CDTL2.currentFilterHidden["detected"] = false
+								CDTL3.currentFilter["detected"] = list[val]
+								CDTL3.currentFilterHidden["detected"] = false
 							end,
 					},
 					spacer202 = {
@@ -3545,14 +3545,14 @@ private.GetCustomSet = function(t, o)
 						name = function(info)
 								local n = " "
 								
-								if CDTL2.currentFilter["detected"] == "<< Select Detected >>" then
+								if CDTL3.currentFilter["detected"] == "<< Select Detected >>" then
 									n = "Select a detected spell"
 								else
-									local s = CDTL2:GetSpellSettings(CDTL2.currentFilter["detected"], "detected", specialCase)
+									local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["detected"], "detected", specialCase)
 									if s then
 										n = "  "..s["name"]
 									else
-										n = CDTL2.currentFilter["detected"]
+										n = CDTL3.currentFilter["detected"]
 									end
 								end
 								
@@ -3563,8 +3563,8 @@ private.GetCustomSet = function(t, o)
 						width = 1.5,
 						fontSize = "large",
 						image = function(info)
-								if CDTL2.currentFilter["detected"] ~= "<< Select Detected >>" then
-									local s = CDTL2:GetSpellSettings(CDTL2.currentFilter["detected"], "detected", false)
+								if CDTL3.currentFilter["detected"] ~= "<< Select Detected >>" then
+									local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["detected"], "detected", false)
 									
 									if s then
 										return s["icon"]
@@ -3590,7 +3590,7 @@ private.GetCustomSet = function(t, o)
 						confirm = true,
 						order = 301,
 						disabled = function ()
-								if CDTL2.currentFilter["detected"] == "<< Select Detected >>" then
+								if CDTL3.currentFilter["detected"] == "<< Select Detected >>" then
 									return true
 								end
 		
@@ -3598,33 +3598,33 @@ private.GetCustomSet = function(t, o)
 							end,
 						type = "execute",
 						func = function(info)
-								local s = CDTL2:GetSpellSettings(CDTL2.currentFilter["detected"], "detected", false)
+								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["detected"], "detected", false)
 								if s then
-									local existingData = CDTL2:GetSpellSettings(CDTL2.currentFilter["detected"], "customs", false)
+									local existingData = CDTL3:GetSpellSettings(CDTL3.currentFilter["detected"], "customs", false)
 									if existingData then
-										--CDTL2:Print("CUSTOM_ALREADY_EXISTS: "..CDTL2.currentFilter["detected"])
+										--CDTL3:Print("CUSTOM_ALREADY_EXISTS: "..CDTL3.currentFilter["detected"])
 									else
-										local c = CDTL2:TableCopy(s)
+										local c = CDTL3:TableCopy(s)
 
 										c["bCD"] = 60000
-										c["usedBy"] = { CDTL2.player["guid"] }
+										c["usedBy"] = { CDTL3.player["guid"] }
 
 										c["type"] = "customs"
 										c["triggerType"] = "spell"
 
-										c["lane"] = CDTL2.db.profile.global["customs"]["defaultLane"]
-										c["barFrame"] = CDTL2.db.profile.global["customs"]["defaultBar"]
-										c["readyFrame"] = CDTL2.db.profile.global["customs"]["defaultReady"]
-										c["enabled"] = CDTL2.db.profile.global["customs"]["showByDefault"]
+										c["lane"] = CDTL3.db.profile.global["customs"]["defaultLane"]
+										c["barFrame"] = CDTL3.db.profile.global["customs"]["defaultBar"]
+										c["readyFrame"] = CDTL3.db.profile.global["customs"]["defaultReady"]
+										c["enabled"] = CDTL3.db.profile.global["customs"]["showByDefault"]
 
-										if c["bCD"] / 1000 > 3 and c["bCD"] / 1000 <= CDTL2.db.profile.global["customs"]["ignoreThreshold"] then
+										if c["bCD"] / 1000 > 3 and c["bCD"] / 1000 <= CDTL3.db.profile.global["customs"]["ignoreThreshold"] then
 											c["ignored"] = false
 										else
 											c["ignored"] = true
 										end
 										
-										table.insert(CDTL2.db.profile.tables["customs"], c)
-										CDTL2.currentFilter["customs"] = c["name"]
+										table.insert(CDTL3.db.profile.tables["customs"], c)
+										CDTL3.currentFilter["customs"] = c["name"]
 									end
 								end
 							end
@@ -3642,11 +3642,11 @@ private.GetLaneSet = function(i)
 	local lane = nil
 	
 	if i == 1 then
-		lane = CDTL2.db.profile.lanes["lane1"]
+		lane = CDTL3.db.profile.lanes["lane1"]
 	elseif i == 2 then
-		lane = CDTL2.db.profile.lanes["lane2"]
+		lane = CDTL3.db.profile.lanes["lane2"]
 	elseif i == 3 then
-		lane = CDTL2.db.profile.lanes["lane3"]
+		lane = CDTL3.db.profile.lanes["lane3"]
 	end
 	
 	local options = {
@@ -3670,7 +3670,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["name"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					enabled = {
@@ -3685,10 +3685,10 @@ private.GetLaneSet = function(i)
 								lane["enabled"] = val
 								
 								if val then
-									CDTL2:CreateLanes()
+									CDTL3:CreateLanes()
 								end
 								
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					spacer103 = {
@@ -3706,7 +3706,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["reversed"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					vertical = {
@@ -3719,7 +3719,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["vertical"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					spacer200 = {
@@ -3743,7 +3743,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["type"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					timeFormat = {
@@ -3780,7 +3780,7 @@ private.GetLaneSet = function(i)
 								elseif mode == "SPLIT_ABS" then
 									lane["mode"]["splitAbs"]["timeFormat"] = val
 								end
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					spacer300 = {
@@ -3825,7 +3825,7 @@ private.GetLaneSet = function(i)
 									lane["mode"]["splitAbs"]["max"] = val
 								end
 								
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					hideLongTimers = {
@@ -3892,7 +3892,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["split"]["count"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					spacer410 = {
@@ -3924,7 +3924,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["split"]["s1p"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					sSplit1Value = {
@@ -3946,7 +3946,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["split"]["s1v"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					spacer420 = {
@@ -3982,7 +3982,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["split"]["s2p"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					sSplit2Value = {
@@ -4006,7 +4006,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["split"]["s2v"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					spacer430 = {
@@ -4042,7 +4042,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["split"]["s3p"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					sSplit3Value = {
@@ -4066,7 +4066,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["split"]["s3v"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					spacer500 = {
@@ -4099,7 +4099,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["splitAbs"]["count"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					spacer510 = {
@@ -4131,7 +4131,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["splitAbs"]["s1p"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					saSplit1Value = {
@@ -4153,7 +4153,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["splitAbs"]["s1v"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					spacer520 = {
@@ -4189,7 +4189,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["splitAbs"]["s2p"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					saSplit2Value = {
@@ -4213,7 +4213,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["splitAbs"]["s2v"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					spacer530 = {
@@ -4249,7 +4249,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["splitAbs"]["s3p"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					saSplit3Value = {
@@ -4273,7 +4273,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["mode"]["splitAbs"]["s3v"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},					
 					spacer600 = {
@@ -4297,7 +4297,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["tracking"]["overrideAutohide"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					spacer602 = {
@@ -4339,7 +4339,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["tracking"]["primaryReversed"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					spacer610 = {
@@ -4407,7 +4407,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["tracking"]["stWidth"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					stHeight = {
@@ -4429,7 +4429,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["tracking"]["stHeight"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					spacer616 = {
@@ -4461,7 +4461,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["tracking"]["stTexture"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					stTextureColor = {
@@ -4485,7 +4485,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								lane["tracking"]["stTextureColor"] = { r = red, g = green, b = blue, a = alpha }
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 				},
@@ -4508,7 +4508,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["width"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					height = {
@@ -4524,7 +4524,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["height"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					spacer300 = {
@@ -4545,7 +4545,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["posX"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					posY = {
@@ -4561,7 +4561,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["posY"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					spacer400 = {
@@ -4590,7 +4590,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["relativeTo"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					spacer500 = {
@@ -4611,7 +4611,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["fgTexture"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					fgTextureColor = {
@@ -4627,7 +4627,7 @@ private.GetLaneSet = function(i)
 						get = function(info)
 								local c = lane["fgTextureColor"] or { r=0.77647, g=0.11765, b=0.28235, a=1 }
 								if lane["fgClassColor"] then
-									c = CDTL2.db.profile.global["classColors"][CDTL2.player["class"]]
+									c = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
 								end
 
 								local r = c["r"]
@@ -4638,7 +4638,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								lane["fgTextureColor"] = { r = red, g = green, b = blue, a = alpha }
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					fgClassColor = {
@@ -4652,7 +4652,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["fgClassColor"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					spacer600 = {
@@ -4673,7 +4673,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["bgTexture"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					bgTextureColor = {
@@ -4689,7 +4689,7 @@ private.GetLaneSet = function(i)
 						get = function(info)
 								local c = lane["bgTextureColor"]
 								if lane["bgClassColor"] then
-									c = CDTL2.db.profile.global["classColors"][CDTL2.player["class"]]
+									c = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
 								end
 						
 								local r = c["r"]
@@ -4700,7 +4700,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								lane["bgTextureColor"] = { r = red, g = green, b = blue, a = alpha }
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					bgClassColor = {
@@ -4714,7 +4714,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["bgClassColor"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					spacer700 = {
@@ -4734,7 +4734,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["alpha"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 						end,
 					},
 					spacer702 = {
@@ -4752,7 +4752,7 @@ private.GetLaneSet = function(i)
 						get = function(info) return lane["border"]["style"] end,
 						set = function(info, val)
 								lane["border"]["style"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					borderColor = {
@@ -4771,7 +4771,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								lane["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					spacer710 = {
@@ -4790,7 +4790,7 @@ private.GetLaneSet = function(i)
 						get = function(info) return lane["border"]["size"] end,
 						set = function(info, val)
 								lane["border"]["size"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					borderPadding = {
@@ -4804,7 +4804,7 @@ private.GetLaneSet = function(i)
 						get = function(info) return lane["border"]["padding"] end,
 						set = function(info, val)
 								lane["border"]["padding"] = val
-								CDTL2:RefreshLane(i)
+								CDTL3:RefreshLane(i)
 							end,
 					},
 				},
@@ -4827,7 +4827,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["icons"]["size"] = val
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 						end,
 					},
 					spacer102 = {
@@ -4848,7 +4848,7 @@ private.GetLaneSet = function(i)
 						set = function(info, val)
 								lane["icons"]["alpha"] = val
 								
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 						end,
 					},
 					spacer110 = {
@@ -4869,7 +4869,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["iconOffset"] = val
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 						end,
 					},
 					spacer120 = {
@@ -4976,7 +4976,7 @@ private.GetLaneSet = function(i)
 						get = function(info) return lane["icons"]["border"]["style"] end,
 						set = function(info, val)
 								lane["icons"]["border"]["style"] = val
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					borderColor = {
@@ -4995,7 +4995,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								lane["icons"]["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					spacer310 = {
@@ -5014,7 +5014,7 @@ private.GetLaneSet = function(i)
 						get = function(info) return lane["icons"]["border"]["size"] end,
 						set = function(info, val)
 								lane["icons"]["border"]["size"] = val
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					borderPadding = {
@@ -5028,7 +5028,7 @@ private.GetLaneSet = function(i)
 						get = function(info) return lane["icons"]["border"]["padding"] end,
 						set = function(info, val)
 								lane["icons"]["border"]["padding"] = val
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					spacer400 = {
@@ -5052,7 +5052,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["icons"]["highlight"]["style"] = val
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					spacer500 = {
@@ -5088,7 +5088,7 @@ private.GetLaneSet = function(i)
 						get = function(info) return lane["icons"]["highlight"]["border"]["style"] end,
 						set = function(info, val)
 								lane["icons"]["highlight"]["border"]["style"] = val
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					hlBorderColor = {
@@ -5116,7 +5116,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								lane["icons"]["highlight"]["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					spacer510 = {
@@ -5153,7 +5153,7 @@ private.GetLaneSet = function(i)
 						get = function(info) return lane["icons"]["highlight"]["border"]["size"] end,
 						set = function(info, val)
 								lane["icons"]["highlight"]["border"]["size"] = val
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					hlBorderPadding = {
@@ -5176,7 +5176,7 @@ private.GetLaneSet = function(i)
 						get = function(info) return lane["icons"]["highlight"]["border"]["padding"] end,
 						set = function(info, val)
 								lane["icons"]["highlight"]["border"]["padding"] = val
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 				}
@@ -5514,11 +5514,11 @@ private.GetReadySet = function(i)
 	local ready = nil
 	
 	if i == 1 then
-		ready = CDTL2.db.profile.ready["ready1"]
+		ready = CDTL3.db.profile.ready["ready1"]
 	elseif i == 2 then
-		ready = CDTL2.db.profile.ready["ready2"]
+		ready = CDTL3.db.profile.ready["ready2"]
 	elseif i == 3 then
-		ready = CDTL2.db.profile.ready["ready3"]
+		ready = CDTL3.db.profile.ready["ready3"]
 	end
 	
 	local options = {
@@ -5542,7 +5542,7 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, val)
 								ready["name"] = val
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshReady(i)
 							end,
 					},
 					enabled = {
@@ -5557,10 +5557,10 @@ private.GetReadySet = function(i)
 								ready["enabled"] = val
 								
 								if val then
-									CDTL2:CreateReadyFrames()
+									CDTL3:CreateReadyFrames()
 								end
 								
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshReady(i)
 							end,
 					},
 					spacer200 = {
@@ -5731,7 +5731,7 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, val)
 								ready["posX"] = val
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshReady(i)
 							end,
 					},
 					posY = {
@@ -5747,7 +5747,7 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, val)
 								ready["posY"] = val
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshReady(i)
 							end,
 					},
 					spacer113 = {
@@ -5776,7 +5776,7 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, val)
 								ready["relativeTo"] = val
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshReady(i)
 							end,
 					},
 					spacer200 = {
@@ -5797,8 +5797,8 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, val)
 								ready["padding"] = val
-								CDTL2:RefreshAllIcons()
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshAllIcons()
+								CDTL3:RefreshReady(i)
 						end,
 					},
 					spacer300 = {
@@ -5818,7 +5818,7 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, val)
 								ready["bgTexture"] = val
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshReady(i)
 							end,
 					},
 					bgTextureColor = {
@@ -5836,7 +5836,7 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								ready["bgTextureColor"] = { r = red, g = green, b = blue, a = alpha }
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshReady(i)
 							end,
 					},
 					spacer400 = {
@@ -5854,7 +5854,7 @@ private.GetReadySet = function(i)
 						get = function(info) return ready["border"]["style"] end,
 						set = function(info, val)
 								ready["border"]["style"] = val
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshReady(i)
 							end,
 					},
 					borderColor = {
@@ -5873,7 +5873,7 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								ready["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshReady(i)
 							end,
 					},
 					spacer410 = {
@@ -5892,7 +5892,7 @@ private.GetReadySet = function(i)
 						get = function(info) return ready["border"]["size"] end,
 						set = function(info, val)
 								ready["border"]["size"] = val
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshReady(i)
 							end,
 					},
 					borderPadding = {
@@ -5906,7 +5906,7 @@ private.GetReadySet = function(i)
 						get = function(info) return ready["border"]["padding"] end,
 						set = function(info, val)
 								ready["border"]["padding"] = val
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshReady(i)
 							end,
 					},
 				}
@@ -5929,8 +5929,8 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, val)
 								ready["icons"]["size"] = val
-								CDTL2:RefreshAllIcons()
-								CDTL2:RefreshReady(i)
+								CDTL3:RefreshAllIcons()
+								CDTL3:RefreshReady(i)
 						end,
 					},
 					spacer102 = {
@@ -5951,7 +5951,7 @@ private.GetReadySet = function(i)
 						set = function(info, val)
 								ready["icons"]["alpha"] = val
 								
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 						end,
 					},
 					spacer104 = {
@@ -6058,7 +6058,7 @@ private.GetReadySet = function(i)
 						get = function(info) return ready["icons"]["border"]["style"] end,
 						set = function(info, val)
 								ready["icons"]["border"]["style"] = val
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					borderColor = {
@@ -6077,7 +6077,7 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								ready["icons"]["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					spacer310 = {
@@ -6096,7 +6096,7 @@ private.GetReadySet = function(i)
 						get = function(info) return ready["icons"]["border"]["size"] end,
 						set = function(info, val)
 								ready["icons"]["border"]["size"] = val
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					borderPadding = {
@@ -6110,7 +6110,7 @@ private.GetReadySet = function(i)
 						get = function(info) return ready["icons"]["border"]["padding"] end,
 						set = function(info, val)
 								ready["icons"]["border"]["padding"] = val
-								CDTL2:RefreshAllIcons()
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 					spacer400 = {
@@ -6134,7 +6134,7 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, val)
 								ready["icons"]["highlight"]["style"] = val
-								CDTL2:RefreshAllIcons(i)
+								CDTL3:RefreshAllIcons(i)
 							end,
 					},
 				}
@@ -6152,9 +6152,9 @@ private.GetTextText = function(s, o, i, r, d)
 			end,
 		desc = function(info)
 				if r == "LANE" then
-					return CDTL2:GetCustomTextTagDescription()
+					return CDTL3:GetCustomTextTagDescription()
 				else
-					return CDTL2:GetCustomIconTagDescription()
+					return CDTL3:GetCustomIconTagDescription()
 				end
 			end,
 		type = "input",
@@ -6169,20 +6169,20 @@ private.GetTextText = function(s, o, i, r, d)
 		set = function(info, val)
 				s["text"] = val
 				
-				if CDTL2:ScanForDynamicTags(val) then
+				if CDTL3:ScanForDynamicTags(val) then
 					s["dtags"] = true
 				end
 				
-				if CDTL2:ScanForTimeTags(val) then
+				if CDTL3:ScanForTimeTags(val) then
 					s["ttags"] = true
 				end
 				
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6206,11 +6206,11 @@ private.GetTextEnabled = function(s, o, i, r)
 		set = function(info, val)
 				s["enabled"] = val
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6234,11 +6234,11 @@ private.GetTextEdit = function(s, o, i, r)
 		set = function(info, val)
 				s["edit"] = val
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6261,11 +6261,11 @@ private.GetTextFont = function(s, o, i, r)
 		set = function(info, val)
 				s["font"] = val
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6292,11 +6292,11 @@ private.GetTextOutline = function(s, o, i, r)
 		set = function(info, val)
 				s["outline"] = val
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6320,11 +6320,11 @@ private.GetTextSize = function(s, o, i, r)
 		set = function(info, val)
 				s["size"] = val
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6354,11 +6354,11 @@ private.GetTextColor = function(s, o, i, r)
 		set = function(info, red, green, blue, alpha)
 				s["color"] = { r = red, g = green, b = blue, a = alpha }
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6388,11 +6388,11 @@ private.GetTextShadowColor = function(s, o, i, r)
 		set = function(info, red, green, blue, alpha)
 				s["shadColor"] = { r = red, g = green, b = blue, a = alpha }
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6416,11 +6416,11 @@ private.GetTextShadowXOffset = function(s, o, i, r)
 		set = function(info, val)
 				s["shadX"] = val
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6444,11 +6444,11 @@ private.GetTextShadowYOffset = function(s, o, i, r)
 		set = function(info, val)
 				s["shadY"] = val
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6480,11 +6480,11 @@ private.GetTextAnchor = function(s, o, i, r)
 		set = function(info, val)
 				s["anchor"] = val
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6510,11 +6510,11 @@ private.GetTextAlign = function(s, o, i, r)
 		set = function(info, val)
 				s["align"] = val
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6538,11 +6538,11 @@ private.GetTextXOffset = function(s, o, i, r)
 		set = function(info, val)
 				s["offX"] = val
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}
@@ -6566,11 +6566,11 @@ private.GetTextYOffset = function(s, o, i, r)
 		set = function(info, val)
 				s["offY"] = val
 				if r == "LANE" then
-					CDTL2:RefreshLane(i)
+					CDTL3:RefreshLane(i)
 				elseif r == "BAR" then
-					CDTL2:RefreshAllBars()
+					CDTL3:RefreshAllBars()
 				elseif r == "ICON" then
-					CDTL2:RefreshAllIcons()
+					CDTL3:RefreshAllIcons()
 				end
 			end,
 	}

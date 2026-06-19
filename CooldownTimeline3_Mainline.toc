@@ -4,7 +4,7 @@
 ## Author: cliffclive
 ## Notes: Track cooldowns as icons along a timeline. Original by Vreenak. V2 rewrite by cliffclive. Midnight 12.0.5 patch and CDTL3 continuation by Nelnamara.
 ## Version: 3.0.4
-## SavedVariables: CDTL2DB
+## SavedVariables: CDTL3DB CDTL2DB
 ## OptionalDeps: Masque
 ## X-Curse-Project-ID: 1570576
 ## X-Wago-ID: mKODORGx

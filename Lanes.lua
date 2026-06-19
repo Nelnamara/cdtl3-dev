@@ -10,48 +10,48 @@ private.stackingPollRate = 5
 private.dynamicTextPollRate = 10
 private.timeTextPollRate = 2
 
-function CDTL2:CreateLanes()
-	local lane1Enabled = CDTL2.db.profile.lanes["lane1"]["enabled"]
-	local lane2Enabled = CDTL2.db.profile.lanes["lane2"]["enabled"]
-	local lane3Enabled = CDTL2.db.profile.lanes["lane3"]["enabled"]
+function CDTL3:CreateLanes()
+	local lane1Enabled = CDTL3.db.profile.lanes["lane1"]["enabled"]
+	local lane2Enabled = CDTL3.db.profile.lanes["lane2"]["enabled"]
+	local lane3Enabled = CDTL3.db.profile.lanes["lane3"]["enabled"]
 	
 	if lane1Enabled then
-		if CDTL2_Lane_1 then
-			CDTL2:RefreshLane(1)
+		if CDTL3_Lane_1 then
+			CDTL3:RefreshLane(1)
 		else
 			private.CreateLane(1)
 		end
 	end
 	
 	if lane2Enabled then
-		if CDTL2_Lane_2 then
-			CDTL2:RefreshLane(2)
+		if CDTL3_Lane_2 then
+			CDTL3:RefreshLane(2)
 		else
 			private.CreateLane(2)
 		end
 	end
 	
 	if lane3Enabled then
-		if CDTL2_Lane_3 then
-			CDTL2:RefreshLane(3)
+		if CDTL3_Lane_3 then
+			CDTL3:RefreshLane(3)
 		else
 			private.CreateLane(3)
 		end
 	end
 end
 
-function CDTL2:RefreshLane(i)
+function CDTL3:RefreshLane(i)
 	local f = nil
 	local s = nil
 	if i == 1 then
-		f = CDTL2_Lane_1
-		s = CDTL2.db.profile.lanes["lane1"]
+		f = CDTL3_Lane_1
+		s = CDTL3.db.profile.lanes["lane1"]
 	elseif i == 2 then
-		f = CDTL2_Lane_2
-		s = CDTL2.db.profile.lanes["lane2"]
+		f = CDTL3_Lane_2
+		s = CDTL3.db.profile.lanes["lane2"]
 	elseif i == 3 then
-		f = CDTL2_Lane_3
-		s = CDTL2.db.profile.lanes["lane3"]
+		f = CDTL3_Lane_3
+		s = CDTL3.db.profile.lanes["lane3"]
 	end
 	
 	if not f then
@@ -67,14 +67,14 @@ function CDTL2:RefreshLane(i)
 	f:SetMinMaxValues(0, 1)
 	f:SetValue(1)
 	f:SetReverseFill(s["tracking"]["primaryReversed"])
-	f:SetStatusBarTexture(CDTL2.LSM:Fetch("statusbar", s["fgTexture"]))
+	f:SetStatusBarTexture(CDTL3.LSM:Fetch("statusbar", s["fgTexture"]))
 	f:GetStatusBarTexture():SetHorizTile(false)
 	f:GetStatusBarTexture():SetVertTile(false)
 	
 	local fgColor = s["fgTextureColor"] or { r=0.77647, g=0.11765, b=0.28235, a=1 }
-	if CDTL2.player["class"] then
+	if CDTL3.player["class"] then
 		if s["fgClassColor"] then
-			fgColor = CDTL2.db.profile.global["classColors"][CDTL2.player["class"]]
+			fgColor = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
 		end
 	end
 
@@ -96,7 +96,7 @@ function CDTL2:RefreshLane(i)
 	end
 	
 	-- BACKGROUND
-	f.bg:SetTexture(CDTL2.LSM:Fetch("statusbar", s["bgTexture"]))
+	f.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["bgTexture"]))
 	f.bg:SetAllPoints(true)
 	--[[f.bg:SetVertexColor(
 		s["bgTextureColor"]["r"],
@@ -106,9 +106,9 @@ function CDTL2:RefreshLane(i)
 	)]]--
 	
 	local bgColor = s["bgTextureColor"]
-	if CDTL2.player["class"] then
+	if CDTL3.player["class"] then
 		if s["bgClassColor"] then
-			bgColor = CDTL2.db.profile.global["classColors"][CDTL2.player["class"]]
+			bgColor = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
 		end
 	end
 	
@@ -129,7 +129,7 @@ function CDTL2:RefreshLane(i)
 	
 		f.st:ClearAllPoints()
 		f.st:SetSize(s["tracking"]["stWidth"], s["tracking"]["stHeight"])
-		f.st.bg:SetTexture(CDTL2.LSM:Fetch("statusbar", s["tracking"]["stTexture"]))
+		f.st.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["tracking"]["stTexture"]))
 		f.st.bg:SetAllPoints(true)
 		f.st.bg:SetVertexColor(
 			s["tracking"]["stTextureColor"]["r"],
@@ -150,7 +150,7 @@ function CDTL2:RefreshLane(i)
 			f.bd:SetParent(f)
 		end
 	
-		CDTL2:SetBorder(f.bd, s["border"])
+		CDTL3:SetBorder(f.bd, s["border"])
 		f.bd:Show()
 		f.bd:SetFrameLevel(f:GetFrameLevel() + 1)
 	else
@@ -188,35 +188,35 @@ function CDTL2:RefreshLane(i)
 	-- DEBUG/UNLOCK
 	f.db:ClearAllPoints()
 	f.db:SetPoint("CENTER", 0, 0)
-	f.db.text:SetFont(CDTL2.LSM:Fetch("font", "Fira Sans Condensed"), 12)
+	f.db.text:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 12)
 	f.db.text:ClearAllPoints()
 	f.db.text:SetPoint("CENTER", 0, 0)
 	f.db.text:SetText(f.name)
 	f.db.bg:SetAllPoints(true)
 	f.db.bg:SetColorTexture( 
-		CDTL2.colors["db"]["r"],
-		CDTL2.colors["db"]["g"],
-		CDTL2.colors["db"]["b"],
-		CDTL2.colors["db"]["a"]
+		CDTL3.colors["db"]["r"],
+		CDTL3.colors["db"]["g"],
+		CDTL3.colors["db"]["b"],
+		CDTL3.colors["db"]["a"]
 	)
 	
 	if s["enabled"] then
 		f:Show()
-		CDTL2:Autohide(f, s)
+		CDTL3:Autohide(f, s)
 	else
 		f:Hide()
 	end
 	
-	if CDTL2.db.profile.global["unlockFrames"] then
-		CDTL2:FrameUnlock(f)
+	if CDTL3.db.profile.global["unlockFrames"] then
+		CDTL3:FrameUnlock(f)
 	else
-		CDTL2:FrameLock(f)
+		CDTL3:FrameLock(f)
 	end
 	
-	if CDTL2.db.profile.global["debugMode"] then
-		CDTL2:DebugOn(f)
+	if CDTL3.db.profile.global["debugMode"] then
+		CDTL3:DebugOn(f)
 	else
-		CDTL2:DebugOff(f)
+		CDTL3:DebugOff(f)
 	end
 end
 
@@ -422,7 +422,7 @@ private.RefreshText = function(f, s)
 		
 		local _outline = tSettings["outline"]
 		if type(_outline) ~= "string" or _outline == "NONE" or _outline == "" then _outline = nil end
-		local _fnt, _sz = CDTL2.LSM:Fetch("font", tSettings["font"]), tonumber(tSettings["size"]) or 0
+		local _fnt, _sz = CDTL3.LSM:Fetch("font", tSettings["font"]), tonumber(tSettings["size"]) or 0
 		if _fnt and _sz > 0 then tObject:SetFont(_fnt, _sz, _outline) end
 		tObject:SetTextColor(
 				tSettings["color"]["r"],
@@ -439,9 +439,9 @@ private.RefreshText = function(f, s)
 		tObject:SetShadowOffset(tSettings["shadX"], tSettings["shadY"])
 		tObject:SetNonSpaceWrap(false)
 		
-		tObject:SetText(CDTL2:ConvertTextTags(tSettings["text"], f))
-		tObject:SetText(CDTL2:ConvertTextDynamicTags(tSettings["text"], f))
-		tObject:SetText(CDTL2:ConvertTextTimeTags(tSettings["text"], f))
+		tObject:SetText(CDTL3:ConvertTextTags(tSettings["text"], f))
+		tObject:SetText(CDTL3:ConvertTextDynamicTags(tSettings["text"], f))
+		tObject:SetText(CDTL3:ConvertTextTimeTags(tSettings["text"], f))
 		
 		if tSettings["enabled"] == true and tSettings["used"] == true then
 			tObject:SetAlpha(1)
@@ -642,7 +642,7 @@ private.CalcTracking = function(f, s, t, elapsed)
 	local position = 0
 
 	if t == "GCD" then
-		local start, duration, enabled = CDTL2:GetSpellCooldown(8921)	-- Spell ID for Moonfire, but any spell without a cooldown can be used
+		local start, duration, enabled = CDTL3:GetSpellCooldown(8921)	-- Spell ID for Moonfire, but any spell without a cooldown can be used
 		local cooldownMS, gcdMS = GetSpellBaseCooldown(8921)			-- Spell ID for Moonfire, but any spell without a cooldown can be used
 		
 		local timeLeft = (start + duration) - GetTime()
@@ -669,13 +669,13 @@ private.CalcTracking = function(f, s, t, elapsed)
 		end
 		
 	elseif t == "CLASS_POWER" then
-		if CDTL2.player["class"] ~= nil then
-			if CDTL2.player["class"] == "DRUID" then
-				CDTL2.player["classPower"] = CDTL2:GetPlayerPower("DRUID")
+		if CDTL3.player["class"] ~= nil then
+			if CDTL3.player["class"] == "DRUID" then
+				CDTL3.player["classPower"] = CDTL3:GetPlayerPower("DRUID")
 			end
 		end
 		
-		local pType = CDTL2.player["classPower"]
+		local pType = CDTL3.player["classPower"]
 		local pMax = UnitPowerMax("player", pType)
 		local pCurrent = UnitPower("player", pType)
 		
@@ -717,27 +717,27 @@ private.CalcTracking = function(f, s, t, elapsed)
 	
 	elseif t == "MANA_TICK" then
 		local interval = 2
-		if CDTL2.tracking["fsr"] then
+		if CDTL3.tracking["fsr"] then
 			interval = 5
 		end
 		
-		local tickTime = GetTime() - CDTL2.tracking["manaTime"]
+		local tickTime = GetTime() - CDTL3.tracking["manaTime"]
 		local percent = tickTime / interval
 		position = percent
 	
 	elseif t == "ENERGY_TICK" then
-		CDTL2.tracking["energyTimeCount"] = CDTL2.tracking["energyTimeCount"] + elapsed
+		CDTL3.tracking["energyTimeCount"] = CDTL3.tracking["energyTimeCount"] + elapsed
 		
-		if CDTL2.tracking["energyTimeCount"] >= 2 then
-			CDTL2.tracking["energyTimeCount"] = 0 + (CDTL2.tracking["energyTimeCount"] - 2)
+		if CDTL3.tracking["energyTimeCount"] >= 2 then
+			CDTL3.tracking["energyTimeCount"] = 0 + (CDTL3.tracking["energyTimeCount"] - 2)
 		end
 		
-		local percent = CDTL2.tracking["energyTimeCount"] / 2
+		local percent = CDTL3.tracking["energyTimeCount"] / 2
 		position = percent
 		
 		if s["tracking"]["overrideAutohide"] then
 			if not f.forceShow then
-				if CDTL2:AuraExists("player", "Stealth") then
+				if CDTL3:AuraExists("player", "Stealth") then
 					f.overrideAutohide = true
 					f.forceShow = true
 				else
@@ -749,12 +749,12 @@ private.CalcTracking = function(f, s, t, elapsed)
 	elseif t == "MH_SWING" then
 		local mhSpeed, _ = UnitAttackSpeed("player")
 			
-		if CDTL2.tracking["mhSwingTime"] < 0 then
+		if CDTL3.tracking["mhSwingTime"] < 0 then
 			position = 1
 		else
-			CDTL2.tracking["mhSwingTime"] = CDTL2.tracking["mhSwingTime"] - elapsed
+			CDTL3.tracking["mhSwingTime"] = CDTL3.tracking["mhSwingTime"] - elapsed
 			
-			local percent = CDTL2.tracking["mhSwingTime"] / mhSpeed
+			local percent = CDTL3.tracking["mhSwingTime"] / mhSpeed
 			
 			position = percent
 		end
@@ -762,12 +762,12 @@ private.CalcTracking = function(f, s, t, elapsed)
 	elseif t == "OH_SWING" then
 		local _, ohSpeed = UnitAttackSpeed("player")
 			
-		if CDTL2.tracking["ohSwingTime"] < 0 then
+		if CDTL3.tracking["ohSwingTime"] < 0 then
 			position = 1
 		else
-			CDTL2.tracking["ohSwingTime"] = CDTL2.tracking["ohSwingTime"] - elapsed
+			CDTL3.tracking["ohSwingTime"] = CDTL3.tracking["ohSwingTime"] - elapsed
 			
-			local percent = CDTL2.tracking["ohSwingTime"] / ohSpeed
+			local percent = CDTL3.tracking["ohSwingTime"] / ohSpeed
 			
 			position = percent
 		end
@@ -775,12 +775,12 @@ private.CalcTracking = function(f, s, t, elapsed)
 	elseif t == "RANGE_SWING" then
 		local rSwingTime, _, _, _, _, _ = UnitRangedDamage("player");
 			
-		if CDTL2.tracking["rSwingTime"] < 0 then
+		if CDTL3.tracking["rSwingTime"] < 0 then
 			position = 1
 		else
-			CDTL2.tracking["rSwingTime"] = CDTL2.tracking["rSwingTime"] - elapsed
+			CDTL3.tracking["rSwingTime"] = CDTL3.tracking["rSwingTime"] - elapsed
 			
-			local percent = CDTL2.tracking["rSwingTime"] / rSwingTime
+			local percent = CDTL3.tracking["rSwingTime"] / rSwingTime
 			
 			position = percent
 		end
@@ -790,7 +790,7 @@ private.CalcTracking = function(f, s, t, elapsed)
 end
 
 private.CreateLane = function(laneNumber)	
-	local frameName = "CDTL2_Lane_"..laneNumber
+	local frameName = "CDTL3_Lane_"..laneNumber
 	local f = CreateFrame("StatusBar", frameName, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	
 	f.number = laneNumber
@@ -840,18 +840,18 @@ private.CreateLane = function(laneNumber)
 	f:SetScript("OnDragStart", f.StartMoving)
 	f:SetScript("OnDragStop", f.StopMovingOrSizing)
 	
-	CDTL2:RefreshLane(laneNumber)
-	table.insert(CDTL2.lanes, f)
+	CDTL3:RefreshLane(laneNumber)
+	table.insert(CDTL3.lanes, f)
 end
 
 private.LaneUpdate = function(f, elapsed)
 	local s = nil
 	if f.number == 1 then
-		s = CDTL2.db.profile.lanes["lane1"]
+		s = CDTL3.db.profile.lanes["lane1"]
 	elseif f.number == 2 then
-		s = CDTL2.db.profile.lanes["lane2"]
+		s = CDTL3.db.profile.lanes["lane2"]
 	elseif f.number == 3 then
-		s = CDTL2.db.profile.lanes["lane3"]
+		s = CDTL3.db.profile.lanes["lane3"]
 	end
 	
 	f.forceShow = false
@@ -871,7 +871,7 @@ private.LaneUpdate = function(f, elapsed)
 		f.childCount = count
 		
 		if s["enabled"] then
-			CDTL2:Autohide(f, s)
+			CDTL3:Autohide(f, s)
 		else
 			f:SetAlpha(0)
 		end
@@ -927,7 +927,7 @@ private.LaneUpdate = function(f, elapsed)
 		end
 		
 		-- FRAME (UN)LOCKING
-		if CDTL2.db.profile.global["unlockFrames"] then
+		if CDTL3.db.profile.global["unlockFrames"] then
 			local _, _, relativeTo, xOfs, yOfs = f:GetPoint()
 			
 			s["relativeTo"] = relativeTo
@@ -981,19 +981,19 @@ private.SetModeText = function(f, s)
 		st["text1"]["pos"] = 0
 		st["text1"]["used"] = true
 		
-		st["text2"]["text"] = CDTL2:ConvertTime(max * 0.25, tFormat)
+		st["text2"]["text"] = CDTL3:ConvertTime(max * 0.25, tFormat)
 		st["text2"]["pos"] = 0.25
 		st["text2"]["used"] = true
 		
-		st["text3"]["text"] = CDTL2:ConvertTime(max * 0.5, tFormat)
+		st["text3"]["text"] = CDTL3:ConvertTime(max * 0.5, tFormat)
 		st["text3"]["pos"] = 0.5
 		st["text3"]["used"] = true
 		
-		st["text4"]["text"] = CDTL2:ConvertTime(max * 0.75, tFormat)
+		st["text4"]["text"] = CDTL3:ConvertTime(max * 0.75, tFormat)
 		st["text4"]["pos"] = 0.75
 		st["text4"]["used"] = true
 		
-		st["text5"]["text"] = CDTL2:ConvertTime(max, tFormat)
+		st["text5"]["text"] = CDTL3:ConvertTime(max, tFormat)
 		st["text5"]["pos"] = 1
 		st["text5"]["used"] = true
 	elseif mode == "SPLIT" then
@@ -1024,13 +1024,13 @@ private.SetModeText = function(f, s)
 		tFormat = s["mode"]["splitAbs"]["timeFormat"]
 		
 		st["text1"]["text"] = "Ready"
-		st["text2"]["text"] = CDTL2:ConvertTime(s["mode"]["splitAbs"]["s1v"], tFormat)
+		st["text2"]["text"] = CDTL3:ConvertTime(s["mode"]["splitAbs"]["s1v"], tFormat)
 		st["text2"]["pos"] = s["mode"]["splitAbs"]["s1p"]
-		st["text3"]["text"] = CDTL2:ConvertTime(s["mode"]["splitAbs"]["s2v"], tFormat)
+		st["text3"]["text"] = CDTL3:ConvertTime(s["mode"]["splitAbs"]["s2v"], tFormat)
 		st["text3"]["pos"] = s["mode"]["splitAbs"]["s2p"]
-		st["text4"]["text"] = CDTL2:ConvertTime(s["mode"]["splitAbs"]["s3v"], tFormat)
+		st["text4"]["text"] = CDTL3:ConvertTime(s["mode"]["splitAbs"]["s3v"], tFormat)
 		st["text4"]["pos"] = s["mode"]["splitAbs"]["s3p"]
-		st["text5"]["text"] = CDTL2:ConvertTime(max, tFormat)
+		st["text5"]["text"] = CDTL3:ConvertTime(max, tFormat)
 		
 		if s["mode"]["splitAbs"]["count"] == 1 then
 			st["text2"]["used"] = true
@@ -1070,7 +1070,7 @@ private.UpdateModeText = function(f, s)
 			tObject = f.t5
 		end
 		
-		tObject:SetText(CDTL2:ConvertTextTags(tSettings["text"], f))
+		tObject:SetText(CDTL3:ConvertTextTags(tSettings["text"], f))
 	end
 end 
 
@@ -1099,13 +1099,13 @@ private.UpdateText = function(f, s)
 		if tSettings["enabled"] then
 			if tSettings["dtags"] then
 				if f.updateCount % private.dynamicTextPollRate == 0 then
-					tObject:SetText(CDTL2:ConvertTextDynamicTags(tSettings["text"], f))
+					tObject:SetText(CDTL3:ConvertTextDynamicTags(tSettings["text"], f))
 				end
 			end
 			
 			if tSettings["ttags"] then
 				if f.updateCount % private.timeTextPollRate == 0 then
-					tObject:SetText(CDTL2:ConvertTextTimeTags(tSettings["text"], f))
+					tObject:SetText(CDTL3:ConvertTextTimeTags(tSettings["text"], f))
 				end
 			end
 		end

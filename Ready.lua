@@ -7,30 +7,30 @@ local private = {}
 private.updatePollRate = 2
 private.autohidePollRate = 5
 
-function CDTL2:CreateReadyFrames()
-	local ready1Enabled = CDTL2.db.profile.ready["ready1"]["enabled"]
-	local ready2Enabled = CDTL2.db.profile.ready["ready2"]["enabled"]
-	local ready3Enabled = CDTL2.db.profile.ready["ready3"]["enabled"]
+function CDTL3:CreateReadyFrames()
+	local ready1Enabled = CDTL3.db.profile.ready["ready1"]["enabled"]
+	local ready2Enabled = CDTL3.db.profile.ready["ready2"]["enabled"]
+	local ready3Enabled = CDTL3.db.profile.ready["ready3"]["enabled"]
 	
 	if ready1Enabled then
-		if CDTL2_Ready_1 then
-			CDTL2:RefreshReady(1)
+		if CDTL3_Ready_1 then
+			CDTL3:RefreshReady(1)
 		else
 			private.CreateReady(1)
 		end
 	end
 	
 	if ready2Enabled then
-		if CDTL2_Ready_2 then
-			CDTL2:RefreshReady(2)
+		if CDTL3_Ready_2 then
+			CDTL3:RefreshReady(2)
 		else
 			private.CreateReady(2)
 		end
 	end
 	
 	if ready3Enabled then
-		if CDTL2_Ready_3 then
-			CDTL2:RefreshReady(3)
+		if CDTL3_Ready_3 then
+			CDTL3:RefreshReady(3)
 		else
 			private.CreateReady(3)
 		end
@@ -38,7 +38,7 @@ function CDTL2:CreateReadyFrames()
 end
 
 private.CreateReady = function(frameNumber)
-	local frameName = "CDTL2_Ready_"..frameNumber
+	local frameName = "CDTL3_Ready_"..frameNumber
 	local f = CreateFrame("Frame", frameName, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 
 	f.number = frameNumber
@@ -74,18 +74,18 @@ private.CreateReady = function(frameNumber)
 	f:SetScript("OnDragStart", f.StartMoving)
 	f:SetScript("OnDragStop", f.StopMovingOrSizing)
 	
-	CDTL2:RefreshReady(frameNumber)
-	table.insert(CDTL2.readyFrames, f)
+	CDTL3:RefreshReady(frameNumber)
+	table.insert(CDTL3.readyFrames, f)
 end
 
 private.ReadyUpdate = function(f, elapsed)
 	local s = nil
 	if f.number == 1 then
-		s = CDTL2.db.profile.ready["ready1"]
+		s = CDTL3.db.profile.ready["ready1"]
 	elseif f.number == 2 then
-		s = CDTL2.db.profile.ready["ready2"]
+		s = CDTL3.db.profile.ready["ready2"]
 	elseif f.number == 3 then
-		s = CDTL2.db.profile.ready["ready3"]
+		s = CDTL3.db.profile.ready["ready3"]
 	end
 	
 	f.forceHide = false
@@ -217,7 +217,7 @@ private.ReadyUpdate = function(f, elapsed)
 		f.childCount = count
 		
 		if s["enabled"] then
-			CDTL2:Autohide(f, s)
+			CDTL3:Autohide(f, s)
 		else
 			f:SetAlpha(0)
 		end
@@ -226,7 +226,7 @@ private.ReadyUpdate = function(f, elapsed)
 	end
 	
 	if f:GetAlpha() ~= 0 then
-		if not CDTL2.combat then
+		if not CDTL3.combat then
 			if f.combatTimer < s["pTime"] then
 				f.combatTimer = f.combatTimer + elapsed
 			else
@@ -235,7 +235,7 @@ private.ReadyUpdate = function(f, elapsed)
 		end
 	
 		-- FRAME (UN)LOCKING
-		if CDTL2.db.profile.global["unlockFrames"] then
+		if CDTL3.db.profile.global["unlockFrames"] then
 			local _, _, relativeTo, xOfs, yOfs = f:GetPoint()
 			
 			s["relativeTo"] = relativeTo
@@ -245,18 +245,18 @@ private.ReadyUpdate = function(f, elapsed)
 	end
 end
 
-function CDTL2:RefreshReady(i)
+function CDTL3:RefreshReady(i)
 	local f = nil
 	local s = nil
 	if i == 1 then
-		f = CDTL2_Ready_1
-		s = CDTL2.db.profile.ready["ready1"]
+		f = CDTL3_Ready_1
+		s = CDTL3.db.profile.ready["ready1"]
 	elseif i == 2 then
-		f = CDTL2_Ready_2
-		s = CDTL2.db.profile.ready["ready2"]
+		f = CDTL3_Ready_2
+		s = CDTL3.db.profile.ready["ready2"]
 	elseif i == 3 then
-		f = CDTL2_Ready_3
-		s = CDTL2.db.profile.ready["ready3"]
+		f = CDTL3_Ready_3
+		s = CDTL3.db.profile.ready["ready3"]
 	end
 	
 	if not f then
@@ -274,7 +274,7 @@ function CDTL2:RefreshReady(i)
 	f.mf:SetSize(s["icons"]["size"], s["icons"]["size"])
 	
 	-- MF BACKGROUND
-	f.mf.bg:SetTexture(CDTL2.LSM:Fetch("statusbar", s["bgTexture"]))
+	f.mf.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["bgTexture"]))
 	f.mf.bg:SetAllPoints(true)
 	f.mf.bg:SetVertexColor(
 		s["bgTextureColor"]["r"],
@@ -290,7 +290,7 @@ function CDTL2:RefreshReady(i)
 			f.mf.bd:SetParent(f)
 		end
 	
-		CDTL2:SetBorder(f.mf.bd, s["border"])
+		CDTL3:SetBorder(f.mf.bd, s["border"])
 		f.mf.bd:SetFrameLevel(f.mf:GetFrameLevel() + 1)
 	else
 		if f.mf.bd then
@@ -322,35 +322,35 @@ function CDTL2:RefreshReady(i)
 	-- DEBUG/UNLOCK
 	f.db:ClearAllPoints()
 	f.db:SetPoint("CENTER", 0, 0)
-	f.db.text:SetFont(CDTL2.LSM:Fetch("font", "Fira Sans Condensed"), 12)
+	f.db.text:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 12)
 	f.db.text:ClearAllPoints()
 	f.db.text:SetPoint("CENTER", 0, 0)
 	f.db.text:SetText(f.name)
 	f.db:SetSize(s["icons"]["size"] + (s["padding"] * 2), s["icons"]["size"] + (s["padding"] * 2))
 	f.db.bg:SetAllPoints(true)
 	f.db.bg:SetColorTexture( 
-		CDTL2.colors["db"]["r"],
-		CDTL2.colors["db"]["g"],
-		CDTL2.colors["db"]["b"],
-		CDTL2.colors["db"]["a"]
+		CDTL3.colors["db"]["r"],
+		CDTL3.colors["db"]["g"],
+		CDTL3.colors["db"]["b"],
+		CDTL3.colors["db"]["a"]
 	)
 	
 	if s["enabled"] then
 		f:Show()
-		CDTL2:Autohide(f, s)
+		CDTL3:Autohide(f, s)
 	else
 		f:Hide()
 	end
 	
-	if CDTL2.db.profile.global["unlockFrames"] then
-		CDTL2:FrameUnlock(f)
+	if CDTL3.db.profile.global["unlockFrames"] then
+		CDTL3:FrameUnlock(f)
 	else
-		CDTL2:FrameLock(f)
+		CDTL3:FrameLock(f)
 	end
 	
-	if CDTL2.db.profile.global["debugMode"] then
-		CDTL2:DebugOn(f)
+	if CDTL3.db.profile.global["debugMode"] then
+		CDTL3:DebugOn(f)
 	else
-		CDTL2:DebugOff(f)
+		CDTL3:DebugOff(f)
 	end
 end

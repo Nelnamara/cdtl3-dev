@@ -9,8 +9,8 @@ private.autohidePollRate = 5
 private.dynamicTextPollRate = 10
 private.timeTextPollRate = 2
 
-function CDTL2:CreateCooldown(UID, cdType, cdData)
-	local fName = "CDTL2_CD_"..UID
+function CDTL3:CreateCooldown(UID, cdType, cdData)
+	local fName = "CDTL3_CD_"..UID
 	local f = CreateFrame("Frame", fName, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	
 	f.updateCount = 0
@@ -78,15 +78,15 @@ function CDTL2:CreateCooldown(UID, cdType, cdData)
 		if cdData["itemIcon"] then
 			f.data["itemIcon"] = cdData["itemIcon"]
 		else
-			local spellName, icon, originalIcon = CDTL2:GetSpellInfo(f.data["id"])
+			local spellName, icon, originalIcon = CDTL3:GetSpellInfo(f.data["id"])
 			f.data["icon"] = icon
 			
 			local item = Item:CreateFromItemID(f.data["itemID"])
 			item:ContinueOnItemLoad(function()
 				f.data["itemIcon"] = item:GetItemIcon()
 				
-				CDTL2:SetSpellData(f.data["name"], cdType, "icon", f.data["icon"])
-				CDTL2:SetSpellData(f.data["name"], cdType, "itemIcon", f.data["itemIcon"])
+				CDTL3:SetSpellData(f.data["name"], cdType, "icon", f.data["icon"])
+				CDTL3:SetSpellData(f.data["name"], cdType, "itemIcon", f.data["itemIcon"])
 			end)
 		end
 	end
@@ -100,21 +100,21 @@ function CDTL2:CreateCooldown(UID, cdType, cdData)
 		private.CooldownUpdate(self, elapsed)
 	end)
 	
-	f.icon = CDTL2:CreateIcon(fName, f)
+	f.icon = CDTL3:CreateIcon(fName, f)
 
 	-- Create bar BEFORE SendToLane so a RefreshIcon/LSM error in SendToLane
 	-- cannot leave f.bar nil and cause 1000x CooldownUpdate crashes.
-	f.bar = CDTL2:CreateBar(fName, f)
+	f.bar = CDTL3:CreateBar(fName, f)
 
-	CDTL2:SendToLane(f)
-	CDTL2:SendToBarFrame(f)
+	CDTL3:SendToLane(f)
+	CDTL3:SendToBarFrame(f)
 	
-	table.insert(CDTL2.cooldowns, f)
+	table.insert(CDTL3.cooldowns, f)
 	
 	return f
 end
 
-function CDTL2:CreateIcon(fName, cd)
+function CDTL3:CreateIcon(fName, cd)
 	local frameName = fName.."_Icon"
 	local f = CreateFrame("Frame", frameName, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 
@@ -131,7 +131,7 @@ function CDTL2:CreateIcon(fName, cd)
 	f.db:SetParent(f)
 	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
 	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
-	if not CDTL2.db.profile.global["unlockFrames"] then
+	if not CDTL3.db.profile.global["unlockFrames"] then
 		f.db:Hide()
 	end
 	
@@ -139,7 +139,7 @@ function CDTL2:CreateIcon(fName, cd)
 	return f
 end
 
-function CDTL2:CreateBar(fName, cd)
+function CDTL3:CreateBar(fName, cd)
 	local frameName = fName.."_Bar"
 	local f = CreateFrame("Frame", frameName, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	
@@ -158,7 +158,7 @@ function CDTL2:CreateBar(fName, cd)
 	f.db:SetParent(f)
 	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
 	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
-	if not CDTL2.db.profile.global["unlockFrames"] then
+	if not CDTL3.db.profile.global["unlockFrames"] then
 		f.db:Hide()
 	end
 	
@@ -166,33 +166,33 @@ function CDTL2:CreateBar(fName, cd)
 	return f
 end
 
-function CDTL2:RefreshAllBars()
-	for _, cd in pairs(CDTL2.cooldowns) do
-		CDTL2:RefreshBar(cd)
+function CDTL3:RefreshAllBars()
+	for _, cd in pairs(CDTL3.cooldowns) do
+		CDTL3:RefreshBar(cd)
 	end
 end
 
-function CDTL2:RefreshAllIcons()
-	for _, cd in pairs(CDTL2.cooldowns) do
-		CDTL2:RefreshIcon(cd)
+function CDTL3:RefreshAllIcons()
+	for _, cd in pairs(CDTL3.cooldowns) do
+		CDTL3:RefreshIcon(cd)
 	end
 end
 
-function CDTL2:RefreshBar(cd)
+function CDTL3:RefreshBar(cd)
 	local f = cd.bar
 	local s = nil
 	local p = f:GetParent():GetName()
 	
-	if p == "CDTL2_BarFrame_1_MF" or p == "CDTL2_BarFrame_2_MF" or p == "CDTL2_BarFrame_3_MF" then
+	if p == "CDTL3_BarFrame_1_MF" or p == "CDTL3_BarFrame_2_MF" or p == "CDTL3_BarFrame_3_MF" then
 		if cd.data["barFrame"] == 0 or cd.data["barFrame"] == 1 then
-			s = CDTL2.db.profile.barFrames["frame1"]
+			s = CDTL3.db.profile.barFrames["frame1"]
 		elseif cd.data["barFrame"] == 2 then
-			s = CDTL2.db.profile.barFrames["frame2"]
+			s = CDTL3.db.profile.barFrames["frame2"]
 		elseif cd.data["barFrame"] == 3 then
-			s = CDTL2.db.profile.barFrames["frame3"]
+			s = CDTL3.db.profile.barFrames["frame3"]
 		end
 	else
-		s = CDTL2.db.profile.barFrames["frame1"]
+		s = CDTL3.db.profile.barFrames["frame1"]
 	end
 		
 	f:ClearAllPoints()
@@ -226,18 +226,18 @@ function CDTL2:RefreshBar(cd)
 		local icon = cd.data["icon"]
 		f.icon.tx:SetTexture(icon)
 		
-		local zoom = CDTL2.db.profile.global["zoom"]
+		local zoom = CDTL3.db.profile.global["zoom"]
 		local tl = zoom - 1
 		local br = 1 - (zoom - 1)
 		f.icon.tx:SetTexCoord(tl, br, tl, br)
 		
-		if CDTL2.Masque then
+		if CDTL3.Masque then
 			-- Kill masque for this icon(button)
-			CDTL2.masqueGroup = CDTL2.Masque:Group("CDTL2")
-			CDTL2.masqueGroup:RemoveButton(f.icon)
+			CDTL3.masqueGroup = CDTL3.Masque:Group("CDTL3")
+			CDTL3.masqueGroup:RemoveButton(f.icon)
 			
 			-- Reapply masque
-			CDTL2.masqueGroup:AddButton(f.icon, { Icon = f.icon.tx })
+			CDTL3.masqueGroup:AddButton(f.icon, { Icon = f.icon.tx })
 		end
 		
 		f.icon:Show()
@@ -263,7 +263,7 @@ function CDTL2:RefreshBar(cd)
 	-- FOREGROUND
 	f.bar:SetMinMaxValues(0, 1)
 	f.bar:SetValue(0.5)
-	f.bar:SetStatusBarTexture(CDTL2.LSM:Fetch("statusbar", s["bar"]["fgTexture"]))
+	f.bar:SetStatusBarTexture(CDTL3.LSM:Fetch("statusbar", s["bar"]["fgTexture"]))
 	f.bar:GetStatusBarTexture():SetHorizTile(false)
 	f.bar:GetStatusBarTexture():SetVertTile(false)
 	--[[f.bar:SetStatusBarColor(
@@ -275,15 +275,15 @@ function CDTL2:RefreshBar(cd)
 	
 	local fgColor = s["bar"]["fgTextureColor"]
 	if s["bar"]["fgSchoolColor"] then
-		local schoolColor = CDTL2.db.profile.global["schoolColors"]["Other"]
+		local schoolColor = CDTL3.db.profile.global["schoolColors"]["Other"]
 		if cd.data["school"] then
-			schoolColor = CDTL2.db.profile.global["schoolColors"][cd.data["school"]]
+			schoolColor = CDTL3.db.profile.global["schoolColors"][cd.data["school"]]
 		end
 		
 		fgColor = schoolColor
-	elseif CDTL2.player["class"] then
+	elseif CDTL3.player["class"] then
 		if s["bar"]["fgClassColor"] then
-			fgColor = CDTL2.db.profile.global["classColors"][CDTL2.player["class"]]
+			fgColor = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
 		end
 	end
 	
@@ -295,7 +295,7 @@ function CDTL2:RefreshBar(cd)
 	)
 	
 	-- BACKGROUND
-	f.bar.bg:SetTexture(CDTL2.LSM:Fetch("statusbar", s["bar"]["bgTexture"]))
+	f.bar.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["bar"]["bgTexture"]))
 	f.bar.bg:SetAllPoints(true)
 	--[[f.bar.bg:SetVertexColor(
 		s["bar"]["bgTextureColor"]["r"],
@@ -305,9 +305,9 @@ function CDTL2:RefreshBar(cd)
 	)]]--
 	
 	local bgColor = s["bar"]["bgTextureColor"]
-	if CDTL2.player["class"] then
+	if CDTL3.player["class"] then
 		if s["bar"]["bgClassColor"] then
-			bgColor = CDTL2.db.profile.global["classColors"][CDTL2.player["class"]]
+			bgColor = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
 		end
 	end
 	
@@ -344,9 +344,9 @@ function CDTL2:RefreshBar(cd)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			local _fnt, _sz = CDTL2.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL2:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -385,9 +385,9 @@ function CDTL2:RefreshBar(cd)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			local _fnt, _sz = CDTL2.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL2:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -426,9 +426,9 @@ function CDTL2:RefreshBar(cd)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			local _fnt, _sz = CDTL2.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL2:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -489,7 +489,7 @@ function CDTL2:RefreshBar(cd)
 			f.bd:SetParent(f)
 		end
 		
-		CDTL2:SetBorder(f.bd, s["bar"]["border"])
+		CDTL3:SetBorder(f.bd, s["bar"]["border"])
 		f.bd:SetFrameLevel(f:GetFrameLevel() + 1)
 		f.bd:Show()
 	else
@@ -501,7 +501,7 @@ function CDTL2:RefreshBar(cd)
 	-- DEBUG/UNLOCK
 	f.db:ClearAllPoints()
 	f.db:SetPoint("CENTER", 0, 0)
-	f.db.text:SetFont(CDTL2.LSM:Fetch("font", "Fira Sans Condensed"), 10)
+	f.db.text:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 10)
 	f.db.text:ClearAllPoints()
 	f.db.text:SetPoint("CENTER", 0, 0)
 	f.db.text:SetText(cd.data["uid"].."_B\n"..cd.data["name"])
@@ -509,33 +509,33 @@ function CDTL2:RefreshBar(cd)
 	f.db.bg:SetAllPoints(true)
 	f.db.bg:SetColorTexture( 0.1, 0.1, 0.1, 0.5 )
 	
-	if CDTL2.db.profile.global["debugMode"] then
-		CDTL2:DebugOn(f)
+	if CDTL3.db.profile.global["debugMode"] then
+		CDTL3:DebugOn(f)
 	else
-		CDTL2:DebugOff(f)
+		CDTL3:DebugOff(f)
 	end
 end
 
-function CDTL2:RefreshIcon(cd)
+function CDTL3:RefreshIcon(cd)
 	local f = cd.icon
-	local s = CDTL2.db.profile.lanes["lane1"]
+	local s = CDTL3.db.profile.lanes["lane1"]
 	local p = f:GetParent():GetName()
 	
-	if p == "CDTL2_Lane_1" or p == "CDTL2_Lane_2" or p == "CDTL2_Lane_3" then
+	if p == "CDTL3_Lane_1" or p == "CDTL3_Lane_2" or p == "CDTL3_Lane_3" then
 		if cd.data["lane"] == 0 or cd.data["lane"] == 1 then
-			s = CDTL2.db.profile.lanes["lane1"]
+			s = CDTL3.db.profile.lanes["lane1"]
 		elseif cd.data["lane"] == 2 then
-			s = CDTL2.db.profile.lanes["lane2"]
+			s = CDTL3.db.profile.lanes["lane2"]
 		elseif cd.data["lane"] == 3 then
-			s = CDTL2.db.profile.lanes["lane3"]
+			s = CDTL3.db.profile.lanes["lane3"]
 		end
-	elseif p == "CDTL2_Ready_1_MF" or p == "CDTL2_Ready_2_MF" or p == "CDTL2_Ready_3_MF" then
+	elseif p == "CDTL3_Ready_1_MF" or p == "CDTL3_Ready_2_MF" or p == "CDTL3_Ready_3_MF" then
 		if cd.data["readyFrame"] == 0 or cd.data["readyFrame"] == 1 then
-			s = CDTL2.db.profile.ready["ready1"]
+			s = CDTL3.db.profile.ready["ready1"]
 		elseif cd.data["readyFrame"] == 2 then
-			s = CDTL2.db.profile.ready["ready2"]
+			s = CDTL3.db.profile.ready["ready2"]
 		elseif cd.data["readyFrame"] == 3 then
-			s = CDTL2.db.profile.ready["ready3"]
+			s = CDTL3.db.profile.ready["ready3"]
 		end
 	end
 
@@ -547,7 +547,7 @@ function CDTL2:RefreshIcon(cd)
 			if cd.data["type"] == "items" then
 				specialCase = true
 			end
-			local cds = CDTL2:GetSpellSettings(cd.data["name"], cd.data["type"], specialCase)
+			local cds = CDTL3:GetSpellSettings(cd.data["name"], cd.data["type"], specialCase)
 			if cds then
 				cd.data["baseCD"] = cds["bCD"] / 1000
 			end
@@ -559,7 +559,7 @@ function CDTL2:RefreshIcon(cd)
 				specialCase = true
 			end
 
-			local cds = CDTL2:GetSpellSettings(cd.data["name"], cd.data["type"], specialCase)
+			local cds = CDTL3:GetSpellSettings(cd.data["name"], cd.data["type"], specialCase)
 			if cds then
 				cd.data["baseCD"] = cds["bCD"] / 1000
 			end
@@ -575,7 +575,7 @@ function CDTL2:RefreshIcon(cd)
 	-- Set the icon texture
 	local icon = cd.data["icon"]
 	if cd.data["type"] == "items" then
-		if CDTL2.db.profile.global[cd.data["type"]]["useItemIcon"] then
+		if CDTL3.db.profile.global[cd.data["type"]]["useItemIcon"] then
 			icon = cd.data["itemIcon"]
 		end
 	end
@@ -584,18 +584,18 @@ function CDTL2:RefreshIcon(cd)
 	f.tx:SetAlpha(s["icons"]["alpha"])
 	
 	-- Set the icon texture zoom
-	local zoom = CDTL2.db.profile.global["zoom"]
+	local zoom = CDTL3.db.profile.global["zoom"]
 	local tl = zoom - 1
 	local br = 1 - (zoom - 1)
 	f.tx:SetTexCoord(tl, br, tl, br)
 	
-	if CDTL2.Masque then
+	if CDTL3.Masque then
 		-- Kill masque for this icon(button)
-		CDTL2.masqueGroup = CDTL2.Masque:Group("CDTL2")
-		CDTL2.masqueGroup:RemoveButton(f)
+		CDTL3.masqueGroup = CDTL3.Masque:Group("CDTL3")
+		CDTL3.masqueGroup:RemoveButton(f)
 		
 		-- Reapply masque
-		CDTL2.masqueGroup:AddButton(f, { Icon = f.tx })	
+		CDTL3.masqueGroup:AddButton(f, { Icon = f.tx })	
 	end
 	
 	-- TEXT
@@ -624,9 +624,9 @@ function CDTL2:RefreshIcon(cd)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			local _fnt, _sz = CDTL2.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL2:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -665,9 +665,9 @@ function CDTL2:RefreshIcon(cd)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			local _fnt, _sz = CDTL2.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL2:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -706,9 +706,9 @@ function CDTL2:RefreshIcon(cd)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			local _fnt, _sz = CDTL2.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL2:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -752,7 +752,7 @@ function CDTL2:RefreshIcon(cd)
 			f.bd:SetParent(f)
 		end
 		
-		CDTL2:SetBorder(f.bd, s["icons"]["border"])
+		CDTL3:SetBorder(f.bd, s["icons"]["border"])
 		f.bd:SetFrameLevel(f:GetFrameLevel() + 1)
 		f.bd:Show()
 	else
@@ -770,7 +770,7 @@ function CDTL2:RefreshIcon(cd)
 				f.hl.tx = f.hl:CreateTexture()
 			end
 			
-			CDTL2:SetBorder(f.hl, s["icons"]["highlight"]["border"])
+			CDTL3:SetBorder(f.hl, s["icons"]["highlight"]["border"])
 			f.hl:ClearAllPoints()
 			f.hl:SetPoint("CENTER", 0, 0)
 			f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
@@ -778,7 +778,7 @@ function CDTL2:RefreshIcon(cd)
 			f.hl.tx:SetColorTexture( 1, 1, 1, 0.5 )
 			f.hl:SetFrameLevel(f.hl:GetFrameLevel() + 1)
 
-			CDTL2:RemoveHighlights(f, s)
+			CDTL3:RemoveHighlights(f, s)
 			
 			local style = s["icons"]["highlight"]["style"]
 			if style == "GLOW" then
@@ -827,7 +827,7 @@ function CDTL2:RefreshIcon(cd)
 				
 				f.hl.agPulse:Play()
 			else
-				CDTL2:RemoveHighlights(f, s)
+				CDTL3:RemoveHighlights(f, s)
 			end
 			
 			f.hl:Show()
@@ -847,7 +847,7 @@ function CDTL2:RefreshIcon(cd)
 	-- DEBUG/UNLOCK
 	f.db:ClearAllPoints()
 	f.db:SetPoint("CENTER", 0, 0)
-	f.db.text:SetFont(CDTL2.LSM:Fetch("font", "Fira Sans Condensed"), 10)
+	f.db.text:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 10)
 	f.db.text:ClearAllPoints()
 	f.db.text:SetPoint("CENTER", 0, 0)
 	f.db.text:SetText(cd.data["uid"].."_B\n"..cd.data["name"])
@@ -855,10 +855,10 @@ function CDTL2:RefreshIcon(cd)
 	f.db.bg:SetAllPoints(true)
 	f.db.bg:SetColorTexture( 0.1, 0.1, 0.1, 0.5 )
 	
-	if CDTL2.db.profile.global["debugMode"] then
-		CDTL2:DebugOn(f)
+	if CDTL3.db.profile.global["debugMode"] then
+		CDTL3:DebugOn(f)
 	else
-		CDTL2:DebugOff(f)
+		CDTL3:DebugOff(f)
 	end
 end
 
@@ -868,15 +868,15 @@ private.BarUpdate = function(f, elapsed)
 	ba.currentCD = d["currentCD"]
 	
 	local p = ba:GetParent():GetName()
-	if p == "CDTL2_BarFrame_1_MF" or p == "CDTL2_BarFrame_2_MF" or p == "CDTL2_BarFrame_3_MF" then
+	if p == "CDTL3_BarFrame_1_MF" or p == "CDTL3_BarFrame_2_MF" or p == "CDTL3_BarFrame_3_MF" then
 		if d["currentCD"] > 0 then
 			local s = nil
 			if d["barFrame"] == 1 then
-				s = CDTL2.db.profile.barFrames["frame1"]
+				s = CDTL3.db.profile.barFrames["frame1"]
 			elseif d["barFrame"] == 2 then
-				s = CDTL2.db.profile.barFrames["frame2"]
+				s = CDTL3.db.profile.barFrames["frame2"]
 			elseif d["barFrame"] == 3 then
-				s = CDTL2.db.profile.barFrames["frame3"]
+				s = CDTL3.db.profile.barFrames["frame3"]
 			end
 			
 			local pBase = d["baseCD"]
@@ -886,7 +886,7 @@ private.BarUpdate = function(f, elapsed)
 				-- For now, do nothing
 			else
 				if s["transition"]["hideTransitioned"] then
-					--CDTL2:Print(tostring(d["currentCD"]).." - "..tostring(ba.transitionThreshold))
+					--CDTL3:Print(tostring(d["currentCD"]).." - "..tostring(ba.transitionThreshold))
 					if d["currentCD"] > ba.transitionThreshold then
 						if not ba.valid then
 							ba.valid = true
@@ -915,7 +915,7 @@ private.BarUpdate = function(f, elapsed)
 				private.UpdateText(f, ba.txt.text3, s["bar"]["text3"], s["bar"]["text3"]["text"])
 			end
 		else
-			CDTL2:SendToBarHolding(f)
+			CDTL3:SendToBarHolding(f)
 		end
 	end
 end
@@ -1035,11 +1035,11 @@ end
 private.CalcTransitionIndicator = function(f, s)
 	local ls = nil
 	if f.data["lane"] == 1 then
-		ls = CDTL2.db.profile.lanes["lane1"]
+		ls = CDTL3.db.profile.lanes["lane1"]
 	elseif f.data["lane"] == 2 then
-		ls = CDTL2.db.profile.lanes["lane2"]
+		ls = CDTL3.db.profile.lanes["lane2"]
 	elseif f.data["lane"] == 3 then
-		ls = CDTL2.db.profile.lanes["lane3"]
+		ls = CDTL3.db.profile.lanes["lane3"]
 	end
 	
 	if ls then
@@ -1101,7 +1101,7 @@ private.CalcTransitionIndicator = function(f, s)
 			f.bar.bar.ti:ClearAllPoints()
 			f.bar.bar.ti:SetPoint("LEFT", position, 0)
 			f.bar.bar.ti:SetSize(width, s["height"])
-			f.bar.bar.ti.bg:SetTexture(CDTL2.LSM:Fetch("statusbar", s["transition"]["texture"]))
+			f.bar.bar.ti.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["transition"]["texture"]))
 			f.bar.bar.ti.bg:SetAllPoints(true)
 			f.bar.bar.ti.bg:SetVertexColor(
 				s["transition"]["textureColor"]["r"],
@@ -1135,11 +1135,11 @@ private.CooldownUpdate = function(f, elapsed)
 		-- SPELLS
 		if d["type"] == "spells" or d["type"] == "petspells" then
 			if d["oaf"] then
-				if CDTL2:AuraExists("player", d["name"]) or UnitChannelInfo("player") then
+				if CDTL3:AuraExists("player", d["name"]) or UnitChannelInfo("player") then
 					-- Placeholder
 				else
 					--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
-					local start, duration, enabled = CDTL2:GetSpellCooldown(d["id"])
+					local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
 					
 					if enabled == 0 then
 						-- Placeholder
@@ -1159,7 +1159,7 @@ private.CooldownUpdate = function(f, elapsed)
 
 
 									--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
-									local start, duration, enabled = CDTL2:GetSpellCooldown(d["id"])
+									local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
 									d["currentCD"] = start + duration - GetTime()
 								end
 							end
@@ -1179,34 +1179,34 @@ private.CooldownUpdate = function(f, elapsed)
 							end
 
 							--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
-							--local start, duration, enabled = CDTL2:GetSpellCooldown(d["id"])
+							--local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
 							--d["currentCD"] = start + duration - GetTime()
 
 							if enabled == 0 or enabled == false then
-								CDTL2:SetSpellData(d["name"], "spells", "oaf", true)
+								CDTL3:SetSpellData(d["name"], "spells", "oaf", true)
 								d["oaf"] = true
 							end
 
 							--if d["charges"] ~= 0 then
-								--local currentCharges, maxCharges, cooldownStart, cooldownDuration = CDTL2:GetSpellCharges(d["id"])
+								--local currentCharges, maxCharges, cooldownStart, cooldownDuration = CDTL3:GetSpellCharges(d["id"])
 
 								--if currentCharges < maxCharges then
-									--CDTL2:Print("CHARGES")
+									--CDTL3:Print("CHARGES")
 								--end
 							--else
-								--CDTL2:Print("NO CHARGES")
+								--CDTL3:Print("NO CHARGES")
 								
 
-								local start, duration, enabled = CDTL2:GetSpellCooldown(d["id"])
+								local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
 								d["currentCD"] = start + duration - GetTime()
 
 								--if d["name"] == "Primal Rage" or d["name"] == "Implosive Trap" then
-									--CDTL2:Print(d["name"].." - "..d["currentCD"].." : "..tostring(duration))
+									--CDTL3:Print(d["name"].." - "..d["currentCD"].." : "..tostring(duration))
 								--end
 							--end
 							
-							if f.updateCount == 0 and CDTL2.db.profile.global["detectSharedCD"] then
-								CDTL2:ScanSharedSpellCooldown(d["name"], d["currentCD"])
+							if f.updateCount == 0 and CDTL3.db.profile.global["detectSharedCD"] then
+								CDTL3:ScanSharedSpellCooldown(d["name"], d["currentCD"])
 							end
 						end
 					end
@@ -1219,31 +1219,31 @@ private.CooldownUpdate = function(f, elapsed)
 				if d["baseCD"] == 0 then
 					d["currentCD"] = 1000
 					
-					local tinker, slot = CDTL2:CheckEngTinkerCases(d["name"])
+					local tinker, slot = CDTL3:CheckEngTinkerCases(d["name"])
 					if tinker then
 						local _, spellID = GetItemSpell(d["itemID"])
 						if spellID == d["id"] then
 							local start, duration, enabled = GetInventoryItemCooldown("player", slot)
 							
 							d["baseCD"] = duration
-							CDTL2:SetSpellData(d["name"], "items", "bCD", duration * 1000)
+							CDTL3:SetSpellData(d["name"], "items", "bCD", duration * 1000)
 						end
 					else
 						local start, duration, enabled = C_Container.GetItemCooldown(d["itemID"])
 						
 						d["baseCD"] = duration
-						CDTL2:SetSpellData(d["name"], "items", "bCD", duration * 1000)
+						CDTL3:SetSpellData(d["name"], "items", "bCD", duration * 1000)
 					end
 					
-					if d["baseCD"] > 3 and d["baseCD"] <= CDTL2.db.profile.global["items"]["ignoreThreshold"] then
+					if d["baseCD"] > 3 and d["baseCD"] <= CDTL3.db.profile.global["items"]["ignoreThreshold"] then
 						d["ignored"] = false
-						CDTL2:SetSpellData(d["name"], "items", "ignored", false)
+						CDTL3:SetSpellData(d["name"], "items", "ignored", false)
 					else
 						d["ignored"] = true
-						CDTL2:SetSpellData(d["name"], "items", "ignored", true)
+						CDTL3:SetSpellData(d["name"], "items", "ignored", true)
 						
-						CDTL2:SendToHolding(f)
-						CDTL2:SendToBarHolding(f)
+						CDTL3:SendToHolding(f)
+						CDTL3:SendToBarHolding(f)
 					end
 				end
 			end
@@ -1251,7 +1251,7 @@ private.CooldownUpdate = function(f, elapsed)
 			d["currentCD"] = d["currentCD"] - elapsed
 			if d["currentCD"] >= 0 then
 				if f.updateCount % 50 == 0 then
-					local tinker, slot = CDTL2:CheckEngTinkerCases(d["name"])
+					local tinker, slot = CDTL3:CheckEngTinkerCases(d["name"])
 					if tinker then
 						local _, spellID = GetItemSpell(d["itemID"])
 						if spellID == d["id"] then
@@ -1278,7 +1278,7 @@ private.CooldownUpdate = function(f, elapsed)
 		-- AURAS
 		elseif d["type"] == "buffs" or d["type"] == "debuffs" then
 			if f.updateCount == 0 or f.updateCount % 50 == 0 then
-				local s = CDTL2:AuraExists("player", d["name"])
+				local s = CDTL3:AuraExists("player", d["name"])
 				if s then
 					d["currentCD"] = s["endTime"] - GetTime()
 					d["stacks"] = s["stacks"]
@@ -1295,23 +1295,23 @@ private.CooldownUpdate = function(f, elapsed)
 		elseif d["type"] == "offensives" then
 			if f.updateCount == 0 or f.updateCount % 50 == 0 then
 				if d["baseCD"] == 0 then
-					local s = CDTL2:AuraExists("target", d["name"])
+					local s = CDTL3:AuraExists("target", d["name"])
 					if s then
 						d["baseCD"] = s["bCD"] / 1000
 						d["currentCD"] = s["endTime"] - GetTime()
 						d["stacks"] = s["stacks"]
 						
-						CDTL2:SetSpellData(d["name"], "offensives", "bCD", s["bCD"])
+						CDTL3:SetSpellData(d["name"], "offensives", "bCD", s["bCD"])
 						
-						if d["baseCD"] > 3 and d["baseCD"] <= CDTL2.db.profile.global["offensives"]["ignoreThreshold"] then
+						if d["baseCD"] > 3 and d["baseCD"] <= CDTL3.db.profile.global["offensives"]["ignoreThreshold"] then
 							s["ignored"] = false
-							CDTL2:SetSpellData(d["name"], "offensives", "ignored", false)
+							CDTL3:SetSpellData(d["name"], "offensives", "ignored", false)
 						else
 							s["ignored"] = true
-							CDTL2:SetSpellData(d["name"], "offensives", "ignored", true)
+							CDTL3:SetSpellData(d["name"], "offensives", "ignored", true)
 							
-							CDTL2:SendToHolding(f)
-							CDTL2:SendToBarHolding(f)
+							CDTL3:SendToHolding(f)
+							CDTL3:SendToBarHolding(f)
 						end
 					else
 						
@@ -1361,15 +1361,15 @@ private.IconUpdate = function(f, elapsed)
 	ic.pinned = d["pinned"]
 	
 	local p = ic:GetParent():GetName()
-	if p == "CDTL2_Lane_1" or p == "CDTL2_Lane_2" or p == "CDTL2_Lane_3" then
+	if p == "CDTL3_Lane_1" or p == "CDTL3_Lane_2" or p == "CDTL3_Lane_3" then
 		if d["currentCD"] > 0 then
 			local s = nil
 			if d["lane"] == 1 then
-				s = CDTL2.db.profile.lanes["lane1"]
+				s = CDTL3.db.profile.lanes["lane1"]
 			elseif d["lane"] == 2 then
-				s = CDTL2.db.profile.lanes["lane2"]
+				s = CDTL3.db.profile.lanes["lane2"]
 			elseif d["lane"] == 3 then
-				s = CDTL2.db.profile.lanes["lane3"]
+				s = CDTL3.db.profile.lanes["lane3"]
 			end
 			
 			local iconPercent = 1
@@ -1459,7 +1459,7 @@ private.IconUpdate = function(f, elapsed)
 				end
 			end
 			
-			if CDTL2.db.profile.global["enableTooltip"] then	
+			if CDTL3.db.profile.global["enableTooltip"] then	
 				if ic:IsMouseOver() then	
 					if d.link then	
 						GameTooltip_SetDefaultAnchor(GameTooltip, ic)	
@@ -1486,16 +1486,16 @@ private.IconUpdate = function(f, elapsed)
 			elseif d["type"] == "test" then
 				
 			else
-				CDTL2:SendToReady(f)
+				CDTL3:SendToReady(f)
 			end
 		end
-	elseif p == "CDTL2_Ready_1_MF" or p == "CDTL2_Ready_2_MF" or p == "CDTL2_Ready_3_MF" then
+	elseif p == "CDTL3_Ready_1_MF" or p == "CDTL3_Ready_2_MF" or p == "CDTL3_Ready_3_MF" then
 		if ic.readyTime > 0 then
 			if not f.data["pinned"] then
 				ic.readyTime = ic.readyTime - elapsed
 			end
 			
-			if CDTL2.db.profile.global["enableTooltip"] then	
+			if CDTL3.db.profile.global["enableTooltip"] then	
 				if ic:IsMouseOver() then	
 					if d.link then	
 						GameTooltip_SetDefaultAnchor(GameTooltip, ic)	
@@ -1510,33 +1510,33 @@ private.IconUpdate = function(f, elapsed)
 			end
 		else
 			if d["type"] == "testing" then
-				if CDTL2.db.profile.global["testingLoop"] then
-					CDTL2:SendToLane(f)
-					CDTL2:SendToBarFrame(f)
+				if CDTL3.db.profile.global["testingLoop"] then
+					CDTL3:SendToLane(f)
+					CDTL3:SendToBarFrame(f)
 				else
-					CDTL2:SendToHolding(f)
+					CDTL3:SendToHolding(f)
 				end
 			else
-				CDTL2:SendToHolding(f)
+				CDTL3:SendToHolding(f)
 			end
 		end
 	else
 		-- Do Nothing
 	end
 	
-	if CDTL2.db.profile.global["notUsableTint"] then
+	if CDTL3.db.profile.global["notUsableTint"] then
 		if f.data["type"] == "spells" or f.data["type"] == "petspells" then
-			local usable, noPower = CDTL2:IsUsableSpell(f.data["id"])
+			local usable, noPower = CDTL3:IsUsableSpell(f.data["id"])
 			if noPower then
-				if CDTL2.db.profile.global["notUsableDesaturate"] then
+				if CDTL3.db.profile.global["notUsableDesaturate"] then
 					ic.tx:SetDesaturated(1)
 				else
 					ic.tx:SetDesaturated(nil)
 					ic.tx:SetVertexColor(
-						CDTL2.db.profile.global["notUsableColor"]["r"],
-						CDTL2.db.profile.global["notUsableColor"]["g"],
-						CDTL2.db.profile.global["notUsableColor"]["b"],
-						CDTL2.db.profile.global["notUsableColor"]["a"]
+						CDTL3.db.profile.global["notUsableColor"]["r"],
+						CDTL3.db.profile.global["notUsableColor"]["g"],
+						CDTL3.db.profile.global["notUsableColor"]["b"],
+						CDTL3.db.profile.global["notUsableColor"]["a"]
 					)
 				end
 			else
@@ -1547,64 +1547,64 @@ private.IconUpdate = function(f, elapsed)
 	end
 end
 
-function CDTL2:SendToBarFrame(f)
+function CDTL3:SendToBarFrame(f)
 	local ba = f.bar
 	
 	if f.data["barFrame"] == 1 then
-		if CDTL2_BarFrame_1_MF then
+		if CDTL3_BarFrame_1_MF then
 			ba:GetParent().triggerUpdate = true
-			ba:SetParent(CDTL2_BarFrame_1_MF)
-			CDTL2_BarFrame_1_MF.triggerUpdate = true		
+			ba:SetParent(CDTL3_BarFrame_1_MF)
+			CDTL3_BarFrame_1_MF.triggerUpdate = true		
 		else
-			CDTL2:SendToBarHolding(f)
+			CDTL3:SendToBarHolding(f)
 		end
 	elseif f.data["barFrame"] == 2 then
-		if CDTL2_BarFrame_2_MF then
+		if CDTL3_BarFrame_2_MF then
 			ba:GetParent().triggerUpdate = true
-			ba:SetParent(CDTL2_BarFrame_2_MF)
-			CDTL2_BarFrame_2_MF.triggerUpdate = true
+			ba:SetParent(CDTL3_BarFrame_2_MF)
+			CDTL3_BarFrame_2_MF.triggerUpdate = true
 		else
-			CDTL2:SendToBarHolding(f)
+			CDTL3:SendToBarHolding(f)
 		end
 	elseif f.data["barFrame"] == 3 then
-		if CDTL2_BarFrame_3_MF then
+		if CDTL3_BarFrame_3_MF then
 			ba:GetParent().triggerUpdate = true
-			ba:SetParent(CDTL2_BarFrame_3_MF)
-			CDTL2_BarFrame_3_MF.triggerUpdate = true
+			ba:SetParent(CDTL3_BarFrame_3_MF)
+			CDTL3_BarFrame_3_MF.triggerUpdate = true
 		else
-			CDTL2:SendToBarHolding(f)
+			CDTL3:SendToBarHolding(f)
 		end
 	else
-		CDTL2:SendToBarHolding(f)
+		CDTL3:SendToBarHolding(f)
 	end
 	
-	CDTL2:RefreshBar(f)
+	CDTL3:RefreshBar(f)
 end
 
-function CDTL2:SendToBarHolding(f)
+function CDTL3:SendToBarHolding(f)
 	local ba = f.bar
 	
 	if f.data["type"] == "offensives" then
 		ba:GetParent().triggerUpdate = true
-		ba:SetParent(CDTL2_Offensive_Bar_Holding)
+		ba:SetParent(CDTL3_Offensive_Bar_Holding)
 	else
 		ba:GetParent().triggerUpdate = true
-		ba:SetParent(CDTL2_Bar_Holding)
+		ba:SetParent(CDTL3_Bar_Holding)
 	end
 	
-	CDTL2:RefreshBar(f)
+	CDTL3:RefreshBar(f)
 end
 
-function CDTL2:SendToHolding(f)	
+function CDTL3:SendToHolding(f)	
 	local ic = f.icon
 	
 	if f.data["type"] == "offensives" then
 		ic:GetParent().triggerUpdate = true
-		ic:SetParent(CDTL2_Offensive_Icon_Holding)
+		ic:SetParent(CDTL3_Offensive_Icon_Holding)
 		f.data["overrideCD"] = false
 	else
 		ic:GetParent().triggerUpdate = true
-		ic:SetParent(CDTL2_Active_Icon_Holding)
+		ic:SetParent(CDTL3_Active_Icon_Holding)
 		f.data["overrideCD"] = false
 		--ic:Hide()
 	end
@@ -1613,124 +1613,124 @@ function CDTL2:SendToHolding(f)
 		GameTooltip:Hide()	
 	end
 	
-	CDTL2:RefreshIcon(f)
+	CDTL3:RefreshIcon(f)
 end
 
-function CDTL2:SendToLane(f)
+function CDTL3:SendToLane(f)
 	local ic = f.icon
 	
 	if f.data["lane"] == 1 then
-		if CDTL2_Lane_1 then
+		if CDTL3_Lane_1 then
 			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL2_Lane_1)
-			CDTL2_Lane_1.triggerUpdate = true
+			ic:SetParent(CDTL3_Lane_1)
+			CDTL3_Lane_1.triggerUpdate = true
 		else
-			CDTL2:SendToHolding(f)
+			CDTL3:SendToHolding(f)
 		end
 	elseif f.data["lane"] == 2 then
-		if CDTL2_Lane_2 then
+		if CDTL3_Lane_2 then
 			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL2_Lane_2)
-			CDTL2_Lane_2.triggerUpdate = true
+			ic:SetParent(CDTL3_Lane_2)
+			CDTL3_Lane_2.triggerUpdate = true
 		else
-			CDTL2:SendToHolding(f)
+			CDTL3:SendToHolding(f)
 		end
 	elseif f.data["lane"] == 3 then
-		if CDTL2_Lane_3 then
+		if CDTL3_Lane_3 then
 			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL2_Lane_3)
-			CDTL2_Lane_3.triggerUpdate = true
+			ic:SetParent(CDTL3_Lane_3)
+			CDTL3_Lane_3.triggerUpdate = true
 		else
-			CDTL2:SendToHolding(f)
+			CDTL3:SendToHolding(f)
 		end
 	else
-		CDTL2:SendToHolding(f)
+		CDTL3:SendToHolding(f)
 	end
 	
-	CDTL2:RefreshIcon(f)
+	CDTL3:RefreshIcon(f)
 	
 	f.data["updateCount"] = 0
 	f.data["currentCD"] = f.data["baseCD"]
 end
 
-function CDTL2:SendToReady(f)
+function CDTL3:SendToReady(f)
 	local ic = f.icon
 	local s = nil
 	
 	if f.data["readyFrame"] == 1 then
-		if CDTL2_Ready_1_MF then
+		if CDTL3_Ready_1_MF then
 			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL2_Ready_1_MF)
-			s = CDTL2.db.profile.ready["ready1"]
+			ic:SetParent(CDTL3_Ready_1_MF)
+			s = CDTL3.db.profile.ready["ready1"]
 			ic.readyTime = s["nTime"]
 			
 			if f.data["highlight"] then
 				if s["hSound"] ~= "None" then
-					PlaySoundFile(CDTL2.LSM:Fetch("sound", s["hSound"]), "SFX")
+					PlaySoundFile(CDTL3.LSM:Fetch("sound", s["hSound"]), "SFX")
 				end
 			else
 				if s["nSound"] ~= "None" then
-					PlaySoundFile(CDTL2.LSM:Fetch("sound", s["nSound"]), "SFX")
+					PlaySoundFile(CDTL3.LSM:Fetch("sound", s["nSound"]), "SFX")
 				end
 			end
 			
-			CDTL2_Ready_1.combatTimer = 0
-			CDTL2_Ready_1_MF.triggerUpdate = true
+			CDTL3_Ready_1.combatTimer = 0
+			CDTL3_Ready_1_MF.triggerUpdate = true
 			f.data["overrideCD"] = false
 		else
-			CDTL2:SendToHolding(f)
+			CDTL3:SendToHolding(f)
 		end		
 	elseif f.data["readyFrame"] == 2 then
-		if CDTL2_Ready_2_MF then
+		if CDTL3_Ready_2_MF then
 			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL2_Ready_2_MF)
-			s = CDTL2.db.profile.ready["ready2"]
+			ic:SetParent(CDTL3_Ready_2_MF)
+			s = CDTL3.db.profile.ready["ready2"]
 			ic.readyTime = s["nTime"]
 			
 			if f.data["highlight"] then
 				if s["hSound"] ~= "None" then
-					PlaySoundFile(CDTL2.LSM:Fetch("sound", s["hSound"]), "SFX")
+					PlaySoundFile(CDTL3.LSM:Fetch("sound", s["hSound"]), "SFX")
 				end
 			else
 				if s["nSound"] ~= "None" then
-					PlaySoundFile(CDTL2.LSM:Fetch("sound", s["nSound"]), "SFX")
+					PlaySoundFile(CDTL3.LSM:Fetch("sound", s["nSound"]), "SFX")
 				end
 			end
 			
-			CDTL2_Ready_2.combatTimer = 0
-			CDTL2_Ready_2_MF.triggerUpdate = true
+			CDTL3_Ready_2.combatTimer = 0
+			CDTL3_Ready_2_MF.triggerUpdate = true
 			f.data["overrideCD"] = false
 		else
-			CDTL2:SendToHolding(f)
+			CDTL3:SendToHolding(f)
 		end
 	elseif f.data["readyFrame"] == 3 then
-		if CDTL2_Ready_3_MF then
+		if CDTL3_Ready_3_MF then
 			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL2_Ready_3_MF)
-			s = CDTL2.db.profile.ready["ready3"]
+			ic:SetParent(CDTL3_Ready_3_MF)
+			s = CDTL3.db.profile.ready["ready3"]
 			ic.readyTime = s["nTime"]
 			
 			if f.data["highlight"] then
 				if s["hSound"] ~= "None" then
-					PlaySoundFile(CDTL2.LSM:Fetch("sound", s["hSound"]), "SFX")
+					PlaySoundFile(CDTL3.LSM:Fetch("sound", s["hSound"]), "SFX")
 				end
 			else
 				if s["nSound"] ~= "None" then
-					PlaySoundFile(CDTL2.LSM:Fetch("sound", s["nSound"]), "SFX")
+					PlaySoundFile(CDTL3.LSM:Fetch("sound", s["nSound"]), "SFX")
 				end
 			end
 			
-			CDTL2_Ready_3.combatTimer = 0
-			CDTL2_Ready_3_MF.triggerUpdate = true
+			CDTL3_Ready_3.combatTimer = 0
+			CDTL3_Ready_3_MF.triggerUpdate = true
 			f.data["overrideCD"] = false
 		else
-			CDTL2:SendToHolding(f)
+			CDTL3:SendToHolding(f)
 		end
 	else
-		CDTL2:SendToHolding(f)
+		CDTL3:SendToHolding(f)
 	end
 	
-	CDTL2:RefreshIcon(f)
+	CDTL3:RefreshIcon(f)
 end
 
 private.ShowHide = function(f)
@@ -1738,7 +1738,7 @@ private.ShowHide = function(f)
 		f.icon.valid = false
 		f.bar.valid = false
 
-		if CDTL2.db.profile.global["debugMode"] then
+		if CDTL3.db.profile.global["debugMode"] then
 			f.bar:SetAlpha(0.35)
 			f.icon:SetAlpha(0.35)
 		else
@@ -1751,7 +1751,7 @@ private.ShowHide = function(f)
 			if f.icon.valid then
 				f.icon:SetAlpha(1)
 			else
-				if CDTL2.db.profile.global["debugMode"] then
+				if CDTL3.db.profile.global["debugMode"] then
 					f.icon:SetAlpha(0.35)
 				else
 					f.icon:SetAlpha(0)
@@ -1761,7 +1761,7 @@ private.ShowHide = function(f)
 			if f.bar.valid then
 				f.bar:SetAlpha(1)
 			else
-				if CDTL2.db.profile.global["debugMode"] then
+				if CDTL3.db.profile.global["debugMode"] then
 					f.bar:SetAlpha(0.35)
 				else
 					f.bar:SetAlpha(0)
@@ -1771,7 +1771,7 @@ private.ShowHide = function(f)
 			f.icon.valid = false
 			f.bar.valid = false
 			
-			if CDTL2.db.profile.global["debugMode"] then
+			if CDTL3.db.profile.global["debugMode"] then
 				f.bar:SetAlpha(0.35)
 				f.icon:SetAlpha(0.35)
 			else
@@ -1786,18 +1786,18 @@ private.UpdateText = function(f, tf, s, iString)
 	if s["enabled"] then
 		if s["dtags"] then
 			if f.updateCount % private.dynamicTextPollRate == 0 then
-				tf:SetText(CDTL2:ConvertTextDynamicTags(s["text"], f))
+				tf:SetText(CDTL3:ConvertTextDynamicTags(s["text"], f))
 			end
 		end
 		
 		if s["ttags"] then
 			if f.data["currentCD"] <= 10 then
 				if f.updateCount % private.timeTextPollRate == 0 then
-					tf:SetText(CDTL2:ConvertTextTimeTags(s["text"], f))
+					tf:SetText(CDTL3:ConvertTextTimeTags(s["text"], f))
 				end
 			else
 				if f.updateCount % (private.timeTextPollRate * 3) == 0 then
-					tf:SetText(CDTL2:ConvertTextTimeTags(s["text"], f))
+					tf:SetText(CDTL3:ConvertTextTimeTags(s["text"], f))
 				end
 			end
 		end
