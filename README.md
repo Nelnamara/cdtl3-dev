@@ -25,37 +25,29 @@ CooldownTimeline tracks your ability cooldowns as moving icons along a horizonta
 
 ## Requirements
 
-| Dependency | Required | Notes |
-|---|:---:|---|
-| None | — | All libs embedded |
-| [Masque](https://www.curseforge.com/wow/addons/masque) | ❌ | Optional — skins cooldown icons |
+- WoW Midnight 12.0.7+ — all libraries embedded, no dependencies
+- [Masque](https://www.curseforge.com/wow/addons/masque) *(optional)* — skins cooldown icons
 
 ---
 
 ## Installation
 
-1. Download the latest release zip
-2. Extract to `World of Warcraft\_retail_\Interface\AddOns\`
-   - The folder should be named **`CooldownTimeline3`**
-   - It should contain `CDTL3.lua`, the `.toc` files, and subdirectories
-3. Log in and type `/cdtl3` to open options
-
-> **First run:** The bar appears in the center of your screen, unlocked. Drag it to your preferred position, then lock it via `/cdtl3 lock`.
+Extract into `World of Warcraft\_retail_\Interface\AddOns\` as a folder named **`CooldownTimeline3`** (it should contain `CDTL3.lua`, the `.toc` files, and subdirectories), or install via the CurseForge app. On first run the bar appears unlocked in the center — drag it to position, then `/cdtl3 lock`.
 
 ---
 
 ## Usage
 
+Type `/cdtl3` to open options. Auto-detection scans your spellbook on login and spec change and builds the cooldown list automatically; supplement it with the custom detection list in options, or force-track a spell by ID.
+
 ### Slash Commands
 
 Primary command is `/cdtl3` (or `/cooldowntimeline3`). The old `/cdtl2` / `/cooldowntimeline2` remain as legacy aliases so long-time users' muscle memory still works.
 
-| Command | Description |
-|---|---|
-| `/cdtl3` | Open the options panel |
-| `/cdtl3 lock` / `/cdtl3 unlock` | Toggle frame lock (enable/disable dragging) |
-| `/cdtl3 test` | Toggle test mode (fills the bar with sample icons) |
-| `/cdtl3 debug` | Toggle the debug frame |
+- **`/cdtl3`** — Open the options panel
+- **`/cdtl3 lock`** / **`/cdtl3 unlock`** — Toggle frame lock (enable/disable dragging)
+- **`/cdtl3 test`** — Toggle test mode (fills the bar with sample icons)
+- **`/cdtl3 debug`** — Toggle the debug frame
 
 ### Options Panel
 
@@ -67,19 +59,19 @@ Open with `/cdtl3` or the minimap button. Key sections:
 - **Filters** — choose what to track or hide
 - **Profiles** — AceDB profiles for per-character or shared configs
 
-### Auto-Detection
-
-On login and spec change, CDTL3 scans your spellbook and builds a cooldown list automatically. You can supplement this with the custom detection list in options, or force-track a spell by ID.
-
 ---
 
 ## Known Issues
 
-| Issue | Status |
-|---|---|
-| Some proc ICDs require manual entry if not in the built-in database | Add via custom detection in options |
-| Bar may briefly appear at 0,0 on first ever login before position saves | Drag to position and `/reload` once to persist |
-| Masque theming requires Masque to be installed and enabled | Optional dependency — works without it |
+- Some proc ICDs require manual entry if not in the built-in database — add via custom detection in options
+- The bar may briefly appear at 0,0 on first-ever login before position saves — drag to position and `/reload` once to persist
+- Masque theming requires Masque installed and enabled (works without it)
+
+---
+
+## Compatibility / Midnight Notes
+
+Multi-version: Mainline (12.0.7), MoP Classic, TBC, and Vanilla TOCs, all sharing one SavedVariables. Cooldown timing fields are secret in Midnight, so CDTL3 reads them inside a protected `pcall` and falls back to event-tracked cast time on failure — it never does arithmetic on a secret value.
 
 ---
 
@@ -117,20 +109,34 @@ On login and spec change, CDTL3 scans your spellbook and builds a cooldown list 
 
 ## Roadmap
 
-- [ ] **Drop the legacy `CDTL2DB` declaration** — once users have migrated, remove it from the TOCs
-- [ ] **Improved spell detection** — catch more proc ICDs automatically
-- [ ] **Compact mode** — smaller single-row layout option
-- [ ] **Per-lane layout swap** — quick switch between setups (raid ST vs M+ AoE)
+<details>
+<summary>Planned</summary>
+
+- **Drop the legacy `CDTL2DB` declaration** — once users have migrated, remove it from the TOCs
+- **Improved spell detection** — catch more proc ICDs automatically
+- **Compact mode** — smaller single-row layout option
+- **Per-lane layout swap** — quick switch between setups (raid ST vs M+ AoE)
+
+</details>
+
+---
+
+## Feature Requests
+
+<details>
+<summary>How to request</summary>
+
+Open an issue on [GitHub](https://github.com/Nelnamara/cdtl3-dev/issues) or leave a CurseForge comment — include your class/spec and the spell or behavior you'd like.
+
+</details>
 
 ---
 
 ## Credits
 
-| Role | Credit |
-|---|---|
-| Original addon | Vreenak (US-Remulos) |
-| V2 rewrite | cliffclive |
-| Midnight patch & CDTL3 continuation | Nelnamara |
+- **Original addon** — Vreenak (US-Remulos)
+- **V2 rewrite** — cliffclive
+- **Midnight patch & CDTL3 continuation** — Nelnamara
 
 ---
 
