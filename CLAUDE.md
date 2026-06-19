@@ -23,7 +23,7 @@ the Classic TOCs once said `CDTL3DB`, which silently wiped Classic profiles. Kee
 
 ## Midnight gotchas
 - `Settings.OpenToCategory("CDTL2")` (string) **errors** on Midnight — use `LibStub("AceConfigDialog-3.0"):Open("CDTL2")` (the slash + minimap button do this).
-- **Cooldown values are SECRET when tainted.** `C_Spell.GetSpellCooldown(id).startTime`/`.duration` can be *read* without error, but **comparing or doing arithmetic on them throws** ("attempt to compare a secret number value"). In `Helpers.lua:GetSpellCooldown` the `duration > 0` check is done **inside** the `pcall`; on failure it falls back to event-tracked cast time + `GetSpellBaseCooldown` (static, non-secret). Never compare/use these outside the protected closure (this was the v3.0.4 fix — Lane view spammed 167× before).
+- **Cooldown values are SECRET when tainted.** `C_Spell.GetSpellCooldown(id).startTime`/`.duration` can be *read* without error, but **comparing or doing arithmetic on them throws** ("attempt to compare a secret number value"). Both `Helpers.lua:GetSpellCooldown` **and** `GetSpellCharges` do the comparison **inside** a `pcall` and only return real numbers (GetSpellCooldown falls back to event-tracked cast time + `GetSpellBaseCooldown`; GetSpellCharges falls back to 0s). Never compare/use these outside the protected closure (the GetSpellCooldown form was the v3.0.4 fix — Lane view spammed 167× before; GetSpellCharges was hardened the same way to prevent the twin crash on charge-based CDs).
 - IconTexture → `Media\icon-128.png`; minimap button texture → `Media\minimap.png`.
 
 ## Slash
