@@ -14,7 +14,7 @@ CDTL3.GUI = LibStub("AceGUI-3.0")
 local _, _, _, tocversion = GetBuildInfo()
 CDTL3.tocversion = tocversion
 
-CDTL3.version = "3.0.4"
+CDTL3.version = "3.0.5"
 CDTL3.noticeVersion = "2.6"
 CDTL3.cdUID = 999
 CDTL3.discordlink = ""
@@ -2125,7 +2125,7 @@ function CDTL3:BuildMinimapButton()
 	-- Self-contained round icon (gold ring baked in) — SetAllPoints centers it cleanly.
 	local icon = btn:CreateTexture(nil, "ARTWORK")
 	icon:SetAllPoints()
-	icon:SetTexture("Interface\\AddOns\\CooldownTimeline3\\Media\\minimap.png")
+	icon:SetTexture("Interface\\AddOns\\CooldownTimeline3\\Media\\minimap.tga")
 
 	btn:SetPoint("CENTER", Minimap, "CENTER", offset((self.db.global and self.db.global.minimapAngle) or 225))
 

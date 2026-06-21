@@ -1,9 +1,9 @@
 ## Interface: 20505
 ## Title: |cFF54a3ffCDTL3|r |cffffffff(CooldownTimeline)|r
-## IconTexture: Interface\AddOns\CooldownTimeline3\Media\icon-128.png
+## IconTexture: Interface\AddOns\CooldownTimeline3\Media\icon-128.tga
 ## Author: cliffclive
 ## Notes: Track cooldowns as icons along a timeline
-## Version: 3.0.4
+## Version: 3.0.5
 ## SavedVariables: CDTL3DB CDTL2DB
 ## OptionalDeps: Masque
 
