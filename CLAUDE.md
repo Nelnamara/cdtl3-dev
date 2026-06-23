@@ -22,7 +22,8 @@ The TOCs declare **both** (`## SavedVariables: CDTL3DB CDTL2DB`) so the old glob
 ## Midnight gotchas
 - `Settings.OpenToCategory("CDTL3")` (string) **errors** on Midnight — use `LibStub("AceConfigDialog-3.0"):Open("CDTL3")` (the slash + minimap button do this).
 - **Cooldown values are SECRET when tainted.** `C_Spell.GetSpellCooldown(id).startTime`/`.duration` can be *read* without error, but **comparing or doing arithmetic on them throws** ("attempt to compare a secret number value"). Both `Helpers.lua:GetSpellCooldown` **and** `GetSpellCharges` do the comparison **inside** a `pcall` and only return real numbers (GetSpellCooldown falls back to event-tracked cast time + `GetSpellBaseCooldown`; GetSpellCharges falls back to 0s). Never compare/use these outside the protected closure (the GetSpellCooldown form was the v3.0.4 fix — Lane view spammed 167× before; GetSpellCharges was hardened the same way to prevent the twin crash on charge-based CDs).
-- IconTexture → `Media\icon-128.png`; minimap button texture → `Media\minimap.png`.
+- **Textures must be `.tga`, not `.png`, on Midnight.** PNGs render as the missing-texture checkerboard on 12.0.x — the addon ships `.tga` and the `.png` files are kept only as source art. IconTexture → `Media\icon-128.tga`; minimap button texture → `Media\minimap.tga`. (v3.0.5 fix.)
+- **Midnight reports the *base* cooldown, not the talented one** — `C_Spell.GetSpellCooldown(id).duration` strips talent reductions (e.g. Bestial Wrath shows 90s, not the talented 30s). The per-spell **Custom CD Time** override (Filters) lets users correct this; it must win over the live duration. The v3.0.6 fix stopped the live value from silently overwriting the override every frame.
 
 ## Slash
 `/cdtl3` · `/cooldowntimeline3` (primary) · `/cdtl2`, `/cooldowntimeline2` (legacy aliases). Subcommands: `lock`/`unlock`, `test`, `debug`.
@@ -30,7 +31,7 @@ The TOCs declare **both** (`## SavedVariables: CDTL3DB CDTL2DB`) so the old glob
 ## Build / release / deploy
 - BigWigs packager on **`v*` tag push** (multi-TOC single package). CurseForge secret: **`CURSFORGE_API_KEY`** (misspelled, leave as-is).
 - Local test (retail): copy to `D:\World of Warcraft\_retail_\Interface\AddOns\CooldownTimeline3\`.
-- Current version: **3.0.4** (TOCs + `CDTL3.version`). v3.0.4 bundles the secret-cooldown crash fixes (GetSpellCooldown + GetSpellCharges) **and** the full CDTL2→CDTL3 rename with DB migration; committed + pushed, **tag `v3.0.4` once verified in-game** (Lane view clean; profiles/settings survived the rename).
+- Current version: **3.0.6** (TOCs + `CDTL3.version`), released. Recent history: **3.0.4** secret-cooldown crash fixes (GetSpellCooldown + GetSpellCharges) + the full CDTL2→CDTL3 rename with DB migration; **3.0.5** PNG→TGA checkerboard fix (see Midnight gotchas); **3.0.6** fixed the manual **Custom CD Time** override being overwritten by the live (base) cooldown every frame.
 
 ## Conventions
 - **Never** append a `Co-Authored-By` trailer to commits. Tabs for indentation (match the existing file).
