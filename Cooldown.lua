@@ -1160,6 +1160,12 @@ private.CooldownUpdate = function(f, elapsed)
 
 									--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
 									local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
+									-- Manual override wins: the live Midnight duration is the talent-blind base
+									-- CD, so when a custom CD is set, drive the countdown from that instead.
+									if d["setCustomCD"] and d["customCDTime"] then
+										d["baseCD"] = d["customCDTime"] / 1000
+										duration = d["baseCD"]
+									end
 									d["currentCD"] = start + duration - GetTime()
 								end
 							end
@@ -1195,9 +1201,15 @@ private.CooldownUpdate = function(f, elapsed)
 								--end
 							--else
 								--CDTL3:Print("NO CHARGES")
-								
+
 
 								local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
+								-- Manual override wins: Midnight's live duration is the talent-blind base
+								-- CD, so when a custom CD is set, drive the countdown from that instead.
+								if d["setCustomCD"] and d["customCDTime"] then
+									d["baseCD"] = d["customCDTime"] / 1000
+									duration = d["baseCD"]
+								end
 								d["currentCD"] = start + duration - GetTime()
 
 								--if d["name"] == "Primal Rage" or d["name"] == "Implosive Trap" then

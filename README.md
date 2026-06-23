@@ -77,6 +77,12 @@ Multi-version: Mainline (12.0.7), MoP Classic, TBC, and Vanilla TOCs, all sharin
 
 ## Changelog
 
+### v3.0.6
+- **Fixed the manual "Custom CD Time" override** — it was being silently overwritten every frame by the game's live cooldown duration, which on Midnight reports the *base* cooldown (talent reductions stripped out). Custom values never took effect. The override now reliably drives the timeline, so you can correct talent-reduced cooldowns the game reports at base duration (e.g. Bestial Wrath showing 90s instead of the talented 30s) — toggle **Custom CD Time** on the spell in Filters and enter the real value
+
+### v3.0.5
+- **Fixed the checkerboard minimap button & AddOns-list icon on Midnight** — PNG textures render as the missing-texture checkerboard on 12.0.x; CDTL3 now ships `.tga` versions (`minimap.tga`, `icon-128.tga`)
+
 ### v3.0.4
 - **Fixed secret-value crashes (Midnight 12.0.7)** — `C_Spell.GetSpellCooldown`/`GetSpellCharges` timing fields are secret when execution is tainted; comparing them threw "attempt to compare a secret number value" and spammed the Lane view. Both now compare *inside* a `pcall` and fall back to event-tracked cast time on failure
 - **Completed the CDTL2 → CDTL3 rename** — object, AceAddon name, AceConfig keys, frame names, and Masque group are all `CDTL3` now. The saved DB migrates `CDTL2DB → CDTL3DB` automatically on first load, so existing profiles carry over
