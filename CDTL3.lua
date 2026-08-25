@@ -14,7 +14,7 @@ CDTL3.GUI = LibStub("AceGUI-3.0")
 local _, _, _, tocversion = GetBuildInfo()
 CDTL3.tocversion = tocversion
 
-CDTL3.version = "3.0.6"
+CDTL3.version = "3.0.7"
 CDTL3.noticeVersion = "2.6"
 CDTL3.cdUID = 999
 CDTL3.discordlink = ""
@@ -1358,6 +1358,13 @@ local defaults = {
 					bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
 					bgClassColor = false,
 					bgSchoolColor = false,
+
+					dynamicColor = {
+						enabled = false,
+						warnTime = 5,
+						warnColor = { r = 1, g = 0.6, b = 0, a = 1 },
+						readyColor = { r = 0.2, g = 0.9, b = 0.2, a = 1 },
+					},
 					
 					border = {
 						style = "None",
@@ -1480,6 +1487,13 @@ local defaults = {
 					bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
 					bgClassColor = false,
 					bgSchoolColor = false,
+
+					dynamicColor = {
+						enabled = false,
+						warnTime = 5,
+						warnColor = { r = 1, g = 0.6, b = 0, a = 1 },
+						readyColor = { r = 0.2, g = 0.9, b = 0.2, a = 1 },
+					},
 					
 					border = {
 						style = "None",
@@ -1602,6 +1616,13 @@ local defaults = {
 					bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
 					bgClassColor = false,
 					bgSchoolColor = false,
+
+					dynamicColor = {
+						enabled = false,
+						warnTime = 5,
+						warnColor = { r = 1, g = 0.6, b = 0, a = 1 },
+						readyColor = { r = 0.2, g = 0.9, b = 0.2, a = 1 },
+					},
 					
 					border = {
 						style = "None",
@@ -2085,19 +2106,37 @@ function CDTL3:OnInitialize()
 	self.db.RegisterCallback(self, "OnProfileReset", "RefreshConfig")
 	
 	--LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3", CDTL3:GetMainOptions(), { "cdtl2", "cooldowntimeline2"})
-	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3", CDTL3:GetMainOptions())
-	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3Lanes", CDTL3:GetLaneOptions())
-	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3Ready", CDTL3:GetReadyOptions())
-	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3BarFrames", CDTL3:GetBarFrameOptions())
-	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3Filters", CDTL3:GetFilterOptions())
-	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3Profiles", self.profile)
-	
-	self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL3", "CDTL3")
-	self.optionsFrame.oLanes = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL3Lanes", "Lanes", "CDTL3")
-	self.optionsFrame.oReady = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL3Ready", "Ready", "CDTL3")
-	self.optionsFrame.oBarFrames = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL3BarFrames", "Bars", "CDTL3")
-	self.optionsFrame.oFilter = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL3Filters", "Filters", "CDTL3")
-	self.optionsFrame.profile = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL3Profiles", "Profiles", "CDTL3")
+	-- ALL settings live in the standalone movable window (/cdtl3): the full tree with the
+	-- Lanes/Ready/Bar Frames/Filters/Profiles panels as tabs. Blizzard's Settings frame is
+	-- unmovable, so its AddOns list gets ONLY a launcher button — no settings live there.
+	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3", CDTL3:GetFullOptions())
+
+	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3Bliz", {
+		name = "CDTL3",
+		type = "group",
+		args = {
+			about = {
+				name = "CDTL3 is configured in its own movable window.\n\n",
+				type = "description",
+				fontSize = "medium",
+				order = 1,
+			},
+			open = {
+				name = "Open CDTL3 Settings",
+				desc = "Opens the CDTL3 configuration window (same as /cdtl3)",
+				type = "execute",
+				width = 1.5,
+				order = 2,
+				func = function()
+						if SettingsPanel and SettingsPanel:IsShown() then
+							pcall(HideUIPanel, SettingsPanel)
+						end
+						LibStub("AceConfigDialog-3.0"):Open("CDTL3")
+					end,
+			},
+		},
+	})
+	self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL3Bliz", "CDTL3")
 	
 	self:RegisterChatCommand("cdtl3", "ChatCommand")
 	self:RegisterChatCommand("cooldowntimeline3", "ChatCommand")
@@ -2233,6 +2272,21 @@ end
 function CDTL3:ChatCommand(input)
     if not input or input:trim() == "" then
         LibStub("AceConfigDialog-3.0"):Open("CDTL3")
+	elseif input:trim() == "lanes" then
+		LibStub("AceConfigDialog-3.0"):Open("CDTL3")
+		LibStub("AceConfigDialog-3.0"):SelectGroup("CDTL3", "lanes")
+	elseif input:trim() == "ready" then
+		LibStub("AceConfigDialog-3.0"):Open("CDTL3")
+		LibStub("AceConfigDialog-3.0"):SelectGroup("CDTL3", "ready")
+	elseif input:trim() == "bars" then
+		LibStub("AceConfigDialog-3.0"):Open("CDTL3")
+		LibStub("AceConfigDialog-3.0"):SelectGroup("CDTL3", "barFrames")
+	elseif input:trim() == "filters" then
+		LibStub("AceConfigDialog-3.0"):Open("CDTL3")
+		LibStub("AceConfigDialog-3.0"):SelectGroup("CDTL3", "filters")
+	elseif input:trim() == "profiles" then
+		LibStub("AceConfigDialog-3.0"):Open("CDTL3")
+		LibStub("AceConfigDialog-3.0"):SelectGroup("CDTL3", "profiles")
 	elseif input:trim() == "lock" then
 		CDTL3:ToggleFrameLock()
 	elseif input:trim() == "unlock" then

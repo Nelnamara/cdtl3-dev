@@ -73,7 +73,7 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 			f.data["baseCD"] = f.data["customCDTime"] / 1000
 		end
 	end
-	
+
 	if cdType == "items" then
 		if cdData["itemIcon"] then
 			f.data["itemIcon"] = cdData["itemIcon"]
@@ -273,20 +273,8 @@ function CDTL3:RefreshBar(cd)
 		s["bar"]["fgTextureColor"]["a"]
 	)]]--
 	
-	local fgColor = s["bar"]["fgTextureColor"]
-	if s["bar"]["fgSchoolColor"] then
-		local schoolColor = CDTL3.db.profile.global["schoolColors"]["Other"]
-		if cd.data["school"] then
-			schoolColor = CDTL3.db.profile.global["schoolColors"][cd.data["school"]]
-		end
-		
-		fgColor = schoolColor
-	elseif CDTL3.player["class"] then
-		if s["bar"]["fgClassColor"] then
-			fgColor = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
-		end
-	end
-	
+	local fgColor = private.GetBarFGColor(s, cd.data)
+
 	f.bar:SetStatusBarColor(
 		fgColor["r"],
 		fgColor["g"],
@@ -862,6 +850,60 @@ function CDTL3:RefreshIcon(cd)
 	end
 end
 
+-- Resolves the configured foreground color for a bar (custom -> school -> class), shared by
+-- RefreshBar and the dynamic-color restore in BarUpdate
+private.GetBarFGColor = function(s, d)
+	local fgColor = s["bar"]["fgTextureColor"] or { r = 0.77647, g = 0.11765, b = 0.28235, a = 1 }
+	if s["bar"]["fgSchoolColor"] then
+		local schoolColor = CDTL3.db.profile.global["schoolColors"]["Other"]
+		if d and d["school"] then
+			schoolColor = CDTL3.db.profile.global["schoolColors"][d["school"]] or schoolColor
+		end
+
+		fgColor = schoolColor
+	elseif CDTL3.player["class"] then
+		if s["bar"]["fgClassColor"] then
+			fgColor = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
+		end
+	end
+
+	return fgColor
+end
+
+-- Dynamic ready-state color: below the warn threshold the bar blends warnColor -> readyColor
+-- as the cooldown approaches ready; above it (or when disabled) the configured color applies
+private.UpdateBarDynamicColor = function(ba, s, d)
+	if not ( s and s["bar"] ) then return end
+	local dyn = s["bar"]["dynamicColor"]
+	if dyn and dyn["enabled"] then
+		local remaining = d["currentCD"]
+		local warnT = dyn["warnTime"] or 5
+
+		if remaining <= warnT and warnT > 0 then
+			local t = 1 - (remaining / warnT)
+			if t < 0 then t = 0 elseif t > 1 then t = 1 end
+
+			local c1 = dyn["warnColor"] or { r = 1, g = 0.6, b = 0, a = 1 }
+			local c2 = dyn["readyColor"] or { r = 0.2, g = 0.9, b = 0.2, a = 1 }
+
+			ba.bar:SetStatusBarColor(
+				c1["r"] + (c2["r"] - c1["r"]) * t,
+				c1["g"] + (c2["g"] - c1["g"]) * t,
+				c1["b"] + (c2["b"] - c1["b"]) * t,
+				(c1["a"] or 1) + ((c2["a"] or 1) - (c1["a"] or 1)) * t
+			)
+			ba.dynTinted = true
+			return
+		end
+	end
+
+	if ba.dynTinted then
+		ba.dynTinted = false
+		local fgColor = private.GetBarFGColor(s, d)
+		ba.bar:SetStatusBarColor(fgColor["r"], fgColor["g"], fgColor["b"], fgColor["a"])
+	end
+end
+
 private.BarUpdate = function(f, elapsed)
 	local d = f.data
 	local ba = f.bar
@@ -908,7 +950,9 @@ private.BarUpdate = function(f, elapsed)
 			
 			local iconPercent = private.CalcLinearPosition(pCurrent, pBase)
 			ba.bar:SetValue(iconPercent)
-			
+
+			private.UpdateBarDynamicColor(ba, s, d)
+
 			if ba:GetAlpha() ~= 0 then
 				private.UpdateText(f, ba.txt.text1, s["bar"]["text1"], s["bar"]["text1"]["text"])
 				private.UpdateText(f, ba.txt.text2, s["bar"]["text2"], s["bar"]["text2"]["text"])

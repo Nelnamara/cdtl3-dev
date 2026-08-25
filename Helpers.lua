@@ -14,46 +14,38 @@ function CDTL3:AddUsedBy(type, id, guid)
 end
 
 function CDTL3:AuraExists(unit, aura)
-	for i = 1, 40, 1 do
-		local name, spellID, duration, icon, count, expirationTime = CDTL3:GetUnitAura(unit, i, "HELPFUL")
+	-- 12.1 made aura data SECRET in combat/encounter/M+/PvP: the index accessor Lua-errors while
+	-- auras are secret, and comparing/doing arithmetic on secret fields throws. So — same pattern
+	-- as GetSpellCooldown/GetSpellCharges — the whole scan, name compare, and duration/expiry math
+	-- happen INSIDE the pcall, and only clean numbers escape. Returns nil while auras are secret.
+	local ok, result = pcall(function()
+		for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
+			for i = 1, 40, 1 do
+				local name, spellID, duration, icon, count, expirationTime = CDTL3:GetUnitAura(unit, i, filter)
 
-		if name then
-			if aura == name then
-				local s = {
-					id = spellId,
-					bCD = duration * 1000,
-					name = name,
-					type = "buffs",
-					icon = icon,
-					stacks = count,
-					endTime = expirationTime,
-				}
-				
-				return s
+				if name and aura == name then
+					local s = {
+						id = spellID,
+						bCD = duration * 1000,
+						name = name,
+						type = (filter == "HELPFUL") and "buffs" or "debuffs",
+						icon = icon,
+						stacks = (count or 0) + 0,
+						endTime = (expirationTime or 0) + 0,
+					}
+
+					return s
+				end
 			end
 		end
-	end
-	
-	for i = 1, 40, 1 do
-		local name, spellID, duration, icon, count, expirationTime = CDTL3:GetUnitAura(unit, i, "HARMFUL")
 
-		if name then
-			if aura == name then
-				local s = {
-					id = spellId,
-					bCD = duration * 1000,
-					name = name,
-					type = "debuffs",
-					icon = icon,
-					stacks = count,
-					endTime = expirationTime,
-				}
-				
-				return s
-			end
-		end
+		return nil
+	end)
+
+	if ok then
+		return result
 	end
-	
+
 	return nil
 end
 
@@ -1236,11 +1228,9 @@ function CDTL3:RefreshConfig()
 	CDTL3:RefreshAllIcons()
 	CDTL3:RefreshAllBars()
 	
-	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3", CDTL3:GetMainOptions())
-	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3Lanes", CDTL3:GetLaneOptions())
-	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3Ready", CDTL3:GetReadyOptions())
-	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3BarFrames", CDTL3:GetBarFrameOptions())
-	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3Filters", CDTL3:GetFilterOptions())
+	-- Re-register the FULL tree (not just the main table) so a profile switch never strips
+	-- the Lanes/Ready/Bar Frames/Filters/Profiles tabs from the standalone window.
+	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3", CDTL3:GetFullOptions())
 	
 	if CDTL3.db.profile.global["unlockFrames"] then
 		CDTL3.unlockFrame:Show()

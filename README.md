@@ -1,6 +1,6 @@
 # CooldownTimeline 3 (CDTL3)
 
-> **WoW:** 12.0.7 (Midnight) · **Maintainer:** Nelnamara · **Original V2 author:** cliffclive · **Original author:** Vreenak (US-Remulos)
+> **WoW:** 12.1 (Midnight) · **Maintainer:** Nelnamara · **Original V2 author:** cliffclive · **Original author:** Vreenak (US-Remulos)
 
 CooldownTimeline tracks your ability cooldowns as moving icons along a horizontal timeline bar. As a cooldown expires it slides toward a "ready" zone on the right; when it fires, a configurable alert plays. Supports all spec cooldowns, ICDs, auto-attack swings, and optional Masque skinning.
 
@@ -25,7 +25,7 @@ CooldownTimeline tracks your ability cooldowns as moving icons along a horizonta
 
 ## Requirements
 
-- WoW Midnight 12.0.7+ — all libraries embedded, no dependencies
+- WoW Midnight 12.1+ — all libraries embedded, no dependencies
 - [Masque](https://www.curseforge.com/wow/addons/masque) *(optional)* — skins cooldown icons
 
 ---
@@ -44,7 +44,8 @@ Type `/cdtl3` to open options. Auto-detection scans your spellbook on login and 
 
 Primary command is `/cdtl3` (or `/cooldowntimeline3`). The old `/cdtl2` / `/cooldowntimeline2` remain as legacy aliases so long-time users' muscle memory still works.
 
-- **`/cdtl3`** — Open the options panel
+- **`/cdtl3`** — Open the options window (movable; every settings panel is a tab)
+- **`/cdtl3 lanes`** / **`ready`** / **`bars`** / **`filters`** / **`profiles`** — Jump straight to that settings tab
 - **`/cdtl3 lock`** / **`/cdtl3 unlock`** — Toggle frame lock (enable/disable dragging)
 - **`/cdtl3 test`** — Toggle test mode (fills the bar with sample icons)
 - **`/cdtl3 debug`** — Toggle the debug frame
@@ -71,11 +72,20 @@ Open with `/cdtl3` or the minimap button. Key sections:
 
 ## Compatibility / Midnight Notes
 
-Multi-version: Mainline (12.0.7), MoP Classic, TBC, and Vanilla TOCs, all sharing one SavedVariables. Cooldown timing fields are secret in Midnight, so CDTL3 reads them inside a protected `pcall` and falls back to event-tracked cast time on failure — it never does arithmetic on a secret value.
+Multi-version: Mainline (12.1), MoP Classic, TBC, and Vanilla TOCs, all sharing one SavedVariables. Cooldown timing fields are secret in Midnight, so CDTL3 reads them inside a protected `pcall` and falls back to event-tracked cast time on failure — it never does arithmetic on a secret value.
 
 ---
 
 ## Changelog
+
+### v3.0.7
+- **All settings now live in one movable window** — `/cdtl3` opens the full configuration with every panel (Lanes, Ready, Bar Frames, Filters, Profiles) as a tab. Previously the standalone window showed only a fraction of the settings; the rest were buried in Blizzard's unmovable Settings frame — including the lane and bar color/texture options many users never found. Blizzard's AddOns entry is now just a launcher button
+- **New slash shortcuts** — `/cdtl3 lanes | ready | bars | filters | profiles` jump straight to a tab
+- **New: Dynamic Color for cooldown bars** — the bar blends from a warning color into a ready color over its final seconds (Bar Frames → Bars → Dynamic Color; off by default)
+- **New: Spell School Color for bars** — the toggle existed in the engine but was never exposed in options
+- **Midnight 12.1 (Curse of Ula'tek) compatibility** — aura tracking (buffs/debuffs/offensives) now reads aura data inside a protected call, so 12.1's secret-aura rules no longer cause error spam in combat, Mythic+, or PvP; tracking degrades gracefully while auras are secret
+- **Fixed aura-triggered entries recording spell ID 0** — a long-standing bug inherited from CDTL2
+- TOC bumped to Interface 120100
 
 ### v3.0.6
 - **Fixed the manual "Custom CD Time" override** — it was being silently overwritten every frame by the game's live cooldown duration, which on Midnight reports the *base* cooldown (talent reductions stripped out). Custom values never took effect. The override now reliably drives the timeline, so you can correct talent-reduced cooldowns the game reports at base duration (e.g. Bestial Wrath showing 90s instead of the talented 30s) — toggle **Custom CD Time** on the spell in Filters and enter the real value

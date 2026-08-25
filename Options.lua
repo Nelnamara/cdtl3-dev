@@ -10,6 +10,27 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."\n"
 	changeLog = changeLog.."CDTL3 is the Midnight (12.x) continuation of Cooldown Timeline,\n"
 	changeLog = changeLog.."based on the original by Vreenak and the v2 rewrite by cliffclive.\n\n"
+	changeLog = changeLog.."Changelog 3.0.7:\n\n"
+	changeLog = changeLog.."  - ALL settings now live in one movable window (/cdtl3) — every panel\n"
+	changeLog = changeLog.."    (Lanes, Ready, Bar Frames, Filters, Profiles) is a tab there. The lane\n"
+	changeLog = changeLog.."    and bar color/texture options were always in the addon, but the old\n"
+	changeLog = changeLog.."    standalone window never showed them — now everything is reachable\n"
+	changeLog = changeLog.."  - Blizzard's AddOns settings entry is now just a launcher button\n"
+	changeLog = changeLog.."  - New slash shortcuts: /cdtl3 lanes | ready | bars | filters | profiles\n"
+	changeLog = changeLog.."  - New: Dynamic Color for cooldown bars — the bar blends toward a ready\n"
+	changeLog = changeLog.."    color over its final seconds (Bar Frames -> Bars -> Dynamic Color)\n"
+	changeLog = changeLog.."  - New: Spell School Color toggle for bars exposed in options\n"
+	changeLog = changeLog.."  - Midnight 12.1 compatibility: aura tracking hardened against secret\n"
+	changeLog = changeLog.."    auras (no more errors in combat / M+ / PvP)\n"
+	changeLog = changeLog.."  - Fixed aura-triggered entries recording spell ID 0\n\n"
+	changeLog = changeLog.."Changelog 3.0.6:\n\n"
+	changeLog = changeLog.."  - Fixed the manual Custom CD Time override being overwritten by the\n"
+	changeLog = changeLog.."    live (base) cooldown every frame\n\n"
+	changeLog = changeLog.."Changelog 3.0.5:\n\n"
+	changeLog = changeLog.."  - Fixed checkerboard minimap button / AddOns-list icon (TGA textures)\n\n"
+	changeLog = changeLog.."Changelog 3.0.4:\n\n"
+	changeLog = changeLog.."  - Fixed secret-cooldown crashes on Midnight (Lane view error spam)\n"
+	changeLog = changeLog.."  - Completed the CDTL2 -> CDTL3 rename with settings migration\n\n"
 	changeLog = changeLog.."Changelog 3.0.2:\n\n"
 	changeLog = changeLog.."  - Fixed profiles not saving on MoP / TBC / Vanilla Classic\n"
 	changeLog = changeLog.."  - Added a minimap button and an AddOns-list icon\n"
@@ -2039,6 +2060,97 @@ private.GetBarFrameSet = function(i)
 						set = function(info, val)
 								frame["bar"]["bgClassColor"] = val
 								CDTL3:RefreshAllBars()
+							end,
+					},
+					fgSchoolColor = {
+						name = "Spell School Color",
+						desc = "Color each bar by its spell's school (fire, frost, etc)",
+						order = 108,
+						type = "toggle",
+						width = 0.7,
+						get = function(info)
+								return frame["bar"]["fgSchoolColor"]
+							end,
+						set = function(info, val)
+								frame["bar"]["fgSchoolColor"] = val
+								CDTL3:RefreshAllBars()
+							end,
+					},
+					dynamicHeader = {
+						name = "Dynamic Color",
+						type = "header",
+						order = 114.1,
+					},
+					dynamicEnabled = {
+						name = "Enable Dynamic Color",
+						desc = "As a cooldown approaches ready, the bar blends from the warning color into the ready color. Above the warning window the normal bar color applies.",
+						order = 114.2,
+						type = "toggle",
+						width = 1,
+						get = function(info)
+								return frame["bar"]["dynamicColor"] and frame["bar"]["dynamicColor"]["enabled"]
+							end,
+						set = function(info, val)
+								frame["bar"]["dynamicColor"] = frame["bar"]["dynamicColor"] or {}
+								frame["bar"]["dynamicColor"]["enabled"] = val
+								CDTL3:RefreshAllBars()
+							end,
+					},
+					dynamicWarnTime = {
+						name = "Warning Window (sec)",
+						desc = "How many seconds before ready the color blend begins",
+						order = 114.3,
+						type = "range",
+						softMin = 1,
+						softMax = 30,
+						bigStep = 0.5,
+						disabled = function(info)
+								return not ( frame["bar"]["dynamicColor"] and frame["bar"]["dynamicColor"]["enabled"] )
+							end,
+						get = function(info)
+								return ( frame["bar"]["dynamicColor"] and frame["bar"]["dynamicColor"]["warnTime"] ) or 5
+							end,
+						set = function(info, val)
+								frame["bar"]["dynamicColor"] = frame["bar"]["dynamicColor"] or {}
+								frame["bar"]["dynamicColor"]["warnTime"] = val
+							end,
+					},
+					dynamicWarnColor = {
+						name = "Warning Color",
+						desc = "Bar color when the warning window begins",
+						order = 114.4,
+						type = "color",
+						width = 0.5,
+						hasAlpha = true,
+						disabled = function(info)
+								return not ( frame["bar"]["dynamicColor"] and frame["bar"]["dynamicColor"]["enabled"] )
+							end,
+						get = function(info)
+								local c = ( frame["bar"]["dynamicColor"] and frame["bar"]["dynamicColor"]["warnColor"] ) or { r = 1, g = 0.6, b = 0, a = 1 }
+								return c["r"], c["g"], c["b"], c["a"]
+							end,
+						set = function(info, red, green, blue, alpha)
+								frame["bar"]["dynamicColor"] = frame["bar"]["dynamicColor"] or {}
+								frame["bar"]["dynamicColor"]["warnColor"] = { r = red, g = green, b = blue, a = alpha }
+							end,
+					},
+					dynamicReadyColor = {
+						name = "Ready Color",
+						desc = "Bar color the moment the cooldown is ready",
+						order = 114.5,
+						type = "color",
+						width = 0.5,
+						hasAlpha = true,
+						disabled = function(info)
+								return not ( frame["bar"]["dynamicColor"] and frame["bar"]["dynamicColor"]["enabled"] )
+							end,
+						get = function(info)
+								local c = ( frame["bar"]["dynamicColor"] and frame["bar"]["dynamicColor"]["readyColor"] ) or { r = 0.2, g = 0.9, b = 0.2, a = 1 }
+								return c["r"], c["g"], c["b"], c["a"]
+							end,
+						set = function(info, red, green, blue, alpha)
+								frame["bar"]["dynamicColor"] = frame["bar"]["dynamicColor"] or {}
+								frame["bar"]["dynamicColor"]["readyColor"] = { r = red, g = green, b = blue, a = alpha }
 							end,
 					},
 					spacer115 = {
@@ -6575,5 +6687,34 @@ private.GetTextYOffset = function(s, o, i, r)
 			end,
 	}
 	
+	return options
+end
+-- The complete settings tree for the standalone movable window: main options plus the
+-- Lanes/Ready/Bar Frames/Filters/Profiles panels as tabs. Blizzard's Settings frame is
+-- unmovable, so the standalone dialog is the primary config surface — the Blizzard
+-- AddOns list gets only a launcher button (see OnInitialize).
+function CDTL3:GetFullOptions()
+	local options = CDTL3:GetMainOptions()
+
+	local lanes = CDTL3:GetLaneOptions()
+	local ready = CDTL3:GetReadyOptions()
+	local barFrames = CDTL3:GetBarFrameOptions()
+	local filters = CDTL3:GetFilterOptions()
+
+	lanes.order = 2001
+	ready.order = 2002
+	barFrames.order = 2003
+	filters.order = 2004
+
+	options.args.lanes = lanes
+	options.args.ready = ready
+	options.args.barFrames = barFrames
+	options.args.filters = filters
+
+	if CDTL3.profile then
+		CDTL3.profile.order = 2005
+		options.args.profiles = CDTL3.profile
+	end
+
 	return options
 end
