@@ -788,7 +788,7 @@ end
 function CDTL3:GetSpellLink(id)
     local link = ""
 
-	if CDTL3.tocversion >= 110000 then
+	if CDTL3.retailAPI then
     	link = C_Spell.GetSpellLink(id)
 	else
 		link, _ = _G.GetSpellLink(id)
@@ -808,7 +808,7 @@ function CDTL3:GetSpellInfo(id)
 	local icon = 134400				-- Question mark icon
 	local originalIconID = 134400	-- Question mark icon
 
-	if CDTL3.tocversion >= 110000 then
+	if CDTL3.retailAPI then
 		local data = C_Spell.GetSpellInfo(id)
 		
 		if data then
@@ -829,7 +829,7 @@ function CDTL3:GetSpellCharges(id)
 	local cooldownDuration = 0
 	local cooldownStart = 0
 
-	if CDTL3.tocversion >= 110000 then
+	if CDTL3.retailAPI then
     	local data = C_Spell.GetSpellCharges(id)
 
 		if data then
@@ -864,7 +864,7 @@ function CDTL3:GetSpellCooldown(id)
 	local duration = 0
 	local enabled  = true
 
-	if CDTL3.tocversion >= 110000 then
+	if CDTL3.retailAPI then
 		local data = C_Spell.GetSpellCooldown(id)
 
 		if data then
@@ -987,7 +987,7 @@ function CDTL3:GetUnitAura(unit, i, filter)
 	local count = 0
 	local expirationTime = 0
 
-	if CDTL3.tocversion >= 110000 then
+	if CDTL3.retailAPI then
     	local data = C_UnitAuras.GetAuraDataByIndex(unit, i, filter)
 
 		if data then
@@ -1024,7 +1024,7 @@ function CDTL3:IsUsableSpell(id)
 	local usable = true
 	local noPower = false
 
-	if CDTL3.tocversion >= 110000 then
+	if CDTL3.retailAPI then
     	usable, noPower = C_Spell.IsSpellUsable(id)
 	else
 		usable, noPower = IsUsableSpell(id)
@@ -1165,7 +1165,7 @@ end
 
 function CDTL3:OnTalentChanges()
 	if CDTL3.db.profile.global["debugMode"] then
-		if CDTL3.tocversion >= 110000 then
+		if CDTL3.retailAPI then
 			CDTL3:Print("RETAIL TALENT CHANGE")
 		else
 			CDTL3:Print("CLASSIC/ERA TALENT/RUNE CHANGE")
@@ -1340,7 +1340,7 @@ end
 
 function CDTL3:ScanCurrentCooldowns(class, race)
 	-- SPELLS
-	if CDTL3.tocversion >= 110000 then
+	if CDTL3.retailAPI then
 		for i = 1, C_SpellBook.GetNumSpellBookSkillLines() do
 			local skillLineInfo = C_SpellBook.GetSpellBookSkillLineInfo(i)
 			local offset, numSlots = skillLineInfo.itemIndexOffset, skillLineInfo.numSpellBookItems
@@ -1669,7 +1669,7 @@ end
 
 function CDTL3:ScanSpellbook()
     -- Player Spells
-	if CDTL3.tocversion >= 110000 then
+	if CDTL3.retailAPI then
 		for i = 1, C_SpellBook.GetNumSpellBookSkillLines() do
 			local skillLineInfo = C_SpellBook.GetSpellBookSkillLineInfo(i)
 			local offset, numSlots = skillLineInfo.itemIndexOffset, skillLineInfo.numSpellBookItems

@@ -16,8 +16,8 @@ The TOCs declare **both** (`## SavedVariables: CDTL3DB CDTL2DB`) so the old glob
 - `Helpers.lua`, `Data.lua`, `Media.lua`, `Holders.lua`, `Lanes.lua`, `BarFrames.lua`, `Ready.lua`, `Cooldown.lua`. `Libs/` = Ace3 + LibSharedMedia.
 
 ## Multi-version TOCs (all must agree on SavedVariables)
-`CooldownTimeline3_Mainline.toc` (Interface 120007), `_Mists` (50503 = MoP Classic),
-`_TBC` (20505), `_Vanilla` (11508). All declare **`## SavedVariables: CDTL3DB CDTL2DB`** (CDTL3DB = live, CDTL2DB = legacy kept for the migration). They must stay identical across all four — a mismatch silently wipes that client's profiles (the Classic TOCs once had the wrong name and did exactly that).
+`CooldownTimeline3_Mainline.toc` (Interface `120100, 16001` — 16001 = WoW: Forever beta), `_Mists` (50503 = MoP Classic),
+`_TBC` (20505), `_Vanilla` (11508). Forever loads `_Mainline.toc` via the Mainline-family fallback (its own suffix `_Camelot` "may change before launch", so we don't ship one); BigWigs packager ≥ v2.6.0 maps `16xxx` to CurseForge's Forever game version. All declare **`## SavedVariables: CDTL3DB CDTL2DB`** (CDTL3DB = live, CDTL2DB = legacy kept for the migration). They must stay identical across all four — a mismatch silently wipes that client's profiles (the Classic TOCs once had the wrong name and did exactly that).
 
 ## Midnight gotchas
 - `Settings.OpenToCategory("CDTL3")` (string) **errors** on Midnight — use `LibStub("AceConfigDialog-3.0"):Open("CDTL3")` (the slash + minimap button do this).
@@ -25,13 +25,18 @@ The TOCs declare **both** (`## SavedVariables: CDTL3DB CDTL2DB`) so the old glob
 - **Textures must be `.tga`, not `.png`, on Midnight.** PNGs render as the missing-texture checkerboard on 12.0.x — the addon ships `.tga` and the `.png` files are kept only as source art. IconTexture → `Media\icon-128.tga`; minimap button texture → `Media\minimap.tga`. (v3.0.5 fix.)
 - **Midnight reports the *base* cooldown, not the talented one** — `C_Spell.GetSpellCooldown(id).duration` strips talent reductions (e.g. Bestial Wrath shows 90s, not the talented 30s). The per-spell **Custom CD Time** override (Filters) lets users correct this; it must win over the live duration. The v3.0.6 fix stopped the live value from silently overwriting the override every frame.
 
+## WoW: Forever gotchas (3.0.8)
+- **Forever = modern Mainline engine + vanilla-era interface number (16xxx).** `WOW_PROJECT_ID == WOW_PROJECT_MAINLINE`, the old globals (`GetSpellInfo`, `GetSpellCooldown`, `GetSpellCharges`, `UnitAura`, `GetNumSpellTabs`…) are gone, and Midnight secret values apply. So **never gate an API call on `tocversion >= 110000`** — use **`CDTL3.retailAPI`** (CDTL3.lua top; true on retail and Forever). `CDTL3.tocversion` stays for era *content* only (Data.lua spell lists, class-colour pickers, test icons), where Forever correctly behaves as Vanilla. `CDTL3.isForever` for Forever-only exceptions (e.g. SoD `RUNE_UPDATED` doesn't exist there).
+- **Combat log is closed to addons on Forever** — `COMBAT_LOG_EVENT_UNFILTERED` is registered only if `CombatLogGetCurrentEventInfo` exists, inside a `pcall`, so a refusal can't abort the rest of `TurnOn`.
+- Beta install path: `World of Warcraft\_classic_beta_\Interface\AddOns\CooldownTimeline3\`. Launch is 2026-11-04 — re-check the live interface number then.
+
 ## Slash
 `/cdtl3` · `/cooldowntimeline3` (primary) · `/cdtl2`, `/cooldowntimeline2` (legacy aliases). Subcommands: `lock`/`unlock`, `test`, `debug`.
 
 ## Build / release / deploy
 - BigWigs packager on **`v*` tag push** (multi-TOC single package). CurseForge secret: **`CURSFORGE_API_KEY`** (misspelled, leave as-is).
 - Local test (retail): copy to `D:\World of Warcraft\_retail_\Interface\AddOns\CooldownTimeline3\`.
-- Current version: **3.0.7** (all 4 TOCs + `CDTL3.version`), Interface 120100. Recent history: **3.0.4** secret-cooldown crash fixes (GetSpellCooldown + GetSpellCharges) + the full CDTL2→CDTL3 rename with DB migration; **3.0.5** PNG→TGA checkerboard fix (see Midnight gotchas); **3.0.6** fixed the manual **Custom CD Time** override being overwritten by the live (base) cooldown every frame; **3.0.7** unified config window + 12.1 aura secrecy hardening + Dynamic Color (below).
+- Current version: **3.0.8** (all 4 TOCs + `CDTL3.version`), Interface 120100 (+16001 Forever). Recent history: **3.0.4** secret-cooldown crash fixes (GetSpellCooldown + GetSpellCharges) + the full CDTL2→CDTL3 rename with DB migration; **3.0.5** PNG→TGA checkerboard fix (see Midnight gotchas); **3.0.6** fixed the manual **Custom CD Time** override being overwritten by the live (base) cooldown every frame; **3.0.7** unified config window + 12.1 aura secrecy hardening + Dynamic Color (below); **3.0.8** WoW: Forever support (see Forever gotchas).
 
 ## Config architecture (3.0.7)
 - **All settings live in ONE movable AceConfigDialog window**: `CDTL3:GetFullOptions()` (Options.lua, bottom) = GetMainOptions + the Lanes/Ready/BarFrames/Filters tables + `CDTL3.profile` embedded as tabs (orders 2001–2005, args keys `lanes/ready/barFrames/filters/profiles` — the `/cdtl3 <tab>` slash subcommands SelectGroup on those keys). Registered as `"CDTL3"` in **both** OnInitialize (CDTL3.lua) **and** `RefreshConfig` (Helpers.lua ~1231) — the RefreshConfig re-registration MUST use GetFullOptions or a profile switch strips the tabs.
