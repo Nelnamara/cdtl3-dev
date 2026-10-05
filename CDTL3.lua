@@ -14,7 +14,14 @@ CDTL3.GUI = LibStub("AceGUI-3.0")
 local _, _, _, tocversion = GetBuildInfo()
 CDTL3.tocversion = tocversion
 
-CDTL3.version = "3.0.7"
+-- WoW: Forever runs the modern Mainline engine and API (WOW_PROJECT_ID is Mainline,
+-- the old spell/aura/spellbook globals are gone, values can be secret) but reports a
+-- vanilla-era interface number (16xxx). So tocversion only picks era CONTENT (spell
+-- lists, class colours); retailAPI picks which API calls exist.
+CDTL3.isForever = WOW_PROJECT_MAINLINE ~= nil and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE and tocversion < 110000
+CDTL3.retailAPI = tocversion >= 110000 or CDTL3.isForever
+
+CDTL3.version = "3.0.8"
 CDTL3.noticeVersion = "2.6"
 CDTL3.cdUID = 999
 CDTL3.discordlink = ""
@@ -3667,7 +3674,11 @@ function CDTL3:TurnOn()
 			CDTL3:Print("ENABLING DETECTION")
 		end
 	
-		CDTL3:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+		-- The combat log is closed to addons on WoW: Forever. Only register it where
+		-- its accessor exists, and never let a refusal abort the rest of TurnOn.
+		if CombatLogGetCurrentEventInfo then
+			pcall(CDTL3.RegisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
+		end
 		CDTL3:RegisterEvent("SPELL_UPDATE_CHARGES")
 		CDTL3:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 		CDTL3:RegisterEvent("ITEM_LOCK_CHANGED")
@@ -3678,11 +3689,11 @@ function CDTL3:TurnOn()
 
 		CDTL3:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 		
-		if CDTL3.tocversion >= 110000 then
+		if CDTL3.retailAPI then
 			--CDTL3:RegisterEvent("TRAIT_CONFIG_UPDATED")
 		end
 
-		if CDTL3.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 and not CDTL3.isForever then
 			CDTL3:RegisterEvent("RUNE_UPDATED")
 		end
 		
@@ -3696,7 +3707,7 @@ function CDTL3:TurnOff()
 			CDTL3:Print("DISABLING DETECTION")
 		end
 		
-		CDTL3:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+		pcall(CDTL3.UnregisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
 		CDTL3:UnregisterEvent("SPELL_UPDATE_CHARGES")
 		CDTL3:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 		CDTL3:UnregisterEvent("ITEM_LOCK_CHANGED")
@@ -3707,11 +3718,11 @@ function CDTL3:TurnOff()
 
 		CDTL3:UnregisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 		
-		if CDTL3.tocversion >= 110000 then
+		if CDTL3.retailAPI then
 			--CDTL3:UnregisterEvent("TRAIT_CONFIG_UPDATED")
 		end
 
-		if CDTL3.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 and not CDTL3.isForever then
 			CDTL3:UnregisterEvent("RUNE_UPDATED")
 		end
 		
