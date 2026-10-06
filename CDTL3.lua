@@ -75,6 +75,7 @@ CDTL3.tracking = {
 	rSwingTime = -1,
 }
 CDTL3.spellData = {}
+CDTL3.recentAuras = {}
 CDTL3.icdData = {}
 CDTL3.colors = {
 	bg = {},
@@ -2771,6 +2772,164 @@ function CDTL3:CreateTestingFrame()
 	end
 end
 
+-- A buff/debuff landed on the player. Fed by the combat log (SPELL_AURA_APPLIED) where
+-- addons get it, and by UNIT_AURA on retail-API clients (WoW: Forever closes the combat
+-- log, so UNIT_AURA is its only source). Both can report the same application, so a
+-- repeat of the same aura within half a second is ignored.
+function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer)
+	local key = auraType..":"..tostring(spellName)
+	local now = GetTime()
+	if CDTL3.recentAuras[key] and now - CDTL3.recentAuras[key] < 0.5 then
+		return
+	end
+	CDTL3.recentAuras[key] = now
+
+	local validSource = false
+	if sourceIsPlayer then
+		validSource = true
+	else
+		if auraType == "buffs" and not CDTL3.db.profile.global["buffs"]["onlyPlayer"] then
+			validSource = true
+		end
+		
+		if auraType == "debuffs" and not CDTL3.db.profile.global["debuffs"]["onlyPlayer"] then
+			validSource = true
+		end
+	end
+	
+	if validSource then
+		-- CHECK FOR TRIGGERS
+		--local spellName, _, _ = CDTL3:GetSpellInfo(spellID)
+		--local s = CDTL3:GetSpellSettings(spellName, "customs")
+		local s = CDTL3:GetCustomSpellSettings(spellName, "aura")
+		if s then
+			--if s["triggerType"] and s["triggerType"] == "aura" then
+				if CDTL3.db.profile.global["debugMode"] then
+					CDTL3:Print("CUSTOM_FOUND: aura - "..spellName)
+				end
+
+				if not s["ignored"] then
+					local ef = CDTL3:GetExistingCooldown(s["name"], "customs")
+					if ef then
+						CDTL3:SendToLane(ef)
+						CDTL3:SendToBarFrame(ef)
+						--+CDTL3:CheckEdgeCases(spellName)
+					else
+						if CDTL3.db.profile.global["customs"]["enabled"] then
+							CDTL3:CreateCooldown(CDTL3:GetUID(),"customs" , s)
+							CDTL3:CheckEdgeCases(spellName)
+							
+							if CDTL3:IsUsedBy("customs", spellID) then
+								--CDTL3:Print("USEDBY MATCH: "..s["id"])
+							else
+								CDTL3:AddUsedBy("customs", spellID, CDTL3.player["guid"])
+							end
+						end
+					end
+				end
+			--end
+		else
+			
+		end
+
+		local s = CDTL3:GetSpellSettings(spellName, auraType)
+		if s then
+			if not s["ignored"] then
+				local ef = CDTL3:GetExistingCooldown(s["name"], auraType)
+				if ef then
+					CDTL3:SendToLane(ef)
+					CDTL3:SendToBarFrame(ef)
+				else
+					if CDTL3.db.profile.global["buffs"]["enabled"] and auraType == "buffs"  then
+						CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
+						if not CDTL3:IsUsedBy("buffs", spellID) then
+							CDTL3:AddUsedBy("buffs", spellID, CDTL3.player["guid"])
+						end
+					elseif CDTL3.db.profile.global["debuffs"]["enabled"] and auraType == "debuffs" then
+						CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
+						if not CDTL3:IsUsedBy("debuffs", spellID) then
+							CDTL3:AddUsedBy("debuffs", spellID, CDTL3.player["guid"])
+						end
+					end
+				end
+			end
+		else
+			s = CDTL3:AuraExists("player", spellName)
+			if s then
+				s["highlight"] = false
+				s["pinned"] = false
+				
+				s["usedBy"] = { CDTL3.player["guid"] }
+				
+				local ignoreThreshold = 0
+				local link, _ = CDTL3:GetSpellLink(spellID)
+				s["link"] = link
+				
+				if auraType == "buffs" then
+					ignoreThreshold = CDTL3.db.profile.global["buffs"]["ignoreThreshold"]
+					
+					s["enabled"] = CDTL3.db.profile.global["buffs"]["showByDefault"]
+					s["lane"] = CDTL3.db.profile.global["buffs"]["defaultLane"]
+					s["barFrame"] = CDTL3.db.profile.global["buffs"]["defaultBar"]
+					s["readyFrame"] = CDTL3.db.profile.global["buffs"]["defaultReady"]
+				elseif auraType == "debuffs" then
+					ignoreThreshold = CDTL3.db.profile.global["debuffs"]["ignoreThreshold"]
+					
+					s["enabled"] = CDTL3.db.profile.global["debuffs"]["showByDefault"]
+					s["lane"] = CDTL3.db.profile.global["debuffs"]["defaultLane"]
+					s["barFrame"] = CDTL3.db.profile.global["debuffs"]["defaultBar"]
+					s["readyFrame"] = CDTL3.db.profile.global["debuffs"]["defaultReady"]
+				end
+				
+				if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= ignoreThreshold then
+					s["ignored"] = false
+				else
+					s["ignored"] = true
+				end
+
+				table.insert(CDTL3.db.profile.tables[auraType], s)
+				
+				if not s["ignored"] then
+					if CDTL3.db.profile.global["buffs"]["enabled"] and auraType == "buffs" then
+						CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
+					elseif CDTL3.db.profile.global["debuffs"]["enabled"] and auraType == "debuffs" then
+						CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
+					end
+				end
+			end
+		end
+	end
+end
+
+-- Player auras from UNIT_AURA (see OnPlayerAuraApplied). Only newly added auras count,
+-- matching SPELL_AURA_APPLIED. Aura fields can be SECRET (12.1 rules: combat, encounters,
+-- M+, PvP): they are read and compared inside a pcall and the aura is skipped if they are.
+function CDTL3:UNIT_AURA(_, unitTarget, updateInfo)
+	if unitTarget ~= "player" or not updateInfo or not updateInfo.addedAuras then
+		return
+	end
+
+	for _, aura in ipairs(updateInfo.addedAuras) do
+		local ok, spellID, spellName, auraType = pcall(function()
+			if aura.spellId > 0 and aura.name ~= "" then
+				return aura.spellId, aura.name, aura.isHarmful and "debuffs" or "buffs"
+			end
+		end)
+
+		if ok and spellID then
+			local sourceOK, sourceIsPlayer = pcall(function()
+				return aura.sourceUnit == "player"
+			end)
+
+			if CDTL3.db.profile.global["debugMode"] then
+				CDTL3:Print("AURA ADDED: "..spellID.." - "..spellName.." - "..auraType.." - from player: "..tostring(sourceOK and sourceIsPlayer))
+			end
+
+			CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceOK and sourceIsPlayer)
+		end
+	end
+end
+
 function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 	local _, subevent, _, sourceGUID, sourceName, _, _, destGUID, destName, _, _ = CombatLogGetCurrentEventInfo()
 	
@@ -2787,121 +2946,7 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 			
 			-- PLAYER AURAS
 			if destGUID == CDTL3.player["guid"] then
-				local validSource = false
-				if sourceGUID == CDTL3.player["guid"] then
-					validSource = true
-				else
-					if auraType == "buffs" and not CDTL3.db.profile.global["buffs"]["onlyPlayer"] then
-						validSource = true
-					end
-					
-					if auraType == "debuffs" and not CDTL3.db.profile.global["debuffs"]["onlyPlayer"] then
-						validSource = true
-					end
-				end
-				
-				if validSource then
-					-- CHECK FOR TRIGGERS
-					--local spellName, _, _ = CDTL3:GetSpellInfo(spellID)
-					--local s = CDTL3:GetSpellSettings(spellName, "customs")
-					local s = CDTL3:GetCustomSpellSettings(spellName, "aura")
-					if s then
-						--if s["triggerType"] and s["triggerType"] == "aura" then
-							if CDTL3.db.profile.global["debugMode"] then
-								CDTL3:Print("CUSTOM_FOUND: aura - "..spellName)
-							end
-
-							if not s["ignored"] then
-								local ef = CDTL3:GetExistingCooldown(s["name"], "customs")
-								if ef then
-									CDTL3:SendToLane(ef)
-									CDTL3:SendToBarFrame(ef)
-									--+CDTL3:CheckEdgeCases(spellName)
-								else
-									if CDTL3.db.profile.global["customs"]["enabled"] then
-										CDTL3:CreateCooldown(CDTL3:GetUID(),"customs" , s)
-										CDTL3:CheckEdgeCases(spellName)
-										
-										if CDTL3:IsUsedBy("customs", spellID) then
-											--CDTL3:Print("USEDBY MATCH: "..s["id"])
-										else
-											CDTL3:AddUsedBy("customs", spellID, CDTL3.player["guid"])
-										end
-									end
-								end
-							end
-						--end
-					else
-						
-					end
-
-					local s = CDTL3:GetSpellSettings(spellName, auraType)
-					if s then
-						if not s["ignored"] then
-							local ef = CDTL3:GetExistingCooldown(s["name"], auraType)
-							if ef then
-								CDTL3:SendToLane(ef)
-								CDTL3:SendToBarFrame(ef)
-							else
-								if CDTL3.db.profile.global["buffs"]["enabled"] and auraType == "buffs"  then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-									if not CDTL3:IsUsedBy("buffs", spellID) then
-										CDTL3:AddUsedBy("buffs", spellID, CDTL3.player["guid"])
-									end
-								elseif CDTL3.db.profile.global["debuffs"]["enabled"] and auraType == "debuffs" then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-									if not CDTL3:IsUsedBy("debuffs", spellID) then
-										CDTL3:AddUsedBy("debuffs", spellID, CDTL3.player["guid"])
-									end
-								end
-							end
-						end
-					else
-						s = CDTL3:AuraExists("player", spellName)
-						if s then
-							s["highlight"] = false
-							s["pinned"] = false
-							
-							s["usedBy"] = { CDTL3.player["guid"] }
-							
-							local ignoreThreshold = 0
-							local link, _ = CDTL3:GetSpellLink(spellID)
-							s["link"] = link
-							
-							if auraType == "buffs" then
-								ignoreThreshold = CDTL3.db.profile.global["buffs"]["ignoreThreshold"]
-								
-								s["enabled"] = CDTL3.db.profile.global["buffs"]["showByDefault"]
-								s["lane"] = CDTL3.db.profile.global["buffs"]["defaultLane"]
-								s["barFrame"] = CDTL3.db.profile.global["buffs"]["defaultBar"]
-								s["readyFrame"] = CDTL3.db.profile.global["buffs"]["defaultReady"]
-							elseif auraType == "debuffs" then
-								ignoreThreshold = CDTL3.db.profile.global["debuffs"]["ignoreThreshold"]
-								
-								s["enabled"] = CDTL3.db.profile.global["debuffs"]["showByDefault"]
-								s["lane"] = CDTL3.db.profile.global["debuffs"]["defaultLane"]
-								s["barFrame"] = CDTL3.db.profile.global["debuffs"]["defaultBar"]
-								s["readyFrame"] = CDTL3.db.profile.global["debuffs"]["defaultReady"]
-							end
-							
-							if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= ignoreThreshold then
-								s["ignored"] = false
-							else
-								s["ignored"] = true
-							end
-
-							table.insert(CDTL3.db.profile.tables[auraType], s)
-							
-							if not s["ignored"] then
-								if CDTL3.db.profile.global["buffs"]["enabled"] and auraType == "buffs" then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-								elseif CDTL3.db.profile.global["debuffs"]["enabled"] and auraType == "debuffs" then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-								end
-							end
-						end
-					end
-				end
+				CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceGUID == CDTL3.player["guid"])
 			
 			-- OFFENSIVE AURAS
 			else
@@ -3725,6 +3770,7 @@ function CDTL3:TurnOn()
 		CDTL3:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 		
 		if CDTL3.retailAPI then
+			CDTL3:RegisterEvent("UNIT_AURA")
 			--CDTL3:RegisterEvent("TRAIT_CONFIG_UPDATED")
 		end
 
@@ -3754,6 +3800,7 @@ function CDTL3:TurnOff()
 		CDTL3:UnregisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 		
 		if CDTL3.retailAPI then
+			CDTL3:UnregisterEvent("UNIT_AURA")
 			--CDTL3:UnregisterEvent("TRAIT_CONFIG_UPDATED")
 		end
 
