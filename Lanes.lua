@@ -638,6 +638,44 @@ private.CalcStacking = function(f, s, count)
 	end
 end
 
+-- Player health/power (and some stats) can be SECRET on Midnight 12.x / WoW: Forever:
+-- comparing or doing arithmetic on them throws. A StatusBar still accepts them, so the
+-- HEALTH / CLASS_POWER / COMBO_POINTS trackers hand back (0, current, max) for the
+-- caller to feed the bar directly. f:GetValue() is then secret too: BarValueDiffers
+-- returns nil ("unknown") instead of throwing.
+private.BarValueDiffers = function(f, v)
+	local ok, differs = pcall(function()
+		return f:GetValue() ~= v
+	end)
+
+	if ok then
+		return differs
+	end
+end
+
+private.SetAutohideOverride = function(f, differs)
+	if differs then
+		f.overrideAutohide = true
+		f.forceShow = true
+	elseif differs == false then
+		f.overrideAutohide = false
+	end
+end
+
+-- current/max as a 0-1 fraction (0 when current is 0); nil if either is secret
+private.Fraction = function(current, max)
+	local ok, fraction = pcall(function()
+		if current ~= 0 then
+			return current / max
+		end
+		return 0
+	end)
+
+	if ok then
+		return fraction
+	end
+end
+
 private.CalcTracking = function(f, s, t, elapsed)	
 	local position = 0
 
@@ -652,20 +690,16 @@ private.CalcTracking = function(f, s, t, elapsed)
 		local hpMax = UnitHealthMax("player")
 		local hpCurrent = UnitHealth("player")
 		
-		if hpCurrent ~= 0 then
-			local percent = hpCurrent / hpMax
-			position = percent
-		end
+		position = private.Fraction(hpCurrent, hpMax)
 		
 		if s["tracking"]["overrideAutohide"] then
 			if not f.forceShow then
-				if f:GetValue() ~= 1 then
-					f.overrideAutohide = true
-					f.forceShow = true
-				else
-					f.overrideAutohide = false
-				end
+				private.SetAutohideOverride(f, private.BarValueDiffers(f, 1))
 			end
+		end
+
+		if not position then
+			return 0, hpCurrent, hpMax
 		end
 		
 	elseif t == "CLASS_POWER" then
@@ -680,39 +714,31 @@ private.CalcTracking = function(f, s, t, elapsed)
 		local pCurrent = UnitPower("player", pType)
 		
 		if pType then
-			if pCurrent ~= 0 then
-				local percent = pCurrent / pMax
-				position = percent
-			end
+			position = private.Fraction(pCurrent, pMax)
 		end
 		
 		if s["tracking"]["overrideAutohide"] then
 			if not f.forceShow then
 				if pType == Enum.PowerType.Rage then
-					if f:GetValue() ~= 0 then
-						f.overrideAutohide = true
-						f.forceShow = true
-					else
-						f.overrideAutohide = false
-					end
+					private.SetAutohideOverride(f, private.BarValueDiffers(f, 0))
 				else
-					if f:GetValue() ~= 1 then
-						f.overrideAutohide = true
-						f.forceShow = true
-					else
-						f.overrideAutohide = false
-					end
+					private.SetAutohideOverride(f, private.BarValueDiffers(f, 1))
 				end
 			end
+		end
+
+		if not position then
+			return 0, pCurrent, pMax
 		end
 	
 	elseif t == "COMBO_POINTS" then
 		local cpMax = UnitPowerMax("player", Enum.PowerType.ComboPoints)
 		local cpCurrent = UnitPower("player", Enum.PowerType.ComboPoints)
 		
-		if cpCurrent ~= 0 then
-			local percent = cpCurrent / cpMax
-			position = percent
+		position = private.Fraction(cpCurrent, cpMax)
+
+		if not position then
+			return 0, cpCurrent, cpMax
 		end
 	
 	elseif t == "MANA_TICK" then
@@ -754,9 +780,7 @@ private.CalcTracking = function(f, s, t, elapsed)
 		else
 			CDTL3.tracking["mhSwingTime"] = CDTL3.tracking["mhSwingTime"] - elapsed
 			
-			local percent = CDTL3.tracking["mhSwingTime"] / mhSpeed
-			
-			position = percent
+			position = private.Fraction(CDTL3.tracking["mhSwingTime"], mhSpeed) or 1
 		end
 		
 	elseif t == "OH_SWING" then
@@ -767,9 +791,7 @@ private.CalcTracking = function(f, s, t, elapsed)
 		else
 			CDTL3.tracking["ohSwingTime"] = CDTL3.tracking["ohSwingTime"] - elapsed
 			
-			local percent = CDTL3.tracking["ohSwingTime"] / ohSpeed
-			
-			position = percent
+			position = private.Fraction(CDTL3.tracking["ohSwingTime"], ohSpeed) or 1
 		end
 		
 	elseif t == "RANGE_SWING" then
@@ -780,9 +802,7 @@ private.CalcTracking = function(f, s, t, elapsed)
 		else
 			CDTL3.tracking["rSwingTime"] = CDTL3.tracking["rSwingTime"] - elapsed
 			
-			local percent = CDTL3.tracking["rSwingTime"] / rSwingTime
-			
-			position = percent
+			position = private.Fraction(CDTL3.tracking["rSwingTime"], rSwingTime) or 1
 		end
 	end
 	
@@ -896,17 +916,28 @@ private.LaneUpdate = function(f, elapsed)
 	
 		-- PRIMARY TRACKING
 		if s["tracking"]["primaryTracking"] ~= "NONE" then
-			local tValue = private.CalcTracking(f, s, s["tracking"]["primaryTracking"], elapsed)
-			f:SetValue(tValue)
+			local tValue, secretCurrent, secretMax = private.CalcTracking(f, s, s["tracking"]["primaryTracking"], elapsed)
+			if secretCurrent then
+				f:SetMinMaxValues(0, secretMax)
+				f:SetValue(secretCurrent)
+				f.secretRange = true
+			else
+				if f.secretRange then
+					f:SetMinMaxValues(0, 1)
+					f.secretRange = false
+				end
+				f:SetValue(tValue)
+			end
 		else
 			f:SetValue(1)
 		end
 		
 		-- SECONDARY TRACKING
 		if s["tracking"]["secondaryTracking"] ~= "NONE" then
-			local tValue = private.CalcTracking(f, s, s["tracking"]["secondaryTracking"], elapsed)
+			local tValue, secretCurrent = private.CalcTracking(f, s, s["tracking"]["secondaryTracking"], elapsed)
 			
-			if tValue < 1 and tValue > 0 then
+			-- the marker is positioned by arithmetic, so it can't follow a secret value
+			if not secretCurrent and tValue < 1 and tValue > 0 then
 				local tPosition = (s["width"] - s["tracking"]["stWidth"]) * tValue
 				
 				f.st:ClearAllPoints()

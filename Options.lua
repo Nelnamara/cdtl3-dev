@@ -23,6 +23,8 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."    including recasts of a buff you already have, and buffs already on\n"
 	changeLog = changeLog.."    you at login or after /reload\n"
 	changeLog = changeLog.."  - Fixed an options error when no entry is selected in a Filters list\n"
+	changeLog = changeLog.."  - Lane health/power tracking, swing timers, item cooldowns, text tags\n"
+	changeLog = changeLog.."    and aura detection no longer error on secret values (Forever, 12.x)\n"
 	changeLog = changeLog.."  - Fixed buffs/debuffs recording spell ID 0 on Classic clients\n"
 	changeLog = changeLog.."  - TOCs updated: MoP Classic 5.5.4, TBC Anniversary 2.5.6,\n"
 	changeLog = changeLog.."    Classic Era 1.15.9, Forever 1.60.1\n\n"

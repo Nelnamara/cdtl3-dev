@@ -1281,16 +1281,20 @@ private.CooldownUpdate = function(f, elapsed)
 					if tinker then
 						local _, spellID = CDTL3.Compat.GetItemSpell(d["itemID"])
 						if spellID == d["id"] then
-							local start, duration, enabled = GetInventoryItemCooldown("player", slot)
+							local start, duration, enabled = CDTL3:GetInventoryItemCooldown(slot)
 							
+							if duration then
+								d["baseCD"] = duration
+								CDTL3:SetSpellData(d["name"], "items", "bCD", duration * 1000)
+							end
+						end
+					else
+						local start, duration, enabled = CDTL3:GetItemCooldown(d["itemID"])
+						
+						if duration then
 							d["baseCD"] = duration
 							CDTL3:SetSpellData(d["name"], "items", "bCD", duration * 1000)
 						end
-					else
-						local start, duration, enabled = C_Container.GetItemCooldown(d["itemID"])
-						
-						d["baseCD"] = duration
-						CDTL3:SetSpellData(d["name"], "items", "bCD", duration * 1000)
 					end
 					
 					if d["baseCD"] > 3 and d["baseCD"] <= CDTL3.db.profile.global["items"]["ignoreThreshold"] then
@@ -1317,14 +1321,14 @@ private.CooldownUpdate = function(f, elapsed)
 							--d["baseCD"] = duration
 							--d["currentCD"] = start + duration - GetTime()
 
-							local start, duration, enabled = GetInventoryItemCooldown("player", slot)
+							local start, duration, enabled = CDTL3:GetInventoryItemCooldown(slot)
 							if start and duration then
 								d["baseCD"] = duration
 								d["currentCD"] = start + duration - GetTime()
 							end
 						end
 					else
-						local start, duration, enabled = C_Container.GetItemCooldown(d["itemID"])
+						local start, duration, enabled = CDTL3:GetItemCooldown(d["itemID"])
 						if duration and start then
 							d["baseCD"] = duration
 							d["currentCD"] = start + duration - GetTime()

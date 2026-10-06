@@ -855,6 +855,27 @@ function CDTL3:GetSpellCharges(id)
 	return currentCharges, maxCharges, cooldownStart, cooldownDuration
 end
 
+-- Item cooldowns can be SECRET on Midnight / WoW: Forever, like spell cooldowns. These
+-- return real numbers, or nil when the values are secret so callers skip the refresh
+-- and keep counting down from what they already have.
+local function RealCooldown(start, duration, enabled)
+	local ok = pcall(function()
+		return start + duration >= 0
+	end)
+
+	if ok then
+		return start, duration, enabled
+	end
+end
+
+function CDTL3:GetItemCooldown(itemID)
+	return RealCooldown(C_Container.GetItemCooldown(itemID))
+end
+
+function CDTL3:GetInventoryItemCooldown(slot)
+	return RealCooldown(GetInventoryItemCooldown("player", slot))
+end
+
 function CDTL3:GetSpellCooldown(id)
 	-- Midnight 12.x: data["startTime"] and data["duration"] are "secret" private values
 	-- that cannot be compared or used in arithmetic from insecure addon code.
@@ -1546,7 +1567,7 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 		if spellName then
 			if itemID then
 				if CDTL3:IsValidItem(itemID) then
-					local start, duration, enabled = C_Container.GetItemCooldown(itemId)
+					local start, duration, enabled = CDTL3:GetItemCooldown(itemId)
 					
 					if duration and duration > 1.5 then
 						if CDTL3:GetExistingCooldown(spellName, "items") then
@@ -1611,7 +1632,7 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 			if spellName then
 				if itemID then
 					if CDTL3:IsValidItem(itemId) then
-						local start, duration, enabled = C_Container.GetItemCooldown(itemId)
+						local start, duration, enabled = CDTL3:GetItemCooldown(itemId)
 						
 						if duration and duration > 1.5 then
 							if CDTL3:GetExistingCooldown(spellName, "items") then
