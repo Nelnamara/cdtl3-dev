@@ -2901,15 +2901,49 @@ function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer)
 	end
 end
 
--- Player auras from UNIT_AURA (see OnPlayerAuraApplied). Only newly added auras count,
--- matching SPELL_AURA_APPLIED. Aura fields can be SECRET (12.1 rules: combat, encounters,
--- M+, PvP): they are read and compared inside a pcall and the aura is skipped if they are.
+-- Player auras from UNIT_AURA (see OnPlayerAuraApplied). Covers what the combat log's
+-- SPELL_AURA_APPLIED would, plus two cases it never reported as "applied":
+--  * a recast of a buff you already have arrives as an UPDATE, not an add
+--  * on login, /reload or zoning, buffs already on you arrive only as a FULL update
+-- Aura data can be SECRET (12.1 rules: combat, encounters, M+, PvP): the accessors and
+-- the field reads/compares all run inside pcalls, and secret auras are skipped.
 function CDTL3:UNIT_AURA(_, unitTarget, updateInfo)
-	if unitTarget ~= "player" or not updateInfo or not updateInfo.addedAuras then
+	if unitTarget ~= "player" then
 		return
 	end
 
-	for _, aura in ipairs(updateInfo.addedAuras) do
+	-- the login full update can arrive before OnEnable's delayed GetCharacterData
+	if not CDTL3.player["guid"] then
+		CDTL3:GetCharacterData()
+	end
+
+	local auras = {}
+	if not updateInfo or updateInfo.isFullUpdate then
+		pcall(function()
+			for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
+				for i = 1, 40 do
+					local aura = C_UnitAuras.GetAuraDataByIndex("player", i, filter)
+					if not aura then
+						break
+					end
+					table.insert(auras, aura)
+				end
+			end
+		end)
+	else
+		for _, aura in ipairs(updateInfo.addedAuras or {}) do
+			table.insert(auras, aura)
+		end
+
+		for _, auraInstanceID in ipairs(updateInfo.updatedAuraInstanceIDs or {}) do
+			local ok, aura = pcall(C_UnitAuras.GetAuraDataByAuraInstanceID, "player", auraInstanceID)
+			if ok and aura then
+				table.insert(auras, aura)
+			end
+		end
+	end
+
+	for _, aura in ipairs(auras) do
 		local ok, spellID, spellName, auraType = pcall(function()
 			if aura.spellId > 0 and aura.name ~= "" then
 				return aura.spellId, aura.name, aura.isHarmful and "debuffs" or "buffs"
