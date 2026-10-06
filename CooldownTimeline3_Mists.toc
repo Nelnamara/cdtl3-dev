@@ -1,4 +1,4 @@
-## Interface: 50503
+## Interface: 50504
 ## Title: |cFF54a3ffCDTL3|r |cffffffff(CooldownTimeline)|r
 ## IconTexture: Interface\AddOns\CooldownTimeline3\Media\icon-128.tga
 ## Author: cliffclive

@@ -32,7 +32,7 @@ CooldownTimeline tracks your ability cooldowns as moving icons along a horizonta
 
 ## Installation
 
-Extract into `World of Warcraft\_retail_\Interface\AddOns\` as a folder named **`CooldownTimeline3`** (it should contain `CDTL3.lua`, the `.toc` files, and subdirectories), or install via the CurseForge app. For **World of Warcraft: Forever**, use the Forever client's AddOns folder instead (during the beta: `World of Warcraft\_classic_beta_\Interface\AddOns\`). On first run the bar appears unlocked in the center — drag it to position, then `/cdtl3 lock`.
+Extract into `World of Warcraft\_retail_\Interface\AddOns\` as a folder named **`CooldownTimeline3`** (it should contain `CDTL3.lua`, the `.toc` files, and subdirectories), or install via the CurseForge app. For **World of Warcraft: Forever**, use the Forever client's AddOns folder instead (during the beta: `World of Warcraft\_classic_beta_\Interface\AddOns\`). The folder must be named exactly `CooldownTimeline3` — a GitHub source zip unpacks as `cdtl3-dev-<branch>` and won't show up in the AddOns list until renamed. On first run the bar appears unlocked in the center — drag it to position, then `/cdtl3 lock`.
 
 ---
 
@@ -72,15 +72,17 @@ Open with `/cdtl3` or the minimap button. Key sections:
 
 ## Compatibility / Midnight Notes
 
-Multi-version: Mainline (12.1), MoP Classic, TBC, and Vanilla TOCs, all sharing one SavedVariables. **World of Warcraft: Forever** loads the Mainline TOC (Interface `16001`): Forever runs the modern Midnight-era API despite its vanilla-era interface number, so CDTL3 uses the retail API paths there and the vanilla-era spell data. Cooldown timing fields are secret in Midnight, so CDTL3 reads them inside a protected `pcall` and falls back to event-tracked cast time on failure — it never does arithmetic on a secret value.
+Multi-version: Mainline (12.1), MoP Classic, TBC, and Vanilla TOCs, all sharing one SavedVariables. **World of Warcraft: Forever** loads its own `_Camelot` TOC (Interface `16001`; a plain `CooldownTimeline3.toc` is the fallback if Blizzard renames the suffix): Forever runs the modern Midnight-era API despite its vanilla-era interface number, so CDTL3 uses the retail API paths there and the vanilla-era spell data. Cooldown timing fields are secret in Midnight, so CDTL3 reads them inside a protected `pcall` and falls back to event-tracked cast time on failure — it never does arithmetic on a secret value.
 
 ---
 
 ## Changelog
 
 ### v3.0.8
-- **World of Warcraft: Forever support** — Forever reports a vanilla-era interface number (`16001`) but runs the modern Midnight-era API, so the old version check sent it down the Classic code paths and called functions Forever doesn't have (`GetSpellInfo`, `GetSpellCooldown`, `UnitAura`, the old spellbook API). CDTL3 now detects Forever and uses the retail API paths while keeping the vanilla-era spell data. The Mainline TOC declares `16001`
+- **World of Warcraft: Forever support** — Forever reports a vanilla-era interface number (`16001`) but runs the modern Midnight-era API, so the old version check sent it down the Classic code paths and called functions Forever doesn't have (`GetSpellInfo`, `GetSpellCooldown`, `UnitAura`, the old spellbook API). CDTL3 now detects Forever by its interface number and uses the retail API paths while keeping the vanilla-era spell data. Ships a `_Camelot` TOC (the Forever client doesn't fall back to `_Mainline`) plus a plain `CooldownTimeline3.toc` fallback
 - **Combat log registration can't break detection** — it's only registered where the client provides it, and a refusal no longer aborts registering the other cooldown events. The combat log is closed to addons on Forever
+- **Fixed buffs/debuffs recording spell ID 0 on Classic clients** — a typo in the Classic aura reader dropped the spell ID
+- TOCs bumped: MoP Classic `50504`, TBC Anniversary `20506`, Classic Era `11509`
 
 ### v3.0.7
 - **All settings now live in one movable window** — `/cdtl3` opens the full configuration with every panel (Lanes, Ready, Bar Frames, Filters, Profiles) as a tab. Previously the standalone window showed only a fraction of the settings; the rest were buried in Blizzard's unmovable Settings frame — including the lane and bar color/texture options many users never found. Blizzard's AddOns entry is now just a launcher button
