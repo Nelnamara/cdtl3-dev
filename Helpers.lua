@@ -24,7 +24,11 @@ function CDTL3:AuraExists(unit, aura)
 			for i = 1, 40, 1 do
 				local name, spellID, duration, icon, count, expirationTime = CDTL3:GetUnitAura(unit, i, filter)
 
-				if name and aura == name then
+				if not name then
+					break	-- end of this filter's list
+				end
+
+				if aura == name then
 					local s = {
 						id = spellID,
 						bCD = duration * 1000,
@@ -427,28 +431,6 @@ function CDTL3:CheckEngTinkerCases(spellName)
 	return false, nil
 end
 
-function CDTL3:CheckItemEnchants(spellName)
-	if spellName == "Mind Amplification Dish" then
-		return true, 1
-	elseif spellName == "Flexweave Underlay" then
-		return true, 15
-	elseif spellName == "Springy Arachnoweave" then
-		return true, 15
-	elseif spellName == "Hand-Mounted Pyro Rocket" then
-		return true, 10
-	elseif spellName == "Hyperspeed Accelerators" then
-		return true, 10
-	elseif spellName == "Frag Belt" then
-		return true, 6
-	elseif spellName == "Personal Electromagnetic Pulse Generator" then
-		return true, 6
-	elseif spellName == "Nitro Boosts" then
-		return true, 8
-	end
-	
-	return false, nil
-end
-
 function CDTL3:Cleanup()
 	-- Clean tables
 	if CDTL3.db.profile.tables["other"] then
@@ -519,7 +501,7 @@ function CDTL3:GenerateTestCooldowns()
 
     local timeCurrent = testingMinTime
     for i = 1, testingNumber do
-        if CDTL3.db.profile.global["debug"] then
+        if CDTL3.db.profile.global["debugMode"] then
             CDTL3:Print("TESTING: "..i.." of "..testingNumber.." ("..timeCurrent.."s)")
         end
 
@@ -539,27 +521,12 @@ function CDTL3:GetAardvark(t)
 		CDTL3.currentFilterHidden[t] = false
 		return "<< Select Detected >>"
 	else
+		-- the alphabetically first entry that belongs to this character
 		local aardvark = nil
-		for k, v in pairs(CDTL3.db.profile.tables[t]) do
-			local spellID = v["id"]
-
-			if CDTL3:IsUsedBy(t, spellID) then
-				if aardvark then
-					local n = v["name"]
-					if t == "items" then
-						n = v["itemName"]
-					end
-
-					if n < aardvark then
-						aardvark = n
-					end
-				else
-					if t == "items" then
-						aardvark = v["itemName"]
-					else
-						aardvark = v["name"]
-					end
-				end
+		for _, v in pairs(CDTL3.db.profile.tables[t]) do
+			local n = (t == "items") and v["itemName"] or v["name"]
+			if n and private.IsMine(v) and (not aardvark or n < aardvark) then
+				aardvark = n
 			end
 		end
 
@@ -722,25 +689,6 @@ function CDTL3:GetReadableTime(t)
 	return readableTimeLeft
 end
 
-function CDTL3:GetShortTime(t)
-	local readableTimeLeft = t
-	
-	if t >= 60 then
-		local minutes = tostring(math.floor(t / 60))
-		local seconds = readableTimeLeft % 60
-		
-		readableTimeLeft = minutes.."m"
-		
-		if seconds ~= 0 then
-			readableTimeLeft = readableTimeLeft..seconds.."s"
-		end
-	else
-		readableTimeLeft = tonumber(string.format("%.0f", readableTimeLeft)).."s"
-	end
-	
-	return readableTimeLeft
-end
-
 function CDTL3:GetTestTableData(testType, bCD, number)
     local data = {}
     local testType = testType:lower()
@@ -857,12 +805,17 @@ function CDTL3:GetSpellCharges(id)
 			-- read is fine, but callers compare them (~= 0, > 1), which throws on a
 			-- secret value. Validate inside a pcall; keep them only if they're real
 			-- numbers, else leave the 0 defaults so the caller's comparisons stay safe.
+			-- maxCharges is documented as never secret; the timing fields can be. Each
+			-- group is validated separately (the arithmetic throws on a secret value),
+			-- so a charge spell still reports its charges while its timing is hidden.
+			-- The start field is cooldownStartTime (not cooldownStart).
 			pcall(function()
-				local cc, mc = data["currentCharges"], data["maxCharges"]
-				local cs, cd = data["cooldownStart"], data["cooldownDuration"]
-				if cc and mc and cd and cd >= 0 then
+				maxCharges = data["maxCharges"] + 0
+			end)
+			pcall(function()
+				local cc, cs, cd = data["currentCharges"], data["cooldownStartTime"], data["cooldownDuration"]
+				if cc + cs + cd >= 0 then
 					currentCharges   = cc
-					maxCharges       = mc
 					cooldownStart    = cs
 					cooldownDuration = cd
 				end
@@ -926,7 +879,17 @@ function CDTL3:GetSpellCooldown(id)
 					end
 				end)
 
-				if not ok or duration == 0 then
+				-- isActive is also true during the global cooldown. When the timing is secret
+				-- the fallback below would invent a ~1.6s cooldown for every spell on the GCD,
+				-- so a spell that is only GCD-locked reports no cooldown. (isOnGCD is
+				-- documented as never secret; checked inside a pcall anyway.)
+				local gcdOK, onGCD = pcall(function()
+					return data["isOnGCD"] == true
+				end)
+
+				if (not ok or duration == 0) and gcdOK and onGCD then
+					start, duration = 0, 0
+				elseif not ok or duration == 0 then
 					-- Midnight secret-value fallback:
 					-- Use UNIT_SPELLCAST_SUCCEEDED cast-time tracking + GetSpellBaseCooldown.
 					if not CDTL3.spellCastTimes then CDTL3.spellCastTimes = {} end
@@ -1003,16 +966,6 @@ function CDTL3:GetCustomSpellSettings(name, triggerType)
 	return nil
 end
 
-function CDTL3:GetSpellName(id)
-	for _, spell in pairs(CDTL3.spellData) do
-		if spell["id"] == id then
-			return spell["name"]
-		end
-	end
-	
-	return nil
-end
-
 function CDTL3:GetUID()
 	CDTL3.cdUID = CDTL3.cdUID + 1
 	return CDTL3.cdUID
@@ -1031,6 +984,11 @@ function CDTL3:GetUnitAura(unit, i, filter)
 	if CDTL3.retailAPI then
     	local data = C_UnitAuras.GetAuraDataByIndex(unit, i, filter)
 
+		if not data then
+			-- past the last aura: nil name, like UnitAura on Classic
+			return nil
+		end
+
 		if data then
 			name = data["name"]
 			spellID = data["spellId"]
@@ -1045,21 +1003,6 @@ function CDTL3:GetUnitAura(unit, i, filter)
 	end
 	
 	return name, spellID, duration, icon, count, expirationTime
-end
-
-function CDTL3:GetValidChildren(f)
-	local children = { f:GetChildren() }
-	local validChildren = {}
-	
-	local count = 0
-	for _, child in ipairs(children) do
-		if child.uid then
-			count = count + 1
-			table.insert(validChildren, child)
-		end
-	end
-	
-	return validChildren
 end
 
 function CDTL3:IsUsableSpell(id)
@@ -1159,6 +1102,25 @@ function CDTL3:IsValidItem(itemID)
 	return false
 end
 
+-- Does this saved entry belong to the current character? (checks the entry itself;
+-- IsUsedBy re-scans the whole table by id)
+private.IsMine = function(data)
+	if not CDTL3.player["guid"] then
+		CDTL3:GetCharacterData()
+	end
+
+	local guid = CDTL3.player["guid"]
+	if guid and data["usedBy"] then
+		for _, g in pairs(data["usedBy"]) do
+			if g == guid then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
 function CDTL3:LoadFilterList(type, specialCase)
 	local list = {}
 
@@ -1171,20 +1133,10 @@ function CDTL3:LoadFilterList(type, specialCase)
 	end
 	
 	for _, data in pairs(CDTL3.db.profile.tables[type]) do
-		for _, guid in pairs(data["usedBy"]) do
-			if specialCase then
-				if CDTL3:IsUsedBy(type, data["itemID"], specialCase) then
-					--if not data["ignored"] then
-						list[data["itemName"]] = data["itemName"]
-					--end
-				end
-			else
-				if CDTL3:IsUsedBy(type, data["id"]) then
-					--if not data["ignored"] then
-						list[data["name"]] = data["name"]
-					--end
-				end
-			end
+		-- items are listed by item name, which loads asynchronously and can still be nil
+		local key = specialCase and data["itemName"] or data["name"]
+		if key and private.IsMine(data) then
+			list[key] = key
 		end
 	end
 	
@@ -1219,11 +1171,12 @@ function CDTL3:OnTalentChanges()
 		--local isKnown = IsSpellKnown(spellID, isPet)
 		--local isKnownOrOverridesKnown = IsSpellKnownOrOverridesKnown(spellID)
 
-		if spellID then
-			local isPet = false
-			if cd.cdType == "petspell" then
-				isPet = true
-			end
+		-- Only spells and pet spells depend on talents / spec. Items, buffs, debuffs,
+		-- offensives and customs aren't in the spellbook, so the "not known -> ready"
+		-- reset below would wrongly end their timers.
+		local cdType = cd.data and cd.data["type"]
+		if spellID and (cdType == "spells" or cdType == "petspells") then
+			local isPet = cdType == "petspells"
 
 			local isKnown = CDTL3.Compat.IsSpellKnown(spellID, isPet)
 			local isKnownOrOverridesKnown = CDTL3.Compat.IsSpellKnownOrOverridesKnown(spellID, isPet)
@@ -1255,17 +1208,23 @@ function CDTL3:RecycleOffensiveCD()
 end
 
 function CDTL3:RefreshConfig()	
-	for k, f in pairs(CDTL3.readyFrames) do
-		CDTL3:RefreshReady(k)
+	-- Refresh every existing frame by its own number (the lists hold only frames that
+	-- were created, in creation order, so the list index isn't the frame number), then
+	-- create any frame that is enabled in this profile but didn't exist yet.
+	for _, f in pairs(CDTL3.readyFrames) do
+		CDTL3:RefreshReady(f.number)
 	end
+	CDTL3:CreateReadyFrames()
 	
-	for k, f in pairs(CDTL3.barFrames) do
-		CDTL3:RefreshBarFrame(k)
+	for _, f in pairs(CDTL3.barFrames) do
+		CDTL3:RefreshBarFrame(f.number)
 	end
+	CDTL3:CreateBarFrames()
 	
-	for k, f in pairs(CDTL3.lanes) do
-		CDTL3:RefreshLane(k)
+	for _, f in pairs(CDTL3.lanes) do
+		CDTL3:RefreshLane(f.number)
 	end
+	CDTL3:CreateLanes()
 	
 	CDTL3:RefreshAllIcons()
 	CDTL3:RefreshAllBars()
@@ -1302,23 +1261,6 @@ function CDTL3:RemoveHighlights(f, s)
 	f.hl.tx:SetColorTexture( 1, 1, 1, 0 )
 end
 
-function CDTL3:SearchIsInSpellBook(spellID)
-	local isKnown = CDTL3.Compat.IsSpellKnown(spellID)
-	local isKnownOrOverridesKnown = CDTL3.Compat.IsSpellKnownOrOverridesKnown(spellID)
-
-	if isKnown or isKnownOrOverridesKnown then
-		return true
-	end
-
-    --[[for k, v in ipairs(CDTL3.spellbook) do
-		if v == spellID then
-            return true
-        end
-	end]]--
-
-    return false
-end
-
 function CDTL3:ScanSharedSpellCooldown(initialName, initialDuration)
 	local sd = CDTL3:GetAllSpellData(CDTL3.player["class"], CDTL3.player["race"])
 	
@@ -1339,7 +1281,9 @@ function CDTL3:ScanSharedSpellCooldown(initialName, initialDuration)
 						local s = CDTL3:GetSpellSettings(spell["name"], "spells")
 						if s then
 							if not s["ignored"] then
-								CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
+								if CDTL3.db.profile.global["spells"]["enabled"] then
+									CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
+								end
 								
 								if not CDTL3:IsUsedBy("spells", spell["id"]) then
 									CDTL3:AddUsedBy("spells", spell["id"], CDTL3.player["guid"])
@@ -1350,7 +1294,7 @@ function CDTL3:ScanSharedSpellCooldown(initialName, initialDuration)
 							
 							local s = {
 								id = spell["id"],
-								bCD = duration,
+								bCD = duration * 1000,	-- bCD is milliseconds everywhere else
 								name = spell["name"],
 								type = "spells",
 								icon = icon,
@@ -1372,7 +1316,9 @@ function CDTL3:ScanSharedSpellCooldown(initialName, initialDuration)
 							table.insert(CDTL3.db.profile.tables["spells"], s)
 							
 							if not s["ignored"] then
-								CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
+								if CDTL3.db.profile.global["spells"]["enabled"] then
+									CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
+								end
 							end
 						end
 					end
@@ -1415,10 +1361,10 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 									CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
 									CDTL3:CheckEdgeCases(spellName)
 									
-									if CDTL3:IsUsedBy("spells", spellID) then
+									if CDTL3:IsUsedBy("spells", s["id"]) then
 										--CDTL3:Print("USEDBY MATCH: "..s["id"])
 									else
-										CDTL3:AddUsedBy("spells", spellID, CDTL3.player["guid"])
+										CDTL3:AddUsedBy("spells", s["id"], CDTL3.player["guid"])
 									end
 								end
 							end
@@ -1429,10 +1375,10 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 						local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
 						
 						--local currentCharges, maxCharges, _, cooldownDuration, _ = GetSpellCharges(spellID)
-						local currentCharges, maxCharges, cooldownDuration = CDTL3:GetSpellCharges(spellID)
+						local currentCharges, maxCharges, _, cooldownDuration = CDTL3:GetSpellCharges(spellID)
 						local cooldownMS, gcdMS = GetSpellBaseCooldown(spellID)
 				
-						if cooldownDuration ~= nil then
+						if cooldownDuration ~= nil and cooldownDuration ~= 0 then
 							cooldownMS = cooldownDuration * 1000
 						end
 				
@@ -1442,7 +1388,7 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 						s["bCD"] = cooldownMS
 						s["type"] = "spells"
 				
-						if maxCharges then
+						if maxCharges and maxCharges ~= 0 then
 							s["charges"] = maxCharges
 							s["bCD"] = cooldownMS
 						end
@@ -1504,10 +1450,10 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 										CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
 										CDTL3:CheckEdgeCases(spellName)
 										
-										if CDTL3:IsUsedBy("spells", spellID) then
+										if CDTL3:IsUsedBy("spells", s["id"]) then
 											--CDTL3:Print("USEDBY MATCH: "..s["id"])
 										else
-											CDTL3:AddUsedBy("spells", spellID, CDTL3.player["guid"])
+											CDTL3:AddUsedBy("spells", s["id"], CDTL3.player["guid"])
 										end
 									end
 								end
@@ -1518,10 +1464,10 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 							local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
 							
 							--local currentCharges, maxCharges, _, cooldownDuration, _ = GetSpellCharges(spellID)
-							local currentCharges, maxCharges, cooldownDuration = CDTL3:GetSpellCharges(spellID)
+							local currentCharges, maxCharges, _, cooldownDuration = CDTL3:GetSpellCharges(spellID)
 							local cooldownMS, gcdMS = GetSpellBaseCooldown(spellID)
 					
-							if cooldownDuration ~= nil then
+							if cooldownDuration ~= nil and cooldownDuration ~= 0 then
 								cooldownMS = cooldownDuration * 1000
 							end
 					
@@ -1531,7 +1477,7 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 							s["bCD"] = cooldownMS
 							s["type"] = "spells"
 					
-							if maxCharges then
+							if maxCharges and maxCharges ~= 0 then
 								s["charges"] = maxCharges
 								s["bCD"] = cooldownMS
 							end
@@ -1597,10 +1543,12 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 							local s = CDTL3:GetSpellSettings(spellName, "items")
 							if s then
 								if not s["ignored"] then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+									if CDTL3.db.profile.global["items"]["enabled"] then
+										CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+									end
 									
-									if not CDTL3:IsUsedBy("items", spellID) then
-										CDTL3:AddUsedBy("items", spellID, CDTL3.player["guid"])
+									if not CDTL3:IsUsedBy("items", s["id"]) then
+										CDTL3:AddUsedBy("items", s["id"], CDTL3.player["guid"])
 									end
 								end
 							else
@@ -1633,7 +1581,9 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 								table.insert(CDTL3.db.profile.tables["items"], s)
 								
 								if not s["ignored"] then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+									if CDTL3.db.profile.global["items"]["enabled"] then
+										CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+									end
 								end
 							end
 						end
@@ -1662,10 +1612,12 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 								local s = CDTL3:GetSpellSettings(spellName, "items")
 								if s then
 									if not s["ignored"] then
-										CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+										if CDTL3.db.profile.global["items"]["enabled"] then
+											CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+										end
 										
-										if not CDTL3:IsUsedBy("items", spellID) then
-											CDTL3:AddUsedBy("items", spellID, CDTL3.player["guid"])
+										if not CDTL3:IsUsedBy("items", s["id"]) then
+											CDTL3:AddUsedBy("items", s["id"], CDTL3.player["guid"])
 										end
 									end
 								else
@@ -1698,7 +1650,9 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 									table.insert(CDTL3.db.profile.tables["items"], s)
 									
 									if not s["ignored"] then
-										CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+										if CDTL3.db.profile.global["items"]["enabled"] then
+											CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+										end
 									end
 								end
 							end
@@ -1709,54 +1663,6 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 		end
 	end
 	
-end
-
-function CDTL3:ScanSpellbook()
-    -- Player Spells
-	if CDTL3.retailAPI then
-		for i = 1, C_SpellBook.GetNumSpellBookSkillLines() do
-			local skillLineInfo = C_SpellBook.GetSpellBookSkillLineInfo(i)
-			local offset, numSlots = skillLineInfo.itemIndexOffset, skillLineInfo.numSpellBookItems
-			
-			--local j = 1
-			for j = offset + 1, offset + numSlots do
-			--for j = offset + 1, numSlots do
-				local name, subName = C_SpellBook.GetSpellBookItemName(j, Enum.SpellBookSpellBank.Player)
-
-				if subName == "Passive" or subName == "Racial Passive" then
-					--CDTL3:Print("SPELLBOOK: PASSIVE - "..tostring(name))
-				else
-					local spellID = select(2,C_SpellBook.GetSpellBookItemType(j, Enum.SpellBookSpellBank.Player))
-					--print(i, j, name, subName, spellID)
-					--CDTL3:Print("SPELLBOOK: SPELL - "..tostring(name).." - "..spellID.." - "..subName)
-
-					table.insert(CDTL3.spellbook, spellID)
-				end
-			end
-		end
-	else
-		for i = 1, GetNumSpellTabs() do
-			local offset, numSlots = select(3, GetSpellTabInfo(i))
-			for j = offset + 1, offset + numSlots do
-				local spellName, _, spellID = GetSpellBookItemName(j, BOOKTYPE_SPELL)
-				
-				if CDTL3:SearchInTable(CDTL3.spellbook, spellID) then
-				else
-					table.insert(CDTL3.spellbook, spellID)
-				end
-			end
-		end
-	end
-end
-
-function CDTL3:SearchInTable(table, thing)
-    for k, v in ipairs(table) do
-		if v == thing then
-            return true
-        end
-	end
-
-    return false
 end
 
 function CDTL3:SetBorder(f, s)
@@ -1818,6 +1724,7 @@ function CDTL3:ToggleDebug()
 		
 		for _, f in pairs(CDTL3.holders) do
 			f:SetAlpha(0)
+			f:Hide()
 		end
 		
 		for _, f in pairs(CDTL3.lanes) do
@@ -1842,8 +1749,10 @@ function CDTL3:ToggleDebug()
 		CDTL3.db.profile.global["debugMode"] = true
 		CDTL3.debugFrame:Show()
 		
+		-- holders are created hidden when debug is off, so alpha alone never showed them
 		for _, f in pairs(CDTL3.holders) do
 			f:SetAlpha(1)
+			f:Show()
 		end
 		
 		for _, f in pairs(CDTL3.lanes) do
@@ -1954,72 +1863,98 @@ function CDTL3:TableCopy(orig)
     return copy
 end
 
+-- Import a string made by the Import/Export tab. Every stage is checked and the data's
+-- shape is validated BEFORE anything is written, so a bad string changes nothing.
+-- Imported data is copied INTO AceDB's existing profile tables: replacing the
+-- CDTL3.db.profile reference only changed the in-memory view, so the import was lost on
+-- /reload. Defaults are re-applied afterwards for keys an older export doesn't have.
+local IMPORT_TABLE_TYPES = { "spells", "petspells", "items", "buffs", "debuffs", "offensives", "runes", "customs", "detected" }
+local IMPORT_SETTINGS_KEYS = { "global", "lanes", "barFrames", "ready", "holders" }
+
+local function ReplaceContents(target, source)
+	for k in pairs(target) do
+		target[k] = nil
+	end
+	for k, v in pairs(source) do
+		target[k] = v
+	end
+end
+
 function CDTL3:ImportHandler(importString)
-	-- DEFLATE
+	local function Fail(what)
+		CDTL3:Print("There was an error importing the data!")
+		CDTL3:Print("  -"..what)
+		return nil
+	end
+
+	-- DEFLATE + SERIALIZE (any stage can fail on a truncated / mistyped string)
 	local LibDeflate = LibStub:GetLibrary("LibDeflate")
-	local unprintable = LibDeflate:DecodeForPrint(importString)
-	local inflated = LibDeflate:DecompressDeflate(unprintable)
-
-	-- SERIALIZE
 	local LibAceSerializer = LibStub:GetLibrary("AceSerializer-3.0")
+
+	local ok, unprintable = pcall(LibDeflate.DecodeForPrint, LibDeflate, importString or "")
+	if not ok or not unprintable then
+		return Fail("All data (was invalid import string)")
+	end
+	local inflated
+	ok, inflated = pcall(LibDeflate.DecompressDeflate, LibDeflate, unprintable)
+	if not ok or not inflated then
+		return Fail("All data (was invalid import string)")
+	end
 	local success, data = LibAceSerializer:Deserialize(inflated)
-
-	local importError = false
-	local importErrorMessage = {}
-	table.insert(importErrorMessage, "There was an error importing the data!")
-
-	if success then
-		local importMode = CDTL3.db.profile.global["importMode"]
-		
-		if importMode == "ALL" then
-			if data.global then CDTL3.db.profile = data else importError = true end
-			
-			if importError then
-				table.insert(importErrorMessage, "  -All data")
-			end
-
-		elseif importMode == "SETTINGS" then
-			if data.global then CDTL3.db.profile.global = data.global else importError = true end
-			if data.lanes then CDTL3.db.profile.lanes = data.lanes else importError = true end
-			if data.barFrames then CDTL3.db.profile.barFrames = data.barFrames else importError = true end
-			if data.ready then CDTL3.db.profile.ready = data.ready else importError = true end
-			if data.holders then CDTL3.db.profile.holders = data.holders else importError = true end
-
-			if importError then
-				table.insert(importErrorMessage, "  -Settings data")
-			end
-
-		elseif importMode == "CDDATA" then
-			if data.tables then
-				CDTL3.db.profile.tables = data.tables
-			else
-				if data.spells then CDTL3.db.profile.tables.spells = data.spells else importError = true end
-				if data.petspells then CDTL3.db.profile.tables.petspells = data.petspells else importError = true end
-				if data.items then CDTL3.db.profile.tables.items = data.items else importError = true end
-				if data.buffs then CDTL3.db.profile.tables.buffs = data.buffs else importError = true end
-				if data.debuffs then CDTL3.db.profile.tables.debuffs = data.debuffs else importError = true end
-				if data.offensives then CDTL3.db.profile.tables.offensives = data.offensives else importError = true end
-				if data.runes then CDTL3.db.profile.tables.runes = data.runes else importError = true end
-				if data.customs then CDTL3.db.profile.tables.customs = data.customs else importError = true end
-				if data.detected then CDTL3.db.profile.tables.detected = data.detected else importError = true end
-			end
-			if importError then
-				table.insert(importErrorMessage, "  -Cooldown data")
-			end
-		end
-
-		CDTL3:RefreshConfig()
-	else
-		importError = true
-		table.insert(importErrorMessage, "  -All data (was invalid import string)")
+	if not success or type(data) ~= "table" then
+		return Fail("All data (was invalid import string)")
 	end
 
-	-- ERROR IF NEEDED
-	if importError then
-		for k, v in ipairs(importErrorMessage) do
-			CDTL3:Print(v)
+	local profile = CDTL3.db.profile
+	local importMode = CDTL3.db.profile.global["importMode"]
+
+	if importMode == "ALL" then
+		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
+			if type(data[key]) ~= "table" then
+				return Fail("All data (not a full CDTL3 export)")
+			end
+		end
+		-- keep this profile's import/export choices
+		local exportMode, keepImportMode = profile.global["exportMode"], profile.global["importMode"]
+		ReplaceContents(profile, data)
+		profile.global["exportMode"], profile.global["importMode"] = exportMode, keepImportMode
+
+	elseif importMode == "SETTINGS" then
+		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
+			if type(data[key]) ~= "table" then
+				return Fail("Settings data (not a CDTL3 settings export)")
+			end
+		end
+		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
+			profile[key] = data[key]
+		end
+
+	elseif importMode == "CDDATA" then
+		-- a cooldown-data export is the tables map itself; a full/settings export nests it
+		local tables = type(data.tables) == "table" and data.tables or data
+		local found = 0
+		for _, key in ipairs(IMPORT_TABLE_TYPES) do
+			if tables[key] ~= nil and type(tables[key]) ~= "table" then
+				return Fail("Cooldown data (malformed)")
+			end
+			if type(tables[key]) == "table" and next(tables[key]) then
+				found = found + 1
+			end
+		end
+		if found == 0 then
+			-- e.g. a "Settings Only" export, whose cooldown lists are deliberately empty
+			return Fail("Cooldown data (the string contains no cooldown data)")
+		end
+		for _, key in ipairs(IMPORT_TABLE_TYPES) do
+			if type(tables[key]) == "table" then
+				profile.tables[key] = tables[key]
+			end
 		end
 	end
+
+	-- re-apply defaults for anything an older export lacks, then rebuild everything
+	CDTL3.db:RegisterDefaults(CDTL3.db.defaults)
+	CDTL3:RefreshConfig()
 
 	return nil
 end

@@ -64,10 +64,8 @@ CDTL3.lanes = {}
 CDTL3.barFrames = {}
 CDTL3.readyFrames = {}
 CDTL3.holders = {}
-CDTL3.offensives = {}
 CDTL3.player = {}
 CDTL3.cooldowns = {}
-CDTL3.spellbook = {}
 CDTL3.testing = false
 CDTL3.tracking = {
 	mhSwingTime = -1,
@@ -77,13 +75,11 @@ CDTL3.tracking = {
 CDTL3.spellData = {}
 CDTL3.recentAuras = {}
 CDTL3.auraExpiry = {}
-CDTL3.icdData = {}
 CDTL3.colors = {
 	bg = {},
 	db = { r = 0.1, g = 0.1, b = 0.1, a = 0.85 },
 }
 CDTL3.custom = {}
-CDTL3.detected = {}
 CDTL3.combat = false
 CDTL3.enabled = false
 local private = {}
@@ -2309,8 +2305,6 @@ function CDTL3:OnEnable()
 		CDTL3:RefreshLane(3)
 	end)
 	
-	local vMajor = 0
-	local vMinor = 0
 	if CDTL3.db.profile.global["firstRun"] or CDTL3:IsNewerVersion() then
 		C_Timer.After(10, function()
 			private.CreateFirstRunFrame()
@@ -2337,9 +2331,18 @@ function CDTL3:ChatCommand(input)
 		LibStub("AceConfigDialog-3.0"):Open("CDTL3")
 		LibStub("AceConfigDialog-3.0"):SelectGroup("CDTL3", "profiles")
 	elseif input:trim() == "lock" then
-		CDTL3:ToggleFrameLock()
+		-- lock / unlock set a state; ToggleFrameLock flips it, so only call it when needed
+		if CDTL3.db.profile.global["unlockFrames"] then
+			CDTL3:ToggleFrameLock()
+		else
+			CDTL3:Print("Frames are already locked")
+		end
 	elseif input:trim() == "unlock" then
-		CDTL3:ToggleFrameLock()
+		if not CDTL3.db.profile.global["unlockFrames"] then
+			CDTL3:ToggleFrameLock()
+		else
+			CDTL3:Print("Frames are already unlocked")
+		end
 	elseif input:trim() == "test" then
 		CDTL3:EnableTesting()
 	elseif input:trim() == "debug" then
@@ -2775,7 +2778,7 @@ function CDTL3:CreateTestingFrame()
 			end)
 		f:AddChild(btnClear)
 
-		if CDTL3.db.profile.global["debug"] then
+		if CDTL3.db.profile.global["debugMode"] then
 			CDTL3:Print("Created Testing Frame")
 		end
 	end
@@ -2830,10 +2833,10 @@ function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer,
 							CDTL3:CreateCooldown(CDTL3:GetUID(),"customs" , s)
 							CDTL3:CheckEdgeCases(spellName)
 							
-							if CDTL3:IsUsedBy("customs", spellID) then
+							if CDTL3:IsUsedBy("customs", s["id"]) then
 								--CDTL3:Print("USEDBY MATCH: "..s["id"])
 							else
-								CDTL3:AddUsedBy("customs", spellID, CDTL3.player["guid"])
+								CDTL3:AddUsedBy("customs", s["id"], CDTL3.player["guid"])
 							end
 						end
 					end
@@ -2860,13 +2863,13 @@ function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer,
 				else
 					if CDTL3.db.profile.global["buffs"]["enabled"] and auraType == "buffs"  then
 						CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-						if not CDTL3:IsUsedBy("buffs", spellID) then
-							CDTL3:AddUsedBy("buffs", spellID, CDTL3.player["guid"])
+						if not CDTL3:IsUsedBy("buffs", s["id"]) then
+							CDTL3:AddUsedBy("buffs", s["id"], CDTL3.player["guid"])
 						end
 					elseif CDTL3.db.profile.global["debuffs"]["enabled"] and auraType == "debuffs" then
 						CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-						if not CDTL3:IsUsedBy("debuffs", spellID) then
-							CDTL3:AddUsedBy("debuffs", spellID, CDTL3.player["guid"])
+						if not CDTL3:IsUsedBy("debuffs", s["id"]) then
+							CDTL3:AddUsedBy("debuffs", s["id"], CDTL3.player["guid"])
 						end
 					end
 				end
@@ -3147,8 +3150,12 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 								rcd.data["desc"] = s["desc"]
 								rcd.data["icon"] = s["icon"]
 								
-								rcd.data["ignored"] = ""
-								rcd.data["highlighted"] = ""
+								-- copy the entry's flags ("" is truthy in Lua, so the old
+								-- ignored = "" hid every recycled offensive icon)
+								rcd.data["ignored"] = s["ignored"]
+								rcd.data["highlight"] = s["highlight"]
+								rcd.data["enabled"] = s["enabled"]
+								rcd.data["link"] = s["link"]
 								
 								rcd.data["lane"] = s["lane"]
 								rcd.data["barFrame"] = s["barFrame"]
@@ -3174,8 +3181,8 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 									ncd.data["targetID"] = destGUID
 									ncd.data["targetName"] = destName
 									
-									if not CDTL3:IsUsedBy("offensives", spellID) then
-										CDTL3:AddUsedBy("offensives", spellID, CDTL3.player["guid"])
+									if not CDTL3:IsUsedBy("offensives", s["id"]) then
+										CDTL3:AddUsedBy("offensives", s["id"], CDTL3.player["guid"])
 									end
 								end
 							end
@@ -3279,11 +3286,26 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 	local temp, unitTarget, castGUID, spellID = ...
 
 	if unitTarget == "player" then
+		-- a cast in the first seconds after login can beat OnEnable's GetCharacterData;
+		-- anything saved without the character's GUID would never be listed
+		if not CDTL3.player["guid"] then
+			CDTL3:GetCharacterData()
+		end
+
 		-- Midnight 12.x: track cast times so GetSpellCooldown fallback can compute
 		-- time-remaining without accessing secret startTime/duration fields.
 		if not CDTL3.spellCastTimes then CDTL3.spellCastTimes = {} end
 		if not CDTL3.spellBaseCDs   then CDTL3.spellBaseCDs   = {} end
 		CDTL3.spellCastTimes[spellID] = GetTime()
+
+		-- Ranged swing timer: Auto Shot (75) and wand Shoot (5019) fire this event on
+		-- every shot, so it works without the combat log. The ranged speed can be
+		-- secret; the timer is only started when it's readable.
+		if spellID == 75 or spellID == 5019 then
+			pcall(function()
+				CDTL3.tracking["rSwingTime"] = UnitRangedDamage("player") + 0
+			end)
+		end
 		if GetSpellBaseCooldown and not CDTL3.spellBaseCDs[spellID] then
 			local ms = GetSpellBaseCooldown(spellID)
 			if ms and ms > 0 then CDTL3.spellBaseCDs[spellID] = ms / 1000 end
@@ -3312,10 +3334,10 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 							CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
 							CDTL3:CheckEdgeCases(spellName)
 							
-							if CDTL3:IsUsedBy("spells", spellID) then
+							if CDTL3:IsUsedBy("spells", s["id"]) then
 								--CDTL3:Print("USEDBY MATCH: "..s["id"])
 							else
-								CDTL3:AddUsedBy("spells", spellID, CDTL3.player["guid"])
+								CDTL3:AddUsedBy("spells", s["id"], CDTL3.player["guid"])
 							end
 						end
 					end
@@ -3388,8 +3410,8 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 						CDTL3:SendToBarFrame(ef)
 					else
 						if CDTL3.db.profile.global["items"]["enabled"] then
-							if not CDTL3:IsUsedBy("items", spellID) then
-								CDTL3:AddUsedBy("items", spellID, CDTL3.player["guid"])
+							if not CDTL3:IsUsedBy("items", s["id"]) then
+								CDTL3:AddUsedBy("items", s["id"], CDTL3.player["guid"])
 							end
 							
 							CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
@@ -3431,10 +3453,10 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 										CDTL3:CreateCooldown(CDTL3:GetUID(),"customs" , s)
 										CDTL3:CheckEdgeCases(spellName)
 										
-										if CDTL3:IsUsedBy("customs", spellID) then
+										if CDTL3:IsUsedBy("customs", s["id"]) then
 											--CDTL3:Print("USEDBY MATCH: "..s["id"])
 										else
-											CDTL3:AddUsedBy("customs", spellID, CDTL3.player["guid"])
+											CDTL3:AddUsedBy("customs", s["id"], CDTL3.player["guid"])
 										end
 									end
 								end
@@ -3518,10 +3540,10 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 							CDTL3:CreateCooldown(CDTL3:GetUID(),"petspells" , s)
 							CDTL3:CheckEdgeCases(spellName)
 							
-							if CDTL3:IsUsedBy("petspells", spellID) then
+							if CDTL3:IsUsedBy("petspells", s["id"]) then
 								--CDTL3:Print("USEDBY MATCH: "..s["id"])
 							else
-								CDTL3:AddUsedBy("petspells", spellID, CDTL3.player["guid"])
+								CDTL3:AddUsedBy("petspells", s["id"], CDTL3.player["guid"])
 							end
 						end
 					end
@@ -3594,19 +3616,24 @@ function CDTL3:ITEM_LOCK_CHANGED(...)
 				local s = CDTL3:GetSpellSettings(spellName, "items", false, spellID)
 				if s then
 					if not s["ignored"] then
+						-- The equip lockout only changes the LIVE countdown. Writing 30000 into
+						-- bCD changed nothing for an existing icon (the loop reads baseCD) and
+						-- permanently overwrote the saved entry's real cooldown otherwise.
 						local ef = CDTL3:GetExistingCooldown(s["name"], "items")
 						if ef then
-							ef.data["bCD"] = 30000
 							CDTL3:SendToLane(ef)
 							CDTL3:SendToBarFrame(ef)
+							ef.data["currentCD"] = 30
 						else
 							if CDTL3.db.profile.global["items"]["enabled"] then
-								if not CDTL3:IsUsedBy("items", spellID) then
-									CDTL3:AddUsedBy("items", spellID, CDTL3.player["guid"])
+								if not CDTL3:IsUsedBy("items", s["id"]) then
+									CDTL3:AddUsedBy("items", s["id"], CDTL3.player["guid"])
 								end
 								
-								s["bCD"] = 30000
-								CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+								local ncd = CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+								if ncd then
+									ncd.data["currentCD"] = 30
+								end
 							end
 						end
 					end
@@ -3618,8 +3645,10 @@ function CDTL3:ITEM_LOCK_CHANGED(...)
 							table.insert(CDTL3.db.profile.tables["items"], s)
 							
 							if CDTL3.db.profile.global["items"]["enabled"] then
-								s["bCD"] = 30000
-								CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+								local ncd = CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+								if ncd then
+									ncd.data["currentCD"] = 30
+								end
 							end
 						end
 					else
@@ -3634,9 +3663,6 @@ end
 function CDTL3:PLAYER_REGEN_DISABLED()
 	CDTL3.combat = true
 	
-	local ready1Enabled = CDTL3.db.profile.ready["ready1"]["enabled"]
-	local ready2Enabled = CDTL3.db.profile.ready["ready2"]["enabled"]
-	local ready3Enabled = CDTL3.db.profile.ready["ready3"]["enabled"]
 	
 	if CDTL3_Ready_1 then
 		CDTL3_Ready_1.combatTimer = CDTL3.db.profile.ready["ready1"]["pTime"]
@@ -3689,10 +3715,6 @@ end
 	end
 end]]--
 
-function CDTL3:SPELL_UPDATE_CHARGES()
-	--CDTL3:Print("SPELL_UPDATE_CHARGES")
-end
-
 function CDTL3:UNIT_POWER_FREQUENT(...)
 	local _, unitTarget, powerType = ...
 	
@@ -3728,7 +3750,7 @@ function CDTL3:UNIT_POWER_FREQUENT(...)
 						local high = 1.9
 					
 						if CDTL3.tracking["fsr"] then
-							local high = 4.9
+							high = 4.9	-- was "local high", which never widened the window
 						end
 					
 						if timeDifference < low or  timeDifference > high then
@@ -3736,9 +3758,11 @@ function CDTL3:UNIT_POWER_FREQUENT(...)
 							CDTL3.tracking["manaTime"] = currentTime
 						end
 					end
-				
-					CDTL3.tracking["manaPrevious"] = currentMana
 				end
+
+				-- track at full mana too, or the first cast after topping off reads as a
+				-- regen tick (e.g. 4900 -> 5000 unrecorded, then a cast to 4950 = "+50")
+				CDTL3.tracking["manaPrevious"] = currentMana
 			end)
 		end
 	end
@@ -3832,9 +3856,14 @@ function CDTL3:RUNE_POWER_UPDATE(...)
 			s["highlight"] = false
 			s["pinned"] = false
 			
-			local start, duration, runeReady = GetRuneCooldown(runeIndex)
+			-- the rune duration can be secret on retail: fall back to the 10s rune base
+			local bCD = 10000
+			pcall(function()
+				local _, duration = GetRuneCooldown(runeIndex)
+				bCD = (duration + 0) * 1000
+			end)
 			
-			s["bCD"] = duration * 1000
+			s["bCD"] = bCD
 			s["usedBy"] = { CDTL3.player["guid"] }
 			
 			if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= CDTL3.db.profile.global["runes"]["ignoreThreshold"] then
@@ -3908,11 +3937,6 @@ function CDTL3:GROUP_LEFT()
 	end
 end
 
-function CDTL3:SPELLS_CHANGED(...)
-    --CDTL3:Print("SPELLSCHANGED: re-scanning...")
-    --CDTL3:ScanSpellbook()
-end
-
 function CDTL3:DetermineOnOff()
 	local turnOn = false
 	
@@ -3948,7 +3972,6 @@ function CDTL3:TurnOn()
 		if CombatLogGetCurrentEventInfo then
 			CDTL3.combatLogRegistered = pcall(CDTL3.RegisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
 		end
-		CDTL3:RegisterEvent("SPELL_UPDATE_CHARGES")
 		CDTL3:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 		CDTL3:RegisterEvent("ITEM_LOCK_CHANGED")
 		CDTL3:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -3978,7 +4001,6 @@ function CDTL3:TurnOff()
 		end
 		
 		pcall(CDTL3.UnregisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
-		CDTL3:UnregisterEvent("SPELL_UPDATE_CHARGES")
 		CDTL3:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 		CDTL3:UnregisterEvent("ITEM_LOCK_CHANGED")
 		CDTL3:UnregisterEvent("PLAYER_REGEN_DISABLED")
