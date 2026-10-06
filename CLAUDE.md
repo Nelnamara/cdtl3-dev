@@ -34,7 +34,7 @@ The TOCs declare **both** (`## SavedVariables: CDTL3DB CDTL2DB`) so the old glob
 - Beta install path (folder name must be exactly `CooldownTimeline3`, not a GitHub zip's `cdtl3-dev-<branch>`): `World of Warcraft\_classic_beta_\Interface\AddOns\CooldownTimeline3\`. Launch is 2026-11-04 — re-check the live interface number then.
 
 ## Slash
-`/cdtl3` · `/cooldowntimeline3` (primary) · `/cdtl2`, `/cooldowntimeline2` (legacy aliases). Subcommands: `lock`/`unlock`, `test`, `debug`.
+`/cdtl3` · `/cooldowntimeline3` (primary) · `/cdtl2`, `/cooldowntimeline2` (legacy aliases). Subcommands: `lock`/`unlock`, `test`, `debug`, `auras` (read-only report of the player's auras as CDTL3 sees them — readable vs secret, saved/ignored/yours, plus UNIT_AURA event count and combat-log status; `CDTL3:DiagnoseAuras` in CDTL3.lua).
 
 ## Build / release / deploy
 - BigWigs packager on **`v*` tag push** (multi-TOC single package). CurseForge secret: **`CURSFORGE_API_KEY`** (misspelled, leave as-is).

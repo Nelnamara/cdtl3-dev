@@ -2338,6 +2338,8 @@ function CDTL3:ChatCommand(input)
 		CDTL3:EnableTesting()
 	elseif input:trim() == "debug" then
 		CDTL3:ToggleDebug()
+	elseif input:trim() == "auras" then
+		CDTL3:DiagnoseAuras()
     end
 end
 
@@ -2912,6 +2914,8 @@ function CDTL3:UNIT_AURA(_, unitTarget, updateInfo)
 		return
 	end
 
+	CDTL3.unitAuraEvents = (CDTL3.unitAuraEvents or 0) + 1
+
 	-- the login full update can arrive before OnEnable's delayed GetCharacterData
 	if not CDTL3.player["guid"] then
 		CDTL3:GetCharacterData()
@@ -2963,6 +2967,65 @@ function CDTL3:UNIT_AURA(_, unitTarget, updateInfo)
 			end
 
 			CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceOK and sourceIsPlayer)
+		end
+	end
+end
+
+-- /cdtl3 auras: read-only report of what CDTL3 can see of the player's auras and what it
+-- has saved for each, to pin down why a buff isn't detected (detection off, no UNIT_AURA
+-- events, secret aura data, or a saved entry that is ignored / not marked as yours).
+function CDTL3:DiagnoseAuras()
+	local g = CDTL3.db.profile.global
+	CDTL3:Print("AURA CHECK v"..CDTL3.version.." | detection on: "..tostring(CDTL3.enabled)
+		.." | UNIT_AURA events: "..tostring(CDTL3.unitAuraEvents or 0)
+		.." | combat log: "..tostring(CDTL3.combatLogRegistered))
+	CDTL3:Print("guid: "..tostring(CDTL3.player["guid"])
+		.." | buffs enabled: "..tostring(g["buffs"]["enabled"])
+		.." | only mine: "..tostring(g["buffs"]["onlyPlayer"])
+		.." | ignore over: "..tostring(g["buffs"]["ignoreThreshold"]).."s"
+		.." | default lane: "..tostring(g["buffs"]["defaultLane"]))
+
+	for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
+		local t = (filter == "HELPFUL") and "buffs" or "debuffs"
+		for i = 1, 40 do
+			local readOK, aura = pcall(C_UnitAuras.GetAuraDataByIndex, "player", i, filter)
+			if not readOK then
+				CDTL3:Print(t.." #"..i..": can't read auras right now (secret)")
+				break
+			end
+			if not aura then
+				break
+			end
+
+			local ok, line = pcall(function()
+				if not (aura.spellId > 0) then
+					return nil
+				end
+
+				local text = string.format("%s #%d: %s (%d) from %s, %ds", t, i, aura.name, aura.spellId,
+					tostring(aura.sourceUnit), math.floor(aura.duration or 0))
+
+				local s = CDTL3:GetSpellSettings(aura.name, t)
+				if s then
+					text = text.." -> saved: ignored="..tostring(s["ignored"]).." enabled="..tostring(s["enabled"])
+						.." lane="..tostring(s["lane"]).." yours="..tostring(CDTL3:IsUsedBy(t, s["id"]))
+						.." savedID="..tostring(s["id"])
+				else
+					text = text.." -> not saved"
+				end
+
+				if CDTL3:GetCustomSpellSettings(aura.name, "aura") then
+					text = text.." (also a custom aura trigger)"
+				end
+
+				return text
+			end)
+
+			if ok and line then
+				CDTL3:Print(line)
+			else
+				CDTL3:Print(t.." #"..i..": details hidden (secret)")
+			end
 		end
 	end
 end
@@ -3799,8 +3862,9 @@ function CDTL3:TurnOn()
 	
 		-- The combat log is closed to addons on WoW: Forever. Only register it where
 		-- its accessor exists, and never let a refusal abort the rest of TurnOn.
+		CDTL3.combatLogRegistered = false
 		if CombatLogGetCurrentEventInfo then
-			pcall(CDTL3.RegisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
+			CDTL3.combatLogRegistered = pcall(CDTL3.RegisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
 		end
 		CDTL3:RegisterEvent("SPELL_UPDATE_CHARGES")
 		CDTL3:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
