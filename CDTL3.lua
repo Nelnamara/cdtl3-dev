@@ -23,6 +23,39 @@ CDTL3.isForever = (tocversion >= 16000 and tocversion < 17000)
 	or (WOW_PROJECT_MAINLINE ~= nil and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE and tocversion < 110000)
 CDTL3.retailAPI = tocversion >= 110000 or CDTL3.isForever
 
+-- Globals that no longer exist on Forever (or on retail from 12.1.5): GetItemSpell and
+-- GetItemInfoInstant were removed in 12.1.5 (C_Item since 10.2.6); IsSpellKnown and
+-- IsSpellKnownOrOverridesKnown survive only in Blizzard's deprecation fallbacks since 11.2.
+-- Resolved per call, preferring whatever the client still provides.
+local function SpellBank(isPet)
+	return isPet and Enum.SpellBookSpellBank.Pet or Enum.SpellBookSpellBank.Player
+end
+
+CDTL3.Compat = {
+	GetItemSpell = function(item)
+		-- inventory scans pass -1/0 for an empty slot; C_Item validates its argument
+		if not item or (type(item) == "number" and item <= 0) then
+			return nil
+		end
+		return ((C_Item and C_Item.GetItemSpell) or GetItemSpell)(item)
+	end,
+	GetItemInfoInstant = function(item)
+		return ((C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant)(item)
+	end,
+	IsSpellKnown = function(spellID, isPet)
+		if IsSpellKnown then
+			return IsSpellKnown(spellID, isPet)
+		end
+		return C_SpellBook.IsSpellKnown(spellID, SpellBank(isPet))
+	end,
+	IsSpellKnownOrOverridesKnown = function(spellID, isPet)
+		if IsSpellKnownOrOverridesKnown then
+			return IsSpellKnownOrOverridesKnown(spellID, isPet)
+		end
+		return C_SpellBook.IsSpellKnownOrInSpellBook(spellID, SpellBank(isPet), true)
+	end,
+}
+
 CDTL3.version = "3.0.8"
 CDTL3.noticeVersion = "2.6"
 CDTL3.cdUID = 999
@@ -3036,8 +3069,8 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 
 		local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
 
-		local isKnown = IsSpellKnown(spellID)
-		local isKnownOrOverridesKnown = IsSpellKnownOrOverridesKnown(spellID)
+		local isKnown = CDTL3.Compat.IsSpellKnown(spellID)
+		local isKnownOrOverridesKnown = CDTL3.Compat.IsSpellKnownOrOverridesKnown(spellID)
 
 		if CDTL3.db.profile.global["debugMode"] then
 			CDTL3:Print("SPELLCAST: "..spellName.."-"..castGUID)
@@ -3242,8 +3275,8 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 	elseif unitTarget == "pet" then
 		local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
 		
-		local isKnown = IsSpellKnown(spellID, true)
-		local isKnownOrOverridesKnown = IsSpellKnownOrOverridesKnown(spellID, true)
+		local isKnown = CDTL3.Compat.IsSpellKnown(spellID, true)
+		local isKnownOrOverridesKnown = CDTL3.Compat.IsSpellKnownOrOverridesKnown(spellID, true)
 
 		if CDTL3.db.profile.global["debugMode"] then
 			CDTL3:Print("PETCAST: "..spellName.."-"..castGUID)
@@ -3333,7 +3366,7 @@ function CDTL3:ITEM_LOCK_CHANGED(...)
 	if not IsInventoryItemLocked(bagOrSlotIndex) and not IsInventoryItemLocked(slotIndex) then
 		if slotIndex == nil then
 			local itemId = GetInventoryItemID("player", bagOrSlotIndex)
-			local spellName, spellID = GetItemSpell(itemId)
+			local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId)
 			
 			if spellID then
 				local s = CDTL3:GetSpellSettings(spellName, "items", false, spellID)

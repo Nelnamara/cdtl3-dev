@@ -15,6 +15,9 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."    cooldowns on Forever using the modern spell/aura/spellbook API\n"
 	changeLog = changeLog.."  - Combat log registration can no longer abort cooldown detection on\n"
 	changeLog = changeLog.."    clients where the combat log is closed to addons\n"
+	changeLog = changeLog.."  - Updated Ace3 libraries (r1403): fixes options-window errors on\n"
+	changeLog = changeLog.."    Forever and WoW 12.1.5 (checkboxes, tooltips)\n"
+	changeLog = changeLog.."  - Item/spellbook lookups no longer use globals removed in 12.1.5\n"
 	changeLog = changeLog.."  - Fixed buffs/debuffs recording spell ID 0 on Classic clients\n"
 	changeLog = changeLog.."  - TOCs updated: MoP Classic 5.5.4, TBC Anniversary 2.5.6,\n"
 	changeLog = changeLog.."    Classic Era 1.15.9, Forever 1.60.1\n\n"
@@ -872,7 +875,7 @@ function CDTL3:GetFilterOptions()
 								local cleanTable = {}
 						
 								for k, v in pairs(CDTL3.db.profile.tables["items"]) do
-									local _, _, _, _, _, classID, subclassID = GetItemInfoInstant(v["itemID"])
+									local _, _, _, _, _, classID, subclassID = CDTL3.Compat.GetItemInfoInstant(v["itemID"])
 									
 									if classID == 12 then
 									else
