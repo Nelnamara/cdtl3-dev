@@ -18,6 +18,8 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."  - Updated Ace3 libraries (r1403): fixes options-window errors on\n"
 	changeLog = changeLog.."    Forever and WoW 12.1.5 (checkboxes, tooltips)\n"
 	changeLog = changeLog.."  - Item/spellbook lookups no longer use globals removed in 12.1.5\n"
+	changeLog = changeLog.."  - Buffs/debuffs on you (and custom aura triggers) are detected from\n"
+	changeLog = changeLog.."    aura updates, so they work on Forever without the combat log\n"
 	changeLog = changeLog.."  - Fixed buffs/debuffs recording spell ID 0 on Classic clients\n"
 	changeLog = changeLog.."  - TOCs updated: MoP Classic 5.5.4, TBC Anniversary 2.5.6,\n"
 	changeLog = changeLog.."    Classic Era 1.15.9, Forever 1.60.1\n\n"
