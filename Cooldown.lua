@@ -361,8 +361,8 @@ function CDTL3:RefreshBar(cd)
 				f.txt.text2 = f.txt:CreateFontString(nil, "ARTWORK")
 			end
 			
-			t = f.txt.text2
-			ts = s["bar"]["text2"]
+			local t = f.txt.text2
+			local ts = s["bar"]["text2"]
 			t:ClearAllPoints()
 			t:SetPoint(
 					ts["align"],
@@ -402,8 +402,8 @@ function CDTL3:RefreshBar(cd)
 				f.txt.text3 = f.txt:CreateFontString(nil, "ARTWORK")
 			end
 			
-			t = f.txt.text3
-			ts = s["bar"]["text3"]
+			local t = f.txt.text3
+			local ts = s["bar"]["text3"]
 			t:ClearAllPoints()
 			t:SetPoint(
 					ts["align"],
@@ -641,8 +641,8 @@ function CDTL3:RefreshIcon(cd)
 				f.txt.text2 = f.txt:CreateFontString(nil, "ARTWORK")
 			end
 			
-			t = f.txt.text2
-			ts = s["icons"]["text2"]
+			local t = f.txt.text2
+			local ts = s["icons"]["text2"]
 			t:ClearAllPoints()
 			t:SetPoint(
 					ts["align"],
@@ -682,8 +682,8 @@ function CDTL3:RefreshIcon(cd)
 				f.txt.text3 = f.txt:CreateFontString(nil, "ARTWORK")
 			end
 			
-			t = f.txt.text3
-			ts = s["icons"]["text3"]
+			local t = f.txt.text3
+			local ts = s["icons"]["text3"]
 			t:ClearAllPoints()
 			t:SetPoint(
 					ts["align"],
@@ -1233,11 +1233,6 @@ private.CooldownUpdate = function(f, elapsed)
 							--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
 							--local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
 							--d["currentCD"] = start + duration - GetTime()
-
-							if enabled == 0 or enabled == false then
-								CDTL3:SetSpellData(d["name"], "spells", "oaf", true)
-								d["oaf"] = true
-							end
 
 							--if d["charges"] ~= 0 then
 								--local currentCharges, maxCharges, cooldownStart, cooldownDuration = CDTL3:GetSpellCharges(d["id"])

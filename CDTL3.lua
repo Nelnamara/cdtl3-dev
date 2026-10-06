@@ -2310,7 +2310,7 @@ function CDTL3:OnEnable()
 	
 	local vMajor = 0
 	local vMinor = 0
-	if CDTL3.db.profile.global["firstRun"] or IsNewerVersion() then
+	if CDTL3.db.profile.global["firstRun"] or CDTL3:IsNewerVersion() then
 		C_Timer.After(10, function()
 			private.CreateFirstRunFrame()
 		end)
@@ -3942,7 +3942,7 @@ function CDTL3:TurnOff()
 	end
 end
 
-function IsNewerVersion()
+function CDTL3:IsNewerVersion()
 	local nv = tostring(CDTL3.noticeVersion)
 	local pv = tostring(CDTL3.db.profile.global["previousVersion"])
 
