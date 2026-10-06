@@ -17,7 +17,8 @@ function CDTL3:AuraExists(unit, aura)
 	-- 12.1 made aura data SECRET in combat/encounter/M+/PvP: the index accessor Lua-errors while
 	-- auras are secret, and comparing/doing arithmetic on secret fields throws. So — same pattern
 	-- as GetSpellCooldown/GetSpellCharges — the whole scan, name compare, and duration/expiry math
-	-- happen INSIDE the pcall, and only clean numbers escape. Returns nil while auras are secret.
+	-- happen INSIDE the pcall, and only clean numbers escape. Returns nil while auras are secret,
+	-- with a second return of true meaning "unknown" (secret) rather than "not there".
 	local ok, result = pcall(function()
 		for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
 			for i = 1, 40, 1 do
@@ -43,10 +44,27 @@ function CDTL3:AuraExists(unit, aura)
 	end)
 
 	if ok then
-		return result
+		if result then
+			return result
+		end
+
+		-- Not found. While auras are secret the client can also just omit them, so
+		-- "not found" only means "gone" when it says auras are readable.
+		local secretOK, aurasSecret = pcall(function()
+			if C_Secrets and C_Secrets.ShouldAurasBeSecret then
+				return C_Secrets.ShouldAurasBeSecret() and true or false
+			end
+			return false
+		end)
+		if not secretOK or aurasSecret then
+			return nil, true
+		end
+
+		return nil
 	end
 
-	return nil
+	-- the scan hit a secret value: can't tell whether the aura is there
+	return nil, true
 end
 
 function CDTL3:Autohide(f, s)

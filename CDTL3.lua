@@ -3594,6 +3594,11 @@ end
 
 function CDTL3:PLAYER_REGEN_ENABLED()
 	CDTL3.combat = false
+
+	-- auras were secret during combat: pick up buffs gained or recast meanwhile
+	if CDTL3.retailAPI and CDTL3.enabled then
+		CDTL3:UNIT_AURA("UNIT_AURA", "player")
+	end
 	
 	if CDTL3_Ready_1 then
 		CDTL3_Ready_1.combatTimer = 0

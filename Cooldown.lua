@@ -1340,10 +1340,17 @@ private.CooldownUpdate = function(f, elapsed)
 		-- AURAS
 		elseif d["type"] == "buffs" or d["type"] == "debuffs" then
 			if f.updateCount == 0 or f.updateCount % 50 == 0 then
-				local s = CDTL3:AuraExists("player", d["name"])
+				local s, unknown = CDTL3:AuraExists("player", d["name"])
 				if s then
 					d["currentCD"] = s["endTime"] - GetTime()
 					d["stacks"] = s["stacks"]
+				elseif unknown then
+					-- Auras are secret (combat, encounters, M+, PvP): keep counting down from
+					-- the last known expiry instead of dropping the icon. Re-read once
+					-- readable; PLAYER_REGEN_ENABLED also rescans for recasts made meanwhile.
+					if d["currentCD"] >= 0 then
+						d["currentCD"] = d["currentCD"] - elapsed
+					end
 				else
 					d["currentCD"] = -1
 				end
