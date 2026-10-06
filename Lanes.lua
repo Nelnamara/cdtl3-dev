@@ -4,8 +4,6 @@
 ]]--
 
 local private = {}
-private.updatePollRate = 2
-private.autohidePollRate = 5
 private.stackingPollRate = 5
 private.dynamicTextPollRate = 10
 private.timeTextPollRate = 2
@@ -120,13 +118,14 @@ function CDTL3:RefreshLane(i)
 	)
 	
 	-- SECONDARY TRACKING
-	if s["tracking"]["secondaryTracking"] ~= "None" then
-		if not f.bd then
-			f.st = CreateFrame("Frame", f:GetName().."_ST", f, BackdropTemplateMixin and "BackdropTemplate" or nil)
-			f.st:SetParent(f)
-			f.st.bg = f.st:CreateTexture(nil, "BACKGROUND")
-		end
-	
+	-- One marker per lane; LaneUpdate shows/hides it, so it must always exist.
+	if not f.st then
+		f.st = CreateFrame("Frame", f:GetName().."_ST", f, BackdropTemplateMixin and "BackdropTemplate" or nil)
+		f.st:SetParent(f)
+		f.st.bg = f.st:CreateTexture(nil, "BACKGROUND")
+	end
+
+	if s["tracking"]["secondaryTracking"] ~= "NONE" then
 		f.st:ClearAllPoints()
 		f.st:SetSize(s["tracking"]["stWidth"], s["tracking"]["stHeight"])
 		f.st.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["tracking"]["stTexture"]))
@@ -138,9 +137,7 @@ function CDTL3:RefreshLane(i)
 			s["tracking"]["stTextureColor"]["a"]
 		)
 	else
-		if f.st then
-			f.st:Hide()
-		end
+		f.st:Hide()
 	end
 	
 	-- BORDER
@@ -165,25 +162,30 @@ function CDTL3:RefreshLane(i)
 	private.UpdateText(f, s)
 	
 	-- ANIMATION
-	f.animateIn = f:CreateAnimationGroup()
-	f.animateIn:SetLooping("NONE")
-	f.animateIn:SetToFinalAlpha(true)
-	local fadeIn = f.animateIn:CreateAnimation("Alpha")
-	fadeIn:SetFromAlpha(0)
-	fadeIn:SetToAlpha(s["alpha"])
-	fadeIn:SetDuration(0.3)
-	fadeIn:SetSmoothing("OUT")
-	fadeIn:SetOrder(1)
+	-- Fade animations are created once per frame; only their alpha targets change on
+	-- refresh (recreating them on every refresh leaked a pair of groups each time).
+	if not f.animateIn then
+		f.animateIn = f:CreateAnimationGroup()
+		f.animateIn:SetLooping("NONE")
+		f.animateIn:SetToFinalAlpha(true)
+		f.animateIn.fade = f.animateIn:CreateAnimation("Alpha")
+		f.animateIn.fade:SetDuration(0.3)
+		f.animateIn.fade:SetSmoothing("OUT")
+		f.animateIn.fade:SetOrder(1)
+		
+		f.animateOut = f:CreateAnimationGroup()
+		f.animateOut:SetLooping("NONE")
+		f.animateOut:SetToFinalAlpha(true)
+		f.animateOut.fade = f.animateOut:CreateAnimation("Alpha")
+		f.animateOut.fade:SetDuration(0.3)
+		f.animateOut.fade:SetSmoothing("OUT")
+		f.animateOut.fade:SetOrder(1)
+	end
 	
-	f.animateOut = f:CreateAnimationGroup()
-	f.animateOut:SetLooping("NONE")
-	f.animateOut:SetToFinalAlpha(true)
-	local fadeOut = f.animateOut:CreateAnimation("Alpha")
-	fadeOut:SetFromAlpha(s["alpha"])
-	fadeOut:SetToAlpha(0)
-	fadeOut:SetDuration(0.3)
-	fadeOut:SetSmoothing("OUT")
-	fadeOut:SetOrder(1)
+	f.animateIn.fade:SetFromAlpha(0)
+	f.animateIn.fade:SetToAlpha(s["alpha"])
+	f.animateOut.fade:SetFromAlpha(s["alpha"])
+	f.animateOut.fade:SetToAlpha(0)
 	
 	-- DEBUG/UNLOCK
 	f.db:ClearAllPoints()
@@ -561,10 +563,10 @@ private.CalcStacking = function(f, s, count)
 						
 						icon:SetFrameLevel(baseLevel)
 						if icon.bd then
-							icon.bd:SetFrameLevel(baseLevel * k + 1)
+							icon.bd:SetFrameLevel(baseLevel + 1)
 						end
 						if icon.hl then
-							icon.hl:SetFrameLevel(baseLevel * k + 2)
+							icon.hl:SetFrameLevel(baseLevel + 2)
 						end
 					end
 				end
@@ -676,6 +678,19 @@ private.Fraction = function(current, max)
 	end
 end
 
+-- The tick / swing timers are shared (CDTL3.tracking) but CalcTracking runs per lane and
+-- per primary/secondary slot, so advance each timer at most once per frame. GetTime() is
+-- constant within a frame.
+private.advancedAt = {}
+private.FrameElapsed = function(key, elapsed)
+	local now = GetTime()
+	if private.advancedAt[key] == now then
+		return 0
+	end
+	private.advancedAt[key] = now
+	return elapsed
+end
+
 private.CalcTracking = function(f, s, t, elapsed)	
 	local position = 0
 
@@ -752,7 +767,7 @@ private.CalcTracking = function(f, s, t, elapsed)
 		position = percent
 	
 	elseif t == "ENERGY_TICK" then
-		CDTL3.tracking["energyTimeCount"] = CDTL3.tracking["energyTimeCount"] + elapsed
+		CDTL3.tracking["energyTimeCount"] = CDTL3.tracking["energyTimeCount"] + private.FrameElapsed("energy", elapsed)
 		
 		if CDTL3.tracking["energyTimeCount"] >= 2 then
 			CDTL3.tracking["energyTimeCount"] = 0 + (CDTL3.tracking["energyTimeCount"] - 2)
@@ -778,7 +793,7 @@ private.CalcTracking = function(f, s, t, elapsed)
 		if CDTL3.tracking["mhSwingTime"] < 0 then
 			position = 1
 		else
-			CDTL3.tracking["mhSwingTime"] = CDTL3.tracking["mhSwingTime"] - elapsed
+			CDTL3.tracking["mhSwingTime"] = CDTL3.tracking["mhSwingTime"] - private.FrameElapsed("mhSwing", elapsed)
 			
 			position = private.Fraction(CDTL3.tracking["mhSwingTime"], mhSpeed) or 1
 		end
@@ -789,7 +804,7 @@ private.CalcTracking = function(f, s, t, elapsed)
 		if CDTL3.tracking["ohSwingTime"] < 0 then
 			position = 1
 		else
-			CDTL3.tracking["ohSwingTime"] = CDTL3.tracking["ohSwingTime"] - elapsed
+			CDTL3.tracking["ohSwingTime"] = CDTL3.tracking["ohSwingTime"] - private.FrameElapsed("ohSwing", elapsed)
 			
 			position = private.Fraction(CDTL3.tracking["ohSwingTime"], ohSpeed) or 1
 		end
@@ -800,7 +815,7 @@ private.CalcTracking = function(f, s, t, elapsed)
 		if CDTL3.tracking["rSwingTime"] < 0 then
 			position = 1
 		else
-			CDTL3.tracking["rSwingTime"] = CDTL3.tracking["rSwingTime"] - elapsed
+			CDTL3.tracking["rSwingTime"] = CDTL3.tracking["rSwingTime"] - private.FrameElapsed("rSwing", elapsed)
 			
 			position = private.Fraction(CDTL3.tracking["rSwingTime"], rSwingTime) or 1
 		end
@@ -929,6 +944,11 @@ private.LaneUpdate = function(f, elapsed)
 				f:SetValue(tValue)
 			end
 		else
+			-- tracking switched off: undo a secret health/power range, or the lane stays empty
+			if f.secretRange then
+				f:SetMinMaxValues(0, 1)
+				f.secretRange = false
+			end
 			f:SetValue(1)
 		end
 		
@@ -1078,32 +1098,6 @@ private.SetModeText = function(f, s)
 		end
 	end
 end
-
-private.UpdateModeText = function(f, s)
-	for i = 1, 5, 1 do
-		local tSettings = nil
-		local tObject = nil
-	
-		if i == 1 then
-			tSettings = s["modeText"]["text1"]
-			tObject = f.t1
-		elseif i == 2 then
-			tSettings = s["modeText"]["text2"]
-			tObject = f.t2
-		elseif i == 3 then
-			tSettings = s["modeText"]["text3"]
-			tObject = f.t3
-		elseif i == 4 then
-			tSettings = s["modeText"]["text4"]
-			tObject = f.t4
-		elseif i == 5 then
-			tSettings = s["modeText"]["text5"]
-			tObject = f.t5
-		end
-		
-		tObject:SetText(CDTL3:ConvertTextTags(tSettings["text"], f))
-	end
-end 
 
 private.UpdateText = function(f, s)
 	for i = 1, 5, 1 do
