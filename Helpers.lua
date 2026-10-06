@@ -238,6 +238,7 @@ function CDTL3:CheckEdgeCases(spellName)
 		if CDTL3.db.profile.global["detectSharedCD"] then
 			for i = 1, 5, 1 do
 				local secondarySpellName = ""
+				local lockoutTime = 0
 				if i == 1 then
 					secondarySpellName = "Divine Protection"
 					lockoutTime = 120
@@ -809,7 +810,7 @@ function CDTL3:GetSpellLink(id)
 	if CDTL3.retailAPI then
     	link = C_Spell.GetSpellLink(id)
 	else
-		link, _ = _G.GetSpellLink(id)
+		link = _G.GetSpellLink(id)
 	end
 
     if link then
@@ -835,10 +836,11 @@ function CDTL3:GetSpellInfo(id)
 			originalIconID = data["originalIconID"]
 		end
 	else
-		name, _, icon, _, _, _, originalIcon = GetSpellInfo(id)
+		local _
+		name, _, icon, _, _, _, _, originalIconID = GetSpellInfo(id)
 	end
 
-	return name, icon, originalIcon
+	return name, icon, originalIconID
 end
 
 function CDTL3:GetSpellCharges(id)
@@ -867,7 +869,7 @@ function CDTL3:GetSpellCharges(id)
 			end)
 		end
 	else
-		currentCharges, maxCharges, cooldownStart, cooldownDuration, _ = GetSpellCharges(id)
+		currentCharges, maxCharges, cooldownStart, cooldownDuration = GetSpellCharges(id)
 	end
 	
 	return currentCharges, maxCharges, cooldownStart, cooldownDuration
@@ -954,7 +956,7 @@ function CDTL3:GetSpellCooldown(id)
 			end
 		end
 	else
-		start, duration, enabled, _ = GetSpellCooldown(id)
+		start, duration, enabled = GetSpellCooldown(id)
 	end
 
 	return start, duration, enabled
@@ -1038,6 +1040,7 @@ function CDTL3:GetUnitAura(unit, i, filter)
 			expirationTime = data["expirationTime"]
 		end
 	else
+		local _
 		name, icon, count, _, duration, expirationTime, _, _, _, spellID = UnitAura(unit, i, filter)
 	end
 	
@@ -1338,8 +1341,8 @@ function CDTL3:ScanSharedSpellCooldown(initialName, initialDuration)
 							if not s["ignored"] then
 								CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
 								
-								if not CDTL3:IsUsedBy("spells", spellID) then
-									CDTL3:AddUsedBy("spells", spellID, CDTL3.player["guid"])
+								if not CDTL3:IsUsedBy("spells", spell["id"]) then
+									CDTL3:AddUsedBy("spells", spell["id"], CDTL3.player["guid"])
 								end
 							end
 						else
@@ -1583,8 +1586,8 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 		local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId or -1)
 		
 		if spellName then
-			if itemID then
-				if CDTL3:IsValidItem(itemID) then
+			if itemId then
+				if CDTL3:IsValidItem(itemId) then
 					local start, duration, enabled = CDTL3:GetItemCooldown(itemId)
 					
 					if duration and duration > 1.5 then
@@ -1648,7 +1651,7 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 			local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId or -1)
 			
 			if spellName then
-				if itemID then
+				if itemId then
 					if CDTL3:IsValidItem(itemId) then
 						local start, duration, enabled = CDTL3:GetItemCooldown(itemId)
 						
@@ -1754,18 +1757,6 @@ function CDTL3:SearchInTable(table, thing)
 	end
 
     return false
-end
-
-function CDTL3:ScanSpellbook2()
-	-- Keep track of what spells are known so we can quickly check later
-    for i = 1, GetNumSpellTabs() do
-        local offset, numSlots = select(3, GetSpellTabInfo(i))
-        for j = offset + 1, offset + numSlots do
-            local _, _, spellID = GetSpellBookItemName(j, BOOKTYPE_SPELL)
-            
-            table.insert(CDTL3.spellbook, spellID)
-        end
-    end
 end
 
 function CDTL3:SetBorder(f, s)

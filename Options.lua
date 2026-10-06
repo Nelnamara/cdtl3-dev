@@ -2740,7 +2740,7 @@ private.GetFilterSet = function(t, o)
 									return 134400
 								end
 							else
-								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
+								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, t == "items")
 							
 								if s then
 									return s["icon"]
@@ -3688,7 +3688,7 @@ private.GetCustomSet = function(t, o)
 								if CDTL3.currentFilter["detected"] == "<< Select Detected >>" then
 									n = "Select a detected spell"
 								else
-									local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["detected"], "detected", specialCase)
+									local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["detected"], "detected", false)
 									if s then
 										n = "  "..s["name"]
 									else

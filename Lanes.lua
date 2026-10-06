@@ -535,7 +535,7 @@ private.CalcStacking = function(f, s, count)
 						local iconOffset = 0
 						local stackOffset = 0
 						if iconSize * stackCount > height then
-							maxHeight = height - iconSize
+							local maxHeight = height - iconSize
 							iconOffset = (maxHeight / (stackCount - 1)) * (k - 1)
 							
 							stackOffset = maxHeight / 2
