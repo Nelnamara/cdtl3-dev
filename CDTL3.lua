@@ -2294,6 +2294,11 @@ function CDTL3:OnEnable()
 
 		CDTL3:ScanCurrentCooldowns(CDTL3.player["class"], CDTL3.player["race"])
 
+		-- pick up auras the login full update had to skip (see UNIT_AURA)
+		if CDTL3.retailAPI and CDTL3.enabled then
+			CDTL3:UNIT_AURA("UNIT_AURA", "player")
+		end
+
 		if CDTL3.player["class"] == "DEATHKNIGHT" then
 			self:RegisterEvent("RUNE_POWER_UPDATE")
 		end
@@ -2836,6 +2841,13 @@ function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer)
 
 		local s = CDTL3:GetSpellSettings(spellName, auraType)
 		if s then
+			-- List it for this character: entries saved before the character was known
+			-- (login), or by another character on this profile, weren't marked as theirs
+			-- and so never showed up in Filters.
+			if CDTL3.player["guid"] and not CDTL3:IsUsedBy(auraType, s["id"]) then
+				CDTL3:AddUsedBy(auraType, s["id"], CDTL3.player["guid"])
+			end
+
 			if not s["ignored"] then
 				local ef = CDTL3:GetExistingCooldown(s["name"], auraType)
 				if ef then
@@ -2916,9 +2928,14 @@ function CDTL3:UNIT_AURA(_, unitTarget, updateInfo)
 
 	CDTL3.unitAuraEvents = (CDTL3.unitAuraEvents or 0) + 1
 
-	-- the login full update can arrive before OnEnable's delayed GetCharacterData
+	-- The login full update can arrive before the character is known (GetPlayerInfoByGUID
+	-- isn't ready yet). Anything saved then would have no owner and never be listed, so
+	-- wait: OnEnable rescans the player's auras once GetCharacterData has succeeded.
 	if not CDTL3.player["guid"] then
 		CDTL3:GetCharacterData()
+		if not CDTL3.player["guid"] then
+			return
+		end
 	end
 
 	-- The event payload itself can be secret too (even isFullUpdate), so every read of
