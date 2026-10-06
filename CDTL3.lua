@@ -76,6 +76,7 @@ CDTL3.tracking = {
 }
 CDTL3.spellData = {}
 CDTL3.recentAuras = {}
+CDTL3.auraExpiry = {}
 CDTL3.icdData = {}
 CDTL3.colors = {
 	bg = {},
@@ -2783,8 +2784,9 @@ end
 -- A buff/debuff landed on the player. Fed by the combat log (SPELL_AURA_APPLIED) where
 -- addons get it, and by UNIT_AURA on retail-API clients (WoW: Forever closes the combat
 -- log, so UNIT_AURA is its only source). Both can report the same application, so a
--- repeat of the same aura within half a second is ignored.
-function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer)
+-- repeat of the same aura within half a second is ignored. isScan: the aura was already
+-- there (login / zoning / combat-end rescan), so custom aura triggers don't start.
+function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer, isScan)
 	local key = auraType..":"..tostring(spellName)
 	local now = GetTime()
 	if CDTL3.recentAuras[key] and now - CDTL3.recentAuras[key] < 0.5 then
@@ -2809,7 +2811,8 @@ function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer)
 		-- CHECK FOR TRIGGERS
 		--local spellName, _, _ = CDTL3:GetSpellInfo(spellID)
 		--local s = CDTL3:GetSpellSettings(spellName, "customs")
-		local s = CDTL3:GetCustomSpellSettings(spellName, "aura")
+		-- a scan sighting is an aura that was already there, not a new application
+		local s = not isScan and CDTL3:GetCustomSpellSettings(spellName, "aura")
 		if s then
 			--if s["triggerType"] and s["triggerType"] == "aura" then
 				if CDTL3.db.profile.global["debugMode"] then
@@ -2916,6 +2919,23 @@ function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer)
 	end
 end
 
+-- auraInstanceID and expiry of an aura; each is nil if secret (+ 0 forces the throw).
+-- CDTL3.auraExpiry maps id -> expiry, or true for "seen, expiry unknown".
+local function AuraKey(aura)
+	local idOK, id = pcall(function()
+		return aura.auraInstanceID + 0
+	end)
+	if not idOK then
+		return nil
+	end
+
+	local expiryOK, expiry = pcall(function()
+		return aura.expirationTime + 0
+	end)
+
+	return id, expiryOK and expiry or nil
+end
+
 -- Player auras from UNIT_AURA (see OnPlayerAuraApplied). Covers what the combat log's
 -- SPELL_AURA_APPLIED would, plus two cases it never reported as "applied":
 --  * a recast of a buff you already have arrives as an UPDATE, not an add
@@ -2942,28 +2962,67 @@ function CDTL3:UNIT_AURA(_, unitTarget, updateInfo)
 	-- The event payload itself can be secret too (even isFullUpdate), so every read of
 	-- it happens inside this pcall. Whatever was collected before a secret read stops
 	-- the scan is still processed below.
-	local auras = {}
+	--
+	-- Only a real application counts as "applied" (it restarts timers via SendToLane):
+	--  * added auras
+	--  * updated auras whose expiry moved later (a recast); stack / value / tooltip
+	--    updates must not restart buff timers or custom aura triggers (ICDs)
+	--  * on a full update (login, /reload, zoning, the combat-end rescan) only auras not
+	--    seen before or refreshed meanwhile. These are flagged as scan sightings: they
+	--    can add or restore buff entries but never start a custom aura trigger.
+	local auras, scanned = {}, {}
+	local known = CDTL3.auraExpiry
 	pcall(function()
 		if not updateInfo or updateInfo.isFullUpdate then
+			local fresh = {}
 			for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
 				for i = 1, 40 do
 					local aura = C_UnitAuras.GetAuraDataByIndex("player", i, filter)
 					if not aura then
 						break
 					end
-					table.insert(auras, aura)
+
+					local id, expiry = AuraKey(aura)
+					if id then
+						local old = known[id]
+						fresh[id] = expiry or old or true
+						if not old or (expiry and old ~= true and expiry > old + 0.5) then
+							table.insert(auras, aura)
+							scanned[aura] = true
+						end
+					end
 				end
 			end
+			CDTL3.auraExpiry = fresh
 		else
 			for _, aura in ipairs(updateInfo.addedAuras or {}) do
+				local id, expiry = AuraKey(aura)
+				if id then
+					known[id] = expiry or true
+				end
 				table.insert(auras, aura)
 			end
 
 			for _, auraInstanceID in ipairs(updateInfo.updatedAuraInstanceIDs or {}) do
 				local ok, aura = pcall(C_UnitAuras.GetAuraDataByAuraInstanceID, "player", auraInstanceID)
 				if ok and aura then
-					table.insert(auras, aura)
+					local id, expiry = AuraKey(aura)
+					if id and expiry then
+						local old = known[id]
+						known[id] = expiry
+						if not old then
+							-- first readable sighting (it was added while auras were secret)
+							table.insert(auras, aura)
+							scanned[aura] = true
+						elseif old ~= true and expiry > old + 0.5 then
+							table.insert(auras, aura)
+						end
+					end
 				end
+			end
+
+			for _, auraInstanceID in ipairs(updateInfo.removedAuraInstanceIDs or {}) do
+				known[auraInstanceID] = nil
 			end
 		end
 	end)
@@ -2984,7 +3043,7 @@ function CDTL3:UNIT_AURA(_, unitTarget, updateInfo)
 				CDTL3:Print("AURA ADDED: "..spellID.." - "..spellName.." - "..auraType.." - from player: "..tostring(sourceOK and sourceIsPlayer))
 			end
 
-			CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceOK and sourceIsPlayer)
+			CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceOK and sourceIsPlayer, scanned[aura])
 		end
 	end
 end
