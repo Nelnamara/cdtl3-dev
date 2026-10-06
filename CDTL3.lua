@@ -14,11 +14,13 @@ CDTL3.GUI = LibStub("AceGUI-3.0")
 local _, _, _, tocversion = GetBuildInfo()
 CDTL3.tocversion = tocversion
 
--- WoW: Forever runs the modern Mainline engine and API (WOW_PROJECT_ID is Mainline,
--- the old spell/aura/spellbook globals are gone, values can be secret) but reports a
--- vanilla-era interface number (16xxx). So tocversion only picks era CONTENT (spell
--- lists, class colours); retailAPI picks which API calls exist.
-CDTL3.isForever = WOW_PROJECT_MAINLINE ~= nil and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE and tocversion < 110000
+-- WoW: Forever runs the modern Mainline engine and API (the old spell/aura/spellbook
+-- globals are gone, values can be secret) but reports a vanilla-era interface number
+-- (16xxx). So tocversion only picks era CONTENT (spell lists, class colours);
+-- retailAPI picks which API calls exist. Detect Forever by its 16xxx interface band:
+-- WOW_PROJECT_ID was Mainline (1) on early beta builds but changed to 18 in 70205.
+CDTL3.isForever = (tocversion >= 16000 and tocversion < 17000)
+	or (WOW_PROJECT_MAINLINE ~= nil and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE and tocversion < 110000)
 CDTL3.retailAPI = tocversion >= 110000 or CDTL3.isForever
 
 CDTL3.version = "3.0.8"

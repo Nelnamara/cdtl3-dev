@@ -999,7 +999,7 @@ function CDTL3:GetUnitAura(unit, i, filter)
 			expirationTime = data["expirationTime"]
 		end
 	else
-		name, icon, count, _, duration, expirationTime, _, _, _, spellId = UnitAura(unit, i, filter)
+		name, icon, count, _, duration, expirationTime, _, _, _, spellID = UnitAura(unit, i, filter)
 	end
 	
 	return name, spellID, duration, icon, count, expirationTime
