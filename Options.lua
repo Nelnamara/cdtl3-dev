@@ -20,6 +20,7 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."  - Item/spellbook lookups no longer use globals removed in 12.1.5\n"
 	changeLog = changeLog.."  - Buffs/debuffs on you (and custom aura triggers) are detected from\n"
 	changeLog = changeLog.."    aura updates, so they work on Forever without the combat log\n"
+	changeLog = changeLog.."  - Fixed an options error when no entry is selected in a Filters list\n"
 	changeLog = changeLog.."  - Fixed buffs/debuffs recording spell ID 0 on Classic clients\n"
 	changeLog = changeLog.."  - TOCs updated: MoP Classic 5.5.4, TBC Anniversary 2.5.6,\n"
 	changeLog = changeLog.."    Classic Era 1.15.9, Forever 1.60.1\n\n"
@@ -2918,6 +2919,9 @@ private.GetFilterSet = function(t, o)
 										s["setCustomCD"] = false
 										return true
 									end
+								else
+									-- nothing real selected (e.g. "<< Select >>")
+									return true
 								end
 							end
 						end
@@ -2932,6 +2936,9 @@ private.GetFilterSet = function(t, o)
 							end
 							
 							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
+							if not s then
+								return ""
+							end
 
 							if s["customCDTime"] ~= nil then
 								return tostring(s["customCDTime"] / 1000)
@@ -2958,11 +2965,12 @@ private.GetFilterSet = function(t, o)
 				desc = "Allows you to set a custom time for the cooldown.  This can be used for if a talent changes a cooldown time and the mod cannot detect it.",
 				order = 305,
 				hidden = function(info)
-						if t == "customs" then
+						if t == "customs" or CDTL3.currentFilterHidden[t] then
 							return true
 						end
 
-						return CDTL3.currentFilterHidden[t]
+						-- nothing real selected (e.g. "<< Select >>")
+						return not CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, t == "items")
 					end,
 				type = "toggle",
 				get = function(info, index)
@@ -2973,7 +2981,7 @@ private.GetFilterSet = function(t, o)
 							end
 							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 
-							return s["setCustomCD"]
+							return s and s["setCustomCD"] or false
 						end
 
 						return false
