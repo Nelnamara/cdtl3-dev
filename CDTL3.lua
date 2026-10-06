@@ -2917,9 +2917,12 @@ function CDTL3:UNIT_AURA(_, unitTarget, updateInfo)
 		CDTL3:GetCharacterData()
 	end
 
+	-- The event payload itself can be secret too (even isFullUpdate), so every read of
+	-- it happens inside this pcall. Whatever was collected before a secret read stops
+	-- the scan is still processed below.
 	local auras = {}
-	if not updateInfo or updateInfo.isFullUpdate then
-		pcall(function()
+	pcall(function()
+		if not updateInfo or updateInfo.isFullUpdate then
 			for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
 				for i = 1, 40 do
 					local aura = C_UnitAuras.GetAuraDataByIndex("player", i, filter)
@@ -2929,19 +2932,19 @@ function CDTL3:UNIT_AURA(_, unitTarget, updateInfo)
 					table.insert(auras, aura)
 				end
 			end
-		end)
-	else
-		for _, aura in ipairs(updateInfo.addedAuras or {}) do
-			table.insert(auras, aura)
-		end
-
-		for _, auraInstanceID in ipairs(updateInfo.updatedAuraInstanceIDs or {}) do
-			local ok, aura = pcall(C_UnitAuras.GetAuraDataByAuraInstanceID, "player", auraInstanceID)
-			if ok and aura then
+		else
+			for _, aura in ipairs(updateInfo.addedAuras or {}) do
 				table.insert(auras, aura)
 			end
+
+			for _, auraInstanceID in ipairs(updateInfo.updatedAuraInstanceIDs or {}) do
+				local ok, aura = pcall(C_UnitAuras.GetAuraDataByAuraInstanceID, "player", auraInstanceID)
+				if ok and aura then
+					table.insert(auras, aura)
+				end
+			end
 		end
-	end
+	end)
 
 	for _, aura in ipairs(auras) do
 		local ok, spellID, spellName, auraType = pcall(function()
@@ -3556,39 +3559,42 @@ function CDTL3:UNIT_POWER_FREQUENT(...)
 			CDTL3.db.profile.lanes["lane3"]["tracking"]["primaryTracking"] == "MANA_TICK" or
 			CDTL3.db.profile.lanes["lane3"]["tracking"]["secondaryTracking"] == "MANA_TICK"
 		then
-			local currentTime = GetTime()
-			local currentMana = UnitPower("player", Enum.PowerType.Mana)
-			if currentMana ~= UnitPowerMax("player", Enum.PowerType.Mana) then
-				local difference = currentMana - CDTL3.tracking["manaPrevious"]
+			-- mana can be SECRET (Midnight / WoW: Forever): skip the tick estimate then
+			pcall(function()
+				local currentTime = GetTime()
+				local currentMana = UnitPower("player", Enum.PowerType.Mana)
+				if currentMana ~= UnitPowerMax("player", Enum.PowerType.Mana) then
+					local difference = currentMana - CDTL3.tracking["manaPrevious"]
 							
-				local timeDifference = 0
-				if CDTL3.tracking["manaTime"] then
-					timeDifference = currentTime - CDTL3.tracking["manaTime"]
-				end
-				
-				if difference < 0 then
-					if CDTL3.combat then
-						CDTL3.tracking["manaTime"] = currentTime
-						CDTL3.tracking["fsr"] = true
+					local timeDifference = 0
+					if CDTL3.tracking["manaTime"] then
+						timeDifference = currentTime - CDTL3.tracking["manaTime"]
 					end
-				end
 				
-				if difference > 0 then
-					local low = 0.1
-					local high = 1.9
+					if difference < 0 then
+						if CDTL3.combat then
+							CDTL3.tracking["manaTime"] = currentTime
+							CDTL3.tracking["fsr"] = true
+						end
+					end
+				
+					if difference > 0 then
+						local low = 0.1
+						local high = 1.9
 					
-					if CDTL3.tracking["fsr"] then
-						local high = 4.9
-					end
+						if CDTL3.tracking["fsr"] then
+							local high = 4.9
+						end
 					
-					if timeDifference < low or  timeDifference > high then
-						CDTL3.tracking["fsr"] = false
-						CDTL3.tracking["manaTime"] = currentTime
+						if timeDifference < low or  timeDifference > high then
+							CDTL3.tracking["fsr"] = false
+							CDTL3.tracking["manaTime"] = currentTime
+						end
 					end
-				end
 				
-				CDTL3.tracking["manaPrevious"] = currentMana
-			end
+					CDTL3.tracking["manaPrevious"] = currentMana
+				end
+			end)
 		end
 	end
 end
@@ -3604,18 +3610,21 @@ function CDTL3:UNIT_POWER_UPDATE(...)
 			CDTL3.db.profile.lanes["lane3"]["tracking"]["primaryTracking"] == "ENERGY_TICK" or
 			CDTL3.db.profile.lanes["lane3"]["tracking"]["secondaryTracking"] == "ENERGY_TICK"
 		then
-			local currentTime = GetTime()
-			local maxenergy = UnitPowerMax("player", Enum.PowerType.Energy)
-			local currentEnergy = UnitPower("player", Enum.PowerType.Energy)
+			-- energy can be SECRET (Midnight / WoW: Forever): skip the tick estimate then
+			pcall(function()
+				local currentTime = GetTime()
+				local maxenergy = UnitPowerMax("player", Enum.PowerType.Energy)
+				local currentEnergy = UnitPower("player", Enum.PowerType.Energy)
 			
-			if currentEnergy < maxenergy then
-				local difference = currentEnergy - CDTL3.tracking["energyPrevious"]
-				if (difference > 18 and difference < 22) or (difference > 38 and difference < 42) then
-					CDTL3.tracking["energyTimeCount"] = 0
+				if currentEnergy < maxenergy then
+					local difference = currentEnergy - CDTL3.tracking["energyPrevious"]
+					if (difference > 18 and difference < 22) or (difference > 38 and difference < 42) then
+						CDTL3.tracking["energyTimeCount"] = 0
+					end
 				end
-			end
 			
-			CDTL3.tracking["energyPrevious"] = currentEnergy
+				CDTL3.tracking["energyPrevious"] = currentEnergy
+			end)
 		end
 	end
 end

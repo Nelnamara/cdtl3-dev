@@ -2976,9 +2976,11 @@ function CDTL3:ConvertTextTags(iString, frame)
 			
 	for _, tag in pairs(private.customTextTags) do
 		if tostring(iString):find(tag["tag"]) then
-			local replacement = tag["func"](frame)
-		
-			oString = string.gsub(oString, tag["tag"], replacement)
+			-- unit health/power tags can return SECRET values (Midnight / WoW: Forever)
+			local ok, replaced = pcall(function()
+				return (string.gsub(oString, tag["tag"], tag["func"](frame)))
+			end)
+			oString = ok and replaced or string.gsub(oString, tag["tag"], "?")
 		end
 	end
 	
@@ -2990,9 +2992,11 @@ function CDTL3:ConvertTextDynamicTags(iString, frame)
 			
 	for _, tag in pairs(private.customTextDynamicTags) do
 		if tostring(iString):find(tag["tag"]) then
-			local replacement = tag["func"](frame)
-		
-			oString = string.gsub(oString, tag["tag"], replacement)
+			-- unit health/power tags can return SECRET values (Midnight / WoW: Forever)
+			local ok, replaced = pcall(function()
+				return (string.gsub(oString, tag["tag"], tag["func"](frame)))
+			end)
+			oString = ok and replaced or string.gsub(oString, tag["tag"], "?")
 		end
 	end
 	
@@ -3004,9 +3008,11 @@ function CDTL3:ConvertTextTimeTags(iString, frame)
 			
 	for _, tag in pairs(private.customTextTimeTags) do
 		if tostring(iString):find(tag["tag"]) then
-			local replacement = tag["func"](frame)
-		
-			oString = string.gsub(oString, tag["tag"], replacement)
+			-- unit health/power tags can return SECRET values (Midnight / WoW: Forever)
+			local ok, replaced = pcall(function()
+				return (string.gsub(oString, tag["tag"], tag["func"](frame)))
+			end)
+			oString = ok and replaced or string.gsub(oString, tag["tag"], "?")
 		end
 	end
 	
