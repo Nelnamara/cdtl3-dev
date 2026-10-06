@@ -769,9 +769,11 @@ function CDTL3:RefreshIcon(cd)
 			CDTL3:RemoveHighlights(f, s)
 			
 			local style = s["icons"]["highlight"]["style"]
-			if style == "GLOW" then
+			-- The action-button glow isn't available on every client (e.g. Forever):
+			-- fall back to the plain border highlight there.
+			if style == "GLOW" and ActionButton_ShowOverlayGlow then
 				ActionButton_ShowOverlayGlow(f)
-			elseif style == "BORDER" then
+			elseif style == "BORDER" or style == "GLOW" then
 				f.hl:SetBackdropBorderColor(
 					s["icons"]["highlight"]["border"]["color"]["r"],
 					s["icons"]["highlight"]["border"]["color"]["g"],
@@ -1277,7 +1279,7 @@ private.CooldownUpdate = function(f, elapsed)
 					
 					local tinker, slot = CDTL3:CheckEngTinkerCases(d["name"])
 					if tinker then
-						local _, spellID = GetItemSpell(d["itemID"])
+						local _, spellID = CDTL3.Compat.GetItemSpell(d["itemID"])
 						if spellID == d["id"] then
 							local start, duration, enabled = GetInventoryItemCooldown("player", slot)
 							
@@ -1309,7 +1311,7 @@ private.CooldownUpdate = function(f, elapsed)
 				if f.updateCount % 50 == 0 then
 					local tinker, slot = CDTL3:CheckEngTinkerCases(d["name"])
 					if tinker then
-						local _, spellID = GetItemSpell(d["itemID"])
+						local _, spellID = CDTL3.Compat.GetItemSpell(d["itemID"])
 						if spellID == d["id"] then
 							--local start, duration, enabled = GetInventoryItemCooldown("player", slot)
 							--d["baseCD"] = duration

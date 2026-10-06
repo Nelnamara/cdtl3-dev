@@ -582,7 +582,7 @@ function CDTL3:GetItemSpell(id)
 	-- EQUIPPED ITEMS
 	for i = 0, 23, 1 do
 		local itemId = GetInventoryItemID("player", i)
-		local spellName, spellID = GetItemSpell(itemId or -1)
+		local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId or -1)
 		
 		if spellID and (spellID == id) then
 			local s = {}
@@ -617,7 +617,7 @@ function CDTL3:GetItemSpell(id)
 		local numberOfSlots = C_Container.GetContainerNumSlots(i)
 		for x = 0, numberOfSlots, 1 do
 			local itemId = C_Container.GetContainerItemID(i, x)
-			local spellName, spellID = GetItemSpell(itemId or -1)
+			local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId or -1)
 			
 			if spellID and (spellID == id) then
 				local s = {}
@@ -1062,7 +1062,7 @@ function CDTL3:IsUsedBy(type, id, specialCase)
 end
 
 function CDTL3:IsValidItem(itemID)
-	local _, itemType, itemSubType, _, _, classID, subclassID = GetItemInfoInstant(itemID)
+	local _, itemType, itemSubType, _, _, classID, subclassID = CDTL3.Compat.GetItemInfoInstant(itemID)
 	
 	if CDTL3.db.profile.global["debugMode"] then
 		CDTL3:Print("ITEM: "..itemType.."("..tostring(classID)..") - "..itemSubType.."("..tostring(subclassID)..")")
@@ -1183,8 +1183,8 @@ function CDTL3:OnTalentChanges()
 				isPet = true
 			end
 
-			local isKnown = IsSpellKnown(spellID, isPet)
-			local isKnownOrOverridesKnown = IsSpellKnownOrOverridesKnown(spellID, isPet)
+			local isKnown = CDTL3.Compat.IsSpellKnown(spellID, isPet)
+			local isKnownOrOverridesKnown = CDTL3.Compat.IsSpellKnownOrOverridesKnown(spellID, isPet)
 
 			if isKnown or isKnownOrOverridesKnown then
 				--local start, duration, enabled, _ = GetSpellCooldown(spellID)
@@ -1248,7 +1248,9 @@ function CDTL3:RemoveHighlights(f, s)
 		f.hl.agPulse:Stop()
 	end
 	
-	ActionButton_HideOverlayGlow(f)
+	if ActionButton_HideOverlayGlow then
+		ActionButton_HideOverlayGlow(f)
+	end
 	f.hl:SetBackdropBorderColor(
 		s["icons"]["highlight"]["border"]["color"]["r"],
 		s["icons"]["highlight"]["border"]["color"]["g"],
@@ -1259,8 +1261,8 @@ function CDTL3:RemoveHighlights(f, s)
 end
 
 function CDTL3:SearchIsInSpellBook(spellID)
-	local isKnown = IsSpellKnown(spellID)
-	local isKnownOrOverridesKnown = IsSpellKnownOrOverridesKnown(spellID)
+	local isKnown = CDTL3.Compat.IsSpellKnown(spellID)
+	local isKnownOrOverridesKnown = CDTL3.Compat.IsSpellKnownOrOverridesKnown(spellID)
 
 	if isKnown or isKnownOrOverridesKnown then
 		return true
@@ -1539,7 +1541,7 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 	-- ITEMS EQUIPPED
 	for i = 0, 23, 1 do
 		local itemId = GetInventoryItemID("player", i)
-		local spellName, spellID = GetItemSpell(itemId or -1)
+		local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId or -1)
 		
 		if spellName then
 			if itemID then
@@ -1604,7 +1606,7 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 		local numberOfSlots = C_Container.GetContainerNumSlots(i)
 		for x = 0, numberOfSlots, 1 do
 			local itemId = C_Container.GetContainerItemID(i, x)
-			local spellName, spellID = GetItemSpell(itemId or -1)
+			local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId or -1)
 			
 			if spellName then
 				if itemID then
