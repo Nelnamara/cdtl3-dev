@@ -22,6 +22,7 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."    aura updates, so they work on Forever without the combat log —\n"
 	changeLog = changeLog.."    including recasts of a buff you already have, and buffs already on\n"
 	changeLog = changeLog.."    you at login or after /reload\n"
+	changeLog = changeLog.."  - New /cdtl3 auras: shows what CDTL3 can see of your buffs/debuffs\n"
 	changeLog = changeLog.."  - Fixed an options error when no entry is selected in a Filters list\n"
 	changeLog = changeLog.."  - Lane health/power tracking, swing timers, item cooldowns, text tags\n"
 	changeLog = changeLog.."    and aura detection no longer error on secret values (Forever, 12.x)\n"
