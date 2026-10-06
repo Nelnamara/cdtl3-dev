@@ -1781,6 +1781,16 @@ function CDTL3:SetBorder(f, s)
 	f:SetPoint("BOTTOMRIGHT", f:GetParent(), "BOTTOMRIGHT", padding, -padding)
 end
 
+-- Items are saved under their use-spell name AND item name; the item ID is the one key
+-- that is always present on both the saved entry and the live cooldown.
+function CDTL3:SetItemData(itemID, k, v)
+	for _, e in pairs(CDTL3.db.profile.tables["items"]) do
+		if e["itemID"] == itemID then
+			e[k] = v
+		end
+	end
+end
+
 function CDTL3:SetSpellData(name, type, k, v)
 	if CDTL3.db.profile.global["debugMode"] then
 		CDTL3:Print("DATASAVE: "..name.." - "..type.." - "..k..":"..tostring(v))
