@@ -123,6 +123,106 @@ private.AddSchoolColorArgs = function(args)
 	end
 end
 
+-- QUICK STYLE (main options tab): one-click looks for every lane, bar frame and ready frame
+private.selectedPreset = "minimal"
+
+private.AddStyleArgs = function(args)
+	args["style"] = {
+		name = "Quick Style",
+		type = "group",
+		order = 150,
+		args = {
+			intro = {
+				name = "\nPick a style and apply it to every lane, bar frame and ready frame at once. Only looks change (textures, colours, borders, fonts); sizes, positions and what is tracked stay as they are. Fine-tune anything afterwards in the Lanes, Bar Frames and Ready tabs.\n",
+				type = "description",
+				fontSize = "medium",
+				order = 100,
+			},
+			preset = {
+				name = "Style",
+				desc = function(info)
+						for _, preset in ipairs(CDTL3.presets) do
+							if preset.key == private.selectedPreset then
+								return preset.desc
+							end
+						end
+						return ""
+					end,
+				order = 101,
+				type = "select",
+				values = function() return CDTL3:GetPresetList() end,
+				get = function(info) return private.selectedPreset end,
+				set = function(info, val) private.selectedPreset = val end,
+			},
+			presetDesc = {
+				name = function(info)
+						for _, preset in ipairs(CDTL3.presets) do
+							if preset.key == private.selectedPreset then
+								return "|cffaaaaaa"..preset.desc.."|r"
+							end
+						end
+						return ""
+					end,
+				type = "description",
+				order = 102,
+			},
+			apply = {
+				name = "Apply Style",
+				desc = "Apply the selected style to every lane, bar frame and ready frame",
+				order = 103,
+				type = "execute",
+				confirm = true,
+				confirmText = "Apply this style to every lane, bar frame and ready frame? Your current textures, colours, borders and fonts will be replaced (export your profile first if you want to keep them).",
+				func = function(info)
+						CDTL3:ApplyPreset(private.selectedPreset)
+					end,
+			},
+		},
+	}
+end
+
+-- "Copy settings from" (each lane / bar frame / ready frame's General tab)
+private.copySource = {}
+
+private.AddCopyArgs = function(args, group, i, label)
+	local id = group..i
+
+	args["copyHeader"] = {
+		name = "Copy Settings",
+		type = "header",
+		order = 900,
+	}
+	args["copyFrom"] = {
+		name = "Copy From",
+		desc = "Copy every setting from another "..label:lower().." to this one, except its name, position and whether it's enabled",
+		order = 901,
+		type = "select",
+		values = function()
+				local list = {}
+				for n = 1, 3 do
+					if n ~= i then
+						list[n] = label.." "..n
+					end
+				end
+				return list
+			end,
+		get = function(info) return private.copySource[id] end,
+		set = function(info, val) private.copySource[id] = val end,
+	}
+	args["copyApply"] = {
+		name = "Copy",
+		order = 902,
+		type = "execute",
+		confirm = true,
+		confirmText = "Replace this "..label:lower().."'s settings with a copy?",
+		disabled = function(info) return not private.copySource[id] end,
+		func = function(info)
+				CDTL3:CopyFrameSettings(group, private.copySource[id], i)
+				private.copySource[id] = nil
+			end,
+	}
+end
+
 -- The Filters entry being edited: the saved entry, or the in-progress custom when adding one
 private.FilterEntry = function(t)
 	if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
@@ -1017,6 +1117,7 @@ function CDTL3:GetMainOptions()
 	}
 
 	private.AddSchoolColorArgs(options.args.colors.args)
+	private.AddStyleArgs(options.args)
 
 	return options
 end
@@ -2382,6 +2483,8 @@ private.GetBarFrameSet = function(i)
 	
 	private.AddBorderArgs(options.args.appearance.args, 400, function() return frame["border"] end, function() CDTL3:RefreshBarFrame(i) end)
 	private.AddBorderArgs(options.args.bars.args, 400, function() return frame["bar"]["border"] end, function() CDTL3:RefreshAllBars() end)
+
+	private.AddCopyArgs(options.args.general.args, "barFrames", i, "Bar Frame")
 
 	return options
 end
@@ -5513,6 +5616,8 @@ private.GetLaneSet = function(i)
 	private.AddBorderArgs(options.args.appearance.args, 700, function() return lane["border"] end, function() CDTL3:RefreshLane(i) end, 703)
 	private.AddBorderArgs(options.args.icons.args, 300, function() return lane["icons"]["border"] end, function() CDTL3:RefreshAllIcons() end)
 
+	private.AddCopyArgs(options.args.general.args, "lanes", i, "Lane")
+
 	return options
 end
 
@@ -6020,6 +6125,8 @@ private.GetReadySet = function(i)
 	
 	private.AddBorderArgs(options.args.appearance.args, 400, function() return ready["border"] end, function() CDTL3:RefreshReady(i) end)
 	private.AddBorderArgs(options.args.icons.args, 300, function() return ready["icons"]["border"] end, function() CDTL3:RefreshAllIcons() end)
+
+	private.AddCopyArgs(options.args.general.args, "ready", i, "Ready Frame")
 
 	return options
 end
