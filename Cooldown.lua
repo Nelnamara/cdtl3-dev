@@ -54,6 +54,11 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 	if cdData["school"] then
 		f.data["school"] = cdData["school"]
 	end
+
+	if cdData["customColor"] then
+		f.data["customColor"] = cdData["customColor"]
+		f.data["color"] = cdData["color"]
+	end
 	
 	if cdData["runeIndex"] then
 		f.data["runeIndex"] = cdData["runeIndex"]
@@ -860,11 +865,13 @@ function CDTL3:RefreshIcon(cd)
 	end
 end
 
--- Resolves the configured foreground color for a bar (custom -> school -> class), shared by
--- RefreshBar and the dynamic-color restore in BarUpdate
+-- Resolves the foreground color for a bar: the entry's own color (Filters) -> school ->
+-- class -> the bar frame's color. Shared by RefreshBar and the dynamic-color restore.
 private.GetBarFGColor = function(s, d)
 	local fgColor = s["bar"]["fgTextureColor"] or { r = 0.77647, g = 0.11765, b = 0.28235, a = 1 }
-	if s["bar"]["fgSchoolColor"] then
+	if d and d["customColor"] and d["color"] then
+		fgColor = d["color"]
+	elseif s["bar"]["fgSchoolColor"] then
 		local schoolColor = CDTL3.db.profile.global["schoolColors"]["Other"]
 		if d and d["school"] then
 			schoolColor = CDTL3.db.profile.global["schoolColors"][d["school"]] or schoolColor

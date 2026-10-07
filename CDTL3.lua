@@ -1929,9 +1929,47 @@ function CDTL3:DiagnoseAuras()
 	end
 end
 
+-- Spell school bitmask (combat log) -> the schoolColors key; multi-school -> Other
+local SCHOOL_NAMES = { [1] = "Physical", [2] = "Holy", [4] = "Fire", [8] = "Nature", [16] = "Frost", [32] = "Shadow", [64] = "Arcane" }
+CDTL3.spellSchools = {}
+
+-- The combat log is the only place a spell's school is exposed. Remember it per spell name
+-- (saved entries and live bars are matched by name) and apply it once when it's first seen.
+function CDTL3:RecordSpellSchool(spellName, schoolMask)
+	local school = SCHOOL_NAMES[schoolMask] or "Other"
+	if not spellName or CDTL3.spellSchools[spellName] == school then
+		return
+	end
+	CDTL3.spellSchools[spellName] = school
+
+	for _, entries in pairs(CDTL3.db.profile.tables) do
+		for _, e in pairs(entries) do
+			if e["name"] == spellName then
+				e["school"] = school
+			end
+		end
+	end
+
+	local changed = false
+	for _, cd in pairs(CDTL3.cooldowns) do
+		if cd.data["name"] == spellName then
+			cd.data["school"] = school
+			changed = true
+		end
+	end
+	if changed then
+		CDTL3:RefreshAllBars()
+	end
+end
+
 function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 	local _, subevent, _, sourceGUID, sourceName, _, _, destGUID, destName, _, _ = CombatLogGetCurrentEventInfo()
-	
+
+	if sourceGUID == CDTL3.player["guid"] and (subevent == "SPELL_CAST_SUCCESS" or subevent == "SPELL_AURA_APPLIED") then
+		local _, spellName, spellSchool = select(12, CombatLogGetCurrentEventInfo())
+		CDTL3:RecordSpellSchool(spellName, spellSchool)
+	end
+
 	if subevent == "SPELL_AURA_APPLIED" then
 		if sourceGUID == CDTL3.player["guid"] or destGUID == CDTL3.player["guid"] then
 			local spellID, spellName, _, auraType, _, _, _, _, _, _, _, _, _ = select(12, CombatLogGetCurrentEventInfo())

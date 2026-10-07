@@ -86,6 +86,9 @@ end
 -- Save a new entry and start its icon unless it starts ignored or its type is switched off.
 -- Returns the new cooldown frame, if one was made.
 function CDTL3:SaveNewEntry(s, type)
+	-- the combat log may already have told us the school (it can arrive before the cast event)
+	s["school"] = s["school"] or (CDTL3.spellSchools and CDTL3.spellSchools[s["name"]])
+
 	table.insert(CDTL3.db.profile.tables[type], s)
 
 	if not s["ignored"] and CDTL3.db.profile.global[type]["enabled"] then
