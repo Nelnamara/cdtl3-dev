@@ -736,7 +736,9 @@ end
 function CDTL3:GetExistingCooldown(name, type, targetID)
 	for _, e in pairs(CDTL3.cooldowns) do
 		if e.data["type"] == type then
-			if e.data["name"] == name then
+			-- items are named by their use-spell, but the Filters tab selects them by
+			-- item name, so accept either for items
+			if e.data["name"] == name or (type == "items" and e.data["itemName"] == name) then
 				if targetID then
 					if targetID == e.data["targetID"] then
 						return e
