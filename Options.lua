@@ -22,6 +22,75 @@ private.NoCombatLog = function()
 	return CDTL3.combatLogRegistered == false or not CombatLogGetCurrentEventInfo
 end
 
+-- Border texture, colour, size and padding controls, added to args: texture and colour at
+-- first, first+1 (default base+1), size and padding at base+11, base+12. border() returns
+-- the live { style, color, size, padding } settings table.
+private.AddBorderArgs = function(args, base, border, refresh, first)
+	first = first or base + 1
+
+	args["border"] = {
+		name = "                    Border Texture",
+		desc = "Selects the border texture",
+		order = first,
+		type = "select",
+		dialogControl = 'LSM30_Border',
+		values = AceGUIWidgetLSMlists.border,
+		get = function(info) return border()["style"] end,
+		set = function(info, val)
+				border()["style"] = val
+				refresh()
+			end,
+	}
+	args["borderColor"] = {
+		name = "Color",
+		desc = "Selects the border color",
+		order = first + 1,
+		type = "color",
+		hasAlpha = true,
+		get = function(info)
+				local c = border()["color"]
+				return c["r"], c["g"], c["b"], c["a"]
+			end,
+		set = function(info, red, green, blue, alpha)
+				border()["color"] = { r = red, g = green, b = blue, a = alpha }
+				refresh()
+			end,
+	}
+	args["spacer"..(base + 10)] = {
+		name = "",
+		type = "description",
+		order = base + 10,
+	}
+	args["borderSize"] = {
+		name = "Size",
+		desc = "Sets the size of the border",
+		order = base + 11,
+		type = "range",
+		softMin = 1,
+		softMax = 40,
+		bigStep = 1,
+		get = function(info) return border()["size"] end,
+		set = function(info, val)
+				border()["size"] = val
+				refresh()
+			end,
+	}
+	args["borderPadding"] = {
+		name = "Padding",
+		desc = "Sets the space between the border and the frame",
+		order = base + 12,
+		type = "range",
+		softMin = 0,
+		softMax = 40,
+		bigStep = 1,
+		get = function(info) return border()["padding"] end,
+		set = function(info, val)
+				border()["padding"] = val
+				refresh()
+			end,
+	}
+end
+
 -- Lane tracking choices; melee swings come from SWING_DAMAGE/SWING_MISSED in the combat log
 private.TrackingValues = function(info)
 	local swingNote = ""
@@ -1800,71 +1869,6 @@ private.GetBarFrameSet = function(i)
 						type = "description",
 						order = 400,
 					},
-					border = {
-						name = "                    Border Texture",
-						desc = "Selects the border texture",
-						order = 401,
-						type = "select",
-						dialogControl = 'LSM30_Border',
-						values = AceGUIWidgetLSMlists.border,
-						get = function(info) return frame["border"]["style"] end,
-						set = function(info, val)
-								frame["border"]["style"] = val
-								CDTL3:RefreshBarFrame(i)
-							end,
-					},
-					borderColor = {
-						name = "Color",
-						desc = "Selects the border color",
-						order = 402,
-						type = "color",
-						hasAlpha = true,
-						get = function(info)
-								local r = frame["border"]["color"]["r"]
-								local g = frame["border"]["color"]["g"]
-								local b = frame["border"]["color"]["b"]
-								local a = frame["border"]["color"]["a"]
-								
-								return r, g, b, a
-							end,
-						set = function(info, red, green, blue, alpha)
-								frame["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL3:RefreshBarFrame(i)
-							end,
-					},
-					spacer410 = {
-						name = "",
-						type = "description",
-						order = 410,
-					},
-					borderSize = {
-						name = "Size",
-						desc = "Sets the size of the border",
-						order = 411,
-						type = "range",
-						softMin = 1,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return frame["border"]["size"] end,
-						set = function(info, val)
-								frame["border"]["size"] = val
-								CDTL3:RefreshBarFrame(i)
-							end,
-					},
-					borderPadding = {
-						name = "Padding",
-						desc = "Sets the space between the border and the frame",
-						order = 412,
-						type = "range",
-						softMin = 0,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return frame["border"]["padding"] end,
-						set = function(info, val)
-								frame["border"]["padding"] = val
-								CDTL3:RefreshBarFrame(i)
-							end,
-					},
 				}
 			},
 			bars = {
@@ -2255,76 +2259,14 @@ private.GetBarFrameSet = function(i)
 						type = "description",
 						order = 400,
 					},
-					border = {
-						name = "                    Border Texture",
-						desc = "Selects the border texture",
-						order = 401,
-						type = "select",
-						dialogControl = 'LSM30_Border',
-						values = AceGUIWidgetLSMlists.border,
-						get = function(info) return frame["bar"]["border"]["style"] end,
-						set = function(info, val)
-								frame["bar"]["border"]["style"] = val
-								CDTL3:RefreshAllBars()
-							end,
-					},
-					borderColor = {
-						name = "Color",
-						desc = "Selects the border color",
-						order = 402,
-						type = "color",
-						hasAlpha = true,
-						get = function(info)
-								local r = frame["bar"]["border"]["color"]["r"]
-								local g = frame["bar"]["border"]["color"]["g"]
-								local b = frame["bar"]["border"]["color"]["b"]
-								local a = frame["bar"]["border"]["color"]["a"]
-								
-								return r, g, b, a
-							end,
-						set = function(info, red, green, blue, alpha)
-								frame["bar"]["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL3:RefreshAllBars()
-							end,
-					},
-					spacer410 = {
-						name = "",
-						type = "description",
-						order = 410,
-					},
-					borderSize = {
-						name = "Size",
-						desc = "Sets the size of the border",
-						order = 411,
-						type = "range",
-						softMin = 1,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return frame["bar"]["border"]["size"] end,
-						set = function(info, val)
-								frame["bar"]["border"]["size"] = val
-								CDTL3:RefreshAllBars()
-							end,
-					},
-					borderPadding = {
-						name = "Padding",
-						desc = "Sets the space between the border and the frame",
-						order = 411,
-						type = "range",
-						softMin = 0,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return frame["bar"]["border"]["padding"] end,
-						set = function(info, val)
-								frame["bar"]["border"]["padding"] = val
-								CDTL3:RefreshAllBars()
-							end,
-					},
 				}
 			},
 		}
 	}
 	
+	private.AddBorderArgs(options.args.appearance.args, 400, function() return frame["border"] end, function() CDTL3:RefreshBarFrame(i) end)
+	private.AddBorderArgs(options.args.bars.args, 400, function() return frame["bar"]["border"] end, function() CDTL3:RefreshAllBars() end)
+
 	return options
 end
 
@@ -4815,71 +4757,6 @@ private.GetLaneSet = function(i)
 						type = "description",
 						order = 702,
 					},
-					border = {
-						name = "                    Border Texture",
-						desc = "Selects the border texture",
-						order = 703,
-						type = "select",
-						dialogControl = 'LSM30_Border',
-						values = AceGUIWidgetLSMlists.border,
-						get = function(info) return lane["border"]["style"] end,
-						set = function(info, val)
-								lane["border"]["style"] = val
-								CDTL3:RefreshLane(i)
-							end,
-					},
-					borderColor = {
-						name = "Color",
-						desc = "Selects the border color",
-						order = 704,
-						type = "color",
-						hasAlpha = true,
-						get = function(info)
-								local r = lane["border"]["color"]["r"]
-								local g = lane["border"]["color"]["g"]
-								local b = lane["border"]["color"]["b"]
-								local a = lane["border"]["color"]["a"]
-								
-								return r, g, b, a
-							end,
-						set = function(info, red, green, blue, alpha)
-								lane["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL3:RefreshLane(i)
-							end,
-					},
-					spacer710 = {
-						name = "",
-						type = "description",
-						order = 710,
-					},
-					borderSize = {
-						name = "Size",
-						desc = "Sets the size of the border",
-						order = 711,
-						type = "range",
-						softMin = 1,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return lane["border"]["size"] end,
-						set = function(info, val)
-								lane["border"]["size"] = val
-								CDTL3:RefreshLane(i)
-							end,
-					},
-					borderPadding = {
-						name = "Padding",
-						desc = "Sets the space between the border and the frame",
-						order = 711,
-						type = "range",
-						softMin = 0,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return lane["border"]["padding"] end,
-						set = function(info, val)
-								lane["border"]["padding"] = val
-								CDTL3:RefreshLane(i)
-							end,
-					},
 				},
 			},
 			icons = {
@@ -5038,71 +4915,6 @@ private.GetLaneSet = function(i)
 						name = "\n\n",
 						type = "description",
 						order = 300,
-					},
-					border = {
-						name = "                    Border Texture",
-						desc = "Selects the border texture",
-						order = 301,
-						type = "select",
-						dialogControl = 'LSM30_Border',
-						values = AceGUIWidgetLSMlists.border,
-						get = function(info) return lane["icons"]["border"]["style"] end,
-						set = function(info, val)
-								lane["icons"]["border"]["style"] = val
-								CDTL3:RefreshAllIcons()
-							end,
-					},
-					borderColor = {
-						name = "Color",
-						desc = "Selects the border color",
-						order = 302,
-						type = "color",
-						hasAlpha = true,
-						get = function(info)
-								local r = lane["icons"]["border"]["color"]["r"]
-								local g = lane["icons"]["border"]["color"]["g"]
-								local b = lane["icons"]["border"]["color"]["b"]
-								local a = lane["icons"]["border"]["color"]["a"]
-								
-								return r, g, b, a
-							end,
-						set = function(info, red, green, blue, alpha)
-								lane["icons"]["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL3:RefreshAllIcons()
-							end,
-					},
-					spacer310 = {
-						name = "",
-						type = "description",
-						order = 310,
-					},
-					borderSize = {
-						name = "Size",
-						desc = "Sets the size of the border",
-						order = 311,
-						type = "range",
-						softMin = 1,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return lane["icons"]["border"]["size"] end,
-						set = function(info, val)
-								lane["icons"]["border"]["size"] = val
-								CDTL3:RefreshAllIcons()
-							end,
-					},
-					borderPadding = {
-						name = "Padding",
-						desc = "Sets the space between the border and the frame",
-						order = 311,
-						type = "range",
-						softMin = 0,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return lane["icons"]["border"]["padding"] end,
-						set = function(info, val)
-								lane["icons"]["border"]["padding"] = val
-								CDTL3:RefreshAllIcons()
-							end,
 					},
 					spacer400 = {
 						name = "\n\n",
@@ -5580,6 +5392,9 @@ private.GetLaneSet = function(i)
 		}
 	}
 	
+	private.AddBorderArgs(options.args.appearance.args, 700, function() return lane["border"] end, function() CDTL3:RefreshLane(i) end, 703)
+	private.AddBorderArgs(options.args.icons.args, 300, function() return lane["icons"]["border"] end, function() CDTL3:RefreshAllIcons() end)
+
 	return options
 end
 
@@ -5917,71 +5732,6 @@ private.GetReadySet = function(i)
 						type = "description",
 						order = 400,
 					},
-					border = {
-						name = "                    Border Texture",
-						desc = "Selects the border texture",
-						order = 401,
-						type = "select",
-						dialogControl = 'LSM30_Border',
-						values = AceGUIWidgetLSMlists.border,
-						get = function(info) return ready["border"]["style"] end,
-						set = function(info, val)
-								ready["border"]["style"] = val
-								CDTL3:RefreshReady(i)
-							end,
-					},
-					borderColor = {
-						name = "Color",
-						desc = "Selects the border color",
-						order = 402,
-						type = "color",
-						hasAlpha = true,
-						get = function(info)
-								local r = ready["border"]["color"]["r"]
-								local g = ready["border"]["color"]["g"]
-								local b = ready["border"]["color"]["b"]
-								local a = ready["border"]["color"]["a"]
-								
-								return r, g, b, a
-							end,
-						set = function(info, red, green, blue, alpha)
-								ready["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL3:RefreshReady(i)
-							end,
-					},
-					spacer410 = {
-						name = "",
-						type = "description",
-						order = 410,
-					},
-					borderSize = {
-						name = "Size",
-						desc = "Sets the size of the border",
-						order = 411,
-						type = "range",
-						softMin = 1,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return ready["border"]["size"] end,
-						set = function(info, val)
-								ready["border"]["size"] = val
-								CDTL3:RefreshReady(i)
-							end,
-					},
-					borderPadding = {
-						name = "Padding",
-						desc = "Sets the space between the border and the frame",
-						order = 412,
-						type = "range",
-						softMin = 0,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return ready["border"]["padding"] end,
-						set = function(info, val)
-								ready["border"]["padding"] = val
-								CDTL3:RefreshReady(i)
-							end,
-					},
 				}
 			},
 			icons = {
@@ -6121,71 +5871,6 @@ private.GetReadySet = function(i)
 						type = "description",
 						order = 300,
 					},
-					border = {
-						name = "                    Border Texture",
-						desc = "Selects the border texture",
-						order = 301,
-						type = "select",
-						dialogControl = 'LSM30_Border',
-						values = AceGUIWidgetLSMlists.border,
-						get = function(info) return ready["icons"]["border"]["style"] end,
-						set = function(info, val)
-								ready["icons"]["border"]["style"] = val
-								CDTL3:RefreshAllIcons()
-							end,
-					},
-					borderColor = {
-						name = "Color",
-						desc = "Selects the border color",
-						order = 302,
-						type = "color",
-						hasAlpha = true,
-						get = function(info)
-								local r = ready["icons"]["border"]["color"]["r"]
-								local g = ready["icons"]["border"]["color"]["g"]
-								local b = ready["icons"]["border"]["color"]["b"]
-								local a = ready["icons"]["border"]["color"]["a"]
-								
-								return r, g, b, a
-							end,
-						set = function(info, red, green, blue, alpha)
-								ready["icons"]["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL3:RefreshAllIcons()
-							end,
-					},
-					spacer310 = {
-						name = "",
-						type = "description",
-						order = 310,
-					},
-					borderSize = {
-						name = "Size",
-						desc = "Sets the size of the border",
-						order = 311,
-						type = "range",
-						softMin = 1,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return ready["icons"]["border"]["size"] end,
-						set = function(info, val)
-								ready["icons"]["border"]["size"] = val
-								CDTL3:RefreshAllIcons()
-							end,
-					},
-					borderPadding = {
-						name = "Padding",
-						desc = "Sets the space between the border and the frame",
-						order = 311,
-						type = "range",
-						softMin = 0,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return ready["icons"]["border"]["padding"] end,
-						set = function(info, val)
-								ready["icons"]["border"]["padding"] = val
-								CDTL3:RefreshAllIcons()
-							end,
-					},
 					spacer400 = {
 						name = "\n\n",
 						type = "description",
@@ -6215,6 +5900,9 @@ private.GetReadySet = function(i)
 		}
 	}
 	
+	private.AddBorderArgs(options.args.appearance.args, 400, function() return ready["border"] end, function() CDTL3:RefreshReady(i) end)
+	private.AddBorderArgs(options.args.icons.args, 300, function() return ready["icons"]["border"] end, function() CDTL3:RefreshAllIcons() end)
+
 	return options
 end
 
