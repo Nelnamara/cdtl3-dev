@@ -59,7 +59,8 @@ CDTL3.Compat = {
 CDTL3.version = "3.0.8"
 CDTL3.noticeVersion = "2.6"
 CDTL3.cdUID = 999
-CDTL3.discordlink = ""
+-- where to report issues / make suggestions (first-run window, Changelog tab)
+CDTL3.supportlink = "https://github.com/Nelnamara/cdtl3-dev/issues"
 CDTL3.lanes = {}
 CDTL3.barFrames = {}
 CDTL3.readyFrames = {}
@@ -1373,8 +1374,8 @@ private.CreateFirstRunFrame = function()
 	
 	-- TEXT FOR THE BOX
 	local text = ""
-	text = text.."If you have any issues or suggestions, or just want to chat, please feel free to join the CDTL3 Discord:\n\n"
-	text = text.."|cFF54a3ff"..CDTL3.discordlink.."|r\n\n"
+	text = text.."Found a problem or have a suggestion? Open an issue on GitHub (or leave a comment on CurseForge):\n\n"
+	text = text.."|cFF54a3ff"..CDTL3.supportlink.."|r\n\n"
 
 	text = text..CDTL3:GetSpecialMessage()
 	text = text..CDTL3:GetChangeLog()

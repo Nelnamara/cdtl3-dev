@@ -342,6 +342,30 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."TBC Anniversary, MoP Classic and World of Warcraft: Forever,\n"
 	changeLog = changeLog.."based on the original by Vreenak and the v2 rewrite by cliffclive.\n\n"
 	changeLog = changeLog.."Changelog 3.0.8:\n\n"
+	changeLog = changeLog.."  New:\n"
+	changeLog = changeLog.."  - Edit Mode: lanes, bar frames and ready frames can be moved and\n"
+	changeLog = changeLog.."    resized in Blizzard's Edit Mode (Retail, Forever, TBC Anniversary,\n"
+	changeLog = changeLog.."    MoP Classic), with positions saved per Edit Mode layout\n"
+	changeLog = changeLog.."  - Quick Style tab: one-click looks for everything (CDTL3 Classic,\n"
+	changeLog = changeLog.."    Minimal, Blizzard Modern, Class Colours)\n"
+	changeLog = changeLog.."  - Copy all settings from one lane / bar frame / ready frame to another\n"
+	changeLog = changeLog.."  - Per-spell bar colors (Filters -> any entry -> Own Bar Color)\n"
+	changeLog = changeLog.."  - Spell School Color now works: schools are learned as you cast, with\n"
+	changeLog = changeLog.."    a color per school under Colors (needs the combat log)\n"
+	changeLog = changeLog.."  - Blizzard's modern bar textures (unit-frame and cast bars) on Retail\n"
+	changeLog = changeLog.."    and Forever\n"
+	changeLog = changeLog.."  - Per-spec profiles (Profiles tab -> Enable spec profiles)\n\n"
+	changeLog = changeLog.."  Fixes and clean-up (a full audit of the code):\n"
+	changeLog = changeLog.."  - Import no longer silently fails to apply, and rejects bad strings\n"
+	changeLog = changeLog.."  - Filters: Set All, Clear Individual Settings, Save Custom and item\n"
+	changeLog = changeLog.."    entries fixed; time inputs are validated\n"
+	changeLog = changeLog.."  - Power text tags work for every class; highlight-based tags fixed\n"
+	changeLog = changeLog.."  - Class colour pickers update live; lane 2/3 time format fixed\n"
+	changeLog = changeLog.."  - New spells, items and buffs all follow Filters -> Defaults the same\n"
+	changeLog = changeLog.."    way (inclusive Ignore Threshold)\n"
+	changeLog = changeLog.."  - Less work in raids: only your own and your pet's events are handled\n"
+	changeLog = changeLog.."  - Options that need the combat log say so where it's closed\n\n"
+	changeLog = changeLog.."  Forever and compatibility:\n"
 	changeLog = changeLog.."  - World of Warcraft: Forever support — the addon now loads and tracks\n"
 	changeLog = changeLog.."    cooldowns on Forever using the modern spell/aura/spellbook API\n"
 	changeLog = changeLog.."  - Combat log registration can no longer abort cooldown detection on\n"
@@ -1090,13 +1114,13 @@ function CDTL3:GetMainOptions()
 						type = "description",
 						order = 100,
 					},
-					cdtl2discord = {
-						name = "Discord",
+					support = {
+						name = "Issues & suggestions (GitHub; or comment on CurseForge)",
 						type = "input",
 						order = 200,
 						width = "full",
 						get = function(info)
-							return CDTL3.discordlink
+							return CDTL3.supportlink
 							end,
 						set = function(info, val)
 								return nil

@@ -16,6 +16,11 @@ CooldownTimeline tracks your ability cooldowns as moving icons along a timeline 
 - **Internal cooldown (ICD) and custom cooldowns** — add anything not auto-detected, including aura-triggered custom timers
 - **Shared cooldown handling** — optionally tracks abilities that lock each other out
 - **Lane tracking** — GCD, health, class power, combo points, mana/energy ticks, swing timers drawn on the lane bar
+- **Edit Mode** — move and resize lanes, bar frames and ready frames in Blizzard's Edit Mode (Retail, Forever, TBC Anniversary, MoP Classic), with positions kept per Edit Mode layout
+- **Quick Style** — one click restyles everything (CDTL3 Classic, Minimal, Blizzard Modern, Class Colours); copy all settings from one lane or frame to another
+- **Colors your way** — per-lane and per-frame colors, class colors, spell-school colors, Dynamic Color as a bar nears ready, and a color of its own for any single spell, item or buff
+- **Modern Blizzard bar textures** — the current unit-frame and cast bar art on clients that have it, alongside any SharedMedia texture
+- **Per-spec profiles** — switch profile automatically with your specialization or talent group
 - **Masque support** — skins all cooldown icons through Masque if installed
 - **LibSharedMedia-3.0** — fonts, textures, sounds and borders from any SharedMedia pack
 - **Minimap button** — left-click opens settings, right-click toggles frame lock, drag to reposition
@@ -63,12 +68,13 @@ Primary command is `/cdtl3` (or `/cooldowntimeline3`). The old `/cdtl2` / `/cool
 
 ### Settings Window
 
+- **Quick Style** — apply a ready-made look to every lane, bar frame and ready frame at once
 - **Global / Colors** — when CDTL3 is active (always / in group / in instance), class and spell-school colors
 - **Lanes** — size, position, direction, icon style, lane tracking (GCD, health, power, swing…)
 - **Ready** — sound, flash and duration for ready alerts
 - **Bar Frames** — bar texture, size, text and Dynamic Color
-- **Filters** — every detected spell, item, buff and debuff, with per-entry settings; **Custom** for your own cooldowns and aura triggers
-- **Profiles** — AceDB profiles for per-character or shared configs
+- **Filters** — every detected spell, item, buff and debuff, with per-entry settings (lane, bar, ready frame, highlight, custom cooldown, its own bar color); **Custom** for your own cooldowns and aura triggers
+- **Profiles** — per-character or shared profiles, optionally one per specialization
 - **Import/Export** — share a profile as a string
 
 ---
@@ -82,8 +88,12 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 | Spell & item cooldowns | ✓ | ✓ | ✓ |
 | Your buffs / debuffs | ✓ | ✓ | ✓ |
 | Debuffs you put on enemies | depends on combat log access | ✓ | ✗ (no combat log for addons) |
-| Swing timers | depends on combat log access | ✓ | ✗ (no combat log for addons) |
+| Melee swing timers | depends on combat log access | ✓ | ✗ (no combat log for addons) |
+| Ranged auto-attack timer | ✓ | ✓ | ✓ |
+| Spell school bar colors | depends on combat log access | ✓ | ✗ (no combat log for addons) |
 | Lane health / power tracking | ✓ | ✓ | ✓ |
+| Edit Mode | ✓ | TBC Anniversary / MoP Classic ✓, Classic Era ✗ (use `/cdtl3 unlock`) | ✓ |
+| Modern Blizzard bar textures | ✓ | where the client has them | ✓ |
 
 **Secret values.** On Midnight and Forever the game hides ("makes secret") many numbers from addons — cooldown timings, health and power, and aura details during combat, encounters, Mythic+ and PvP. CDTL3 never does math on a hidden value: cooldowns fall back to tracked cast times, health/power go straight into the lane bar (which can display hidden values), and a buff that becomes unreadable keeps counting down from its last known time instead of disappearing. Buffs gained or recast while hidden are picked up when combat ends.
 
@@ -93,7 +103,8 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 
 ## Known Issues
 
-- **Forever:** debuffs on enemies and swing timers need the combat log, which Forever closes to addons
+- **Forever:** debuffs on enemies, melee swing timers and spell-school colors need the combat log, which Forever closes to addons
+- **Edit Mode positions** are per Edit Mode layout; a layout you've never placed a frame in uses the frame's last position
 - **Midnight / Forever:** buffs gained or recast in combat appear (or update) only after combat ends; the GCD tracker and cooldowns of spells with no cooldown of their own are estimated while timings are hidden
 - **Midnight:** the game reports a spell's *base* cooldown, not the talent-reduced one — use **Custom CD Time** on the spell (Filters) to enter the real value
 - **Forever beta:** the debug frame's *Reload* button may be blocked by the client — type `/reload` instead
@@ -105,6 +116,26 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 ## Changelog
 
 ### v3.0.8
+**New**
+- **Edit Mode support** (LibEditMode) — lanes, bar frames and ready frames appear in Edit Mode with quick size sliders and a shortcut to their full settings; positions are saved per Edit Mode layout and follow layout switches. Classic Era keeps `/cdtl3 unlock`
+- **Quick Style** — one-click looks for every lane, bar frame and ready frame: CDTL3 Classic, Minimal, Blizzard Modern, Class Colours. Minimal and Modern also make icon highlighting visible (the shipped highlight border is "None")
+- **Copy settings** — each lane, bar frame and ready frame can copy every setting from another (name, position and enabled state are kept)
+- **Per-spell bar colors** — Filters → any entry → *Own Bar Color*; wins over school, class and frame colors
+- **Spell School Color actually works** — schools were never recorded and had no pickers, so every bar was grey. They're now learned from your casts (combat log) with a picker per school under Colors; hidden where the combat log is closed
+- **Modern Blizzard bar textures** — unit-frame health/power bars (including grey, tintable versions) and cast bars, offered only where the client has them
+- **Per-spec profiles** (LibDualSpec) — Profiles → *Enable spec profiles*
+
+**Audit and restructure** — the code was audited end to end (it has passed through three maintainers) and the duplicated parts consolidated:
+- Import now really applies (it replaced the profile table AceDB doesn't save) and validates the string before touching anything
+- Filters fixes: Set All, Clear Individual Settings and Save Custom; items matched by item name; time inputs validated; Ignore Threshold applied once
+- Power text tags work for every class; "highlighted" tags read the right setting; class color pickers update live; lanes 2/3 got the time-format default lane 1 had
+- Every newly discovered spell, item, buff, rune and custom is built by one set of helpers (13 copies had drifted apart — e.g. the Ignore Threshold was inclusive in some and not others)
+- Lanes, bar frames and ready frames are each declared once in the defaults (about 1,150 duplicated lines removed); border options are generated from one function
+- Unit events are registered for you and your pet only, so raids no longer wake the addon for every member
+- Options that depend on the combat log (enemy debuffs, melee swing, school colors) say so or hide where it's closed
+- Dead code removed throughout
+
+**WoW: Forever and compatibility**
 - **World of Warcraft: Forever support** — Forever reports a vanilla-era interface number (`16001`) but runs the modern Midnight-era API, so the old version check sent it down the Classic code paths and called functions Forever doesn't have (`GetSpellInfo`, `GetSpellCooldown`, `UnitAura`, the old spellbook API). CDTL3 now detects Forever by its interface number and uses the retail API paths while keeping the vanilla-era spell data. Ships a `_Camelot` TOC (the Forever client doesn't fall back to `_Mainline`) plus a plain `CooldownTimeline3.toc` fallback
 - **Combat log registration can't break detection** — it's only registered where the client provides it, and a refusal no longer aborts registering the other cooldown events. The combat log is closed to addons on Forever
 - **Updated the bundled Ace3 libraries to r1403** — the old copy called globals newer clients removed (`SetDesaturation`) and passed a boolean as tooltip alpha, which errored in the options window on Forever and will on WoW 12.1.5
@@ -171,7 +202,7 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 - **Drop the legacy `CDTL2DB` declaration** — once users have migrated, remove it from the TOCs
 - **Improved spell detection** — catch more proc ICDs automatically
 - **Compact mode** — smaller single-row layout option
-- **Per-lane layout swap** — quick switch between setups (raid ST vs M+ AoE)
+- **Timers that keep moving in combat on Midnight / Forever** — scoped in [`docs/secret-timers-scope.md`](docs/secret-timers-scope.md): spell icons and bars can likely ride Blizzard's secret-tolerant duration objects (with the real, talented cooldown); needs an in-game spike first
 
 </details>
 
