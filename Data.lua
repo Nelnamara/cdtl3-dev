@@ -155,31 +155,6 @@ function CDTL3:GetSpellData(id, name)
 	end
 end
 
-function CDTL3:ScanSpellData(class)
-	for _, spell in pairs(private.GetRacialData()) do
-		local baseCD, _ = GetSpellBaseCooldown(spell["id"])
-		CDTL3:Print(spell["id"]..",,"..tostring(baseCD))
-	end
-	
-	for _, spell in pairs(private.GetOtherData()) do
-		local baseCD, _ = GetSpellBaseCooldown(spell["id"])
-		CDTL3:Print(spell["id"]..",,"..tostring(baseCD))
-	end
-	
-	for _, spell in pairs(private.GetClassData(class)) do
-		local baseCD, _ = GetSpellBaseCooldown(spell["id"])
-		--CDTL3:Print(spell["id"]..",,"..tostring(baseCD))
-	end
-	
-	if class == "DEATHKNIGHT" or class == "HUNTER" or class == "WARLOCK" then
-		for _, pspell in pairs(private.GetPetData(class)) do
-			local pbaseCD, _ = GetSpellBaseCooldown(pspell["id"])
-			
-			--CDTL3:Print(pspell["id"]..",,"..pbaseCD)
-		end
-	end
-end
-
 -- STRUCTURES
 	--[[
 	cooldowns = {
@@ -2909,7 +2884,7 @@ function CDTL3:GetCustomTextTagDescription()
 	text = text.."Currently custom tags are in the following format:\n\n"
 	text = text.."    [p.hp.max]\n\n"
 	text = text.."Currently supports the following categories:\n\n"
-	text = text.."    'cdtl' - CDTL specfic\n"
+	text = text.."    'cdtl' - CDTL specific\n"
 	text = text.."    'p' - Player\n"
 	text = text.."    'f' - Focus\n"
 	text = text.."    't' - Target\n\n"
@@ -3237,7 +3212,7 @@ private.customTextDynamicTags = {
 					for _, cd in ipairs(CDTL3.cooldowns) do
 						if cd.data["enabled"] == true then
 							if cd.icon.valid == true or cd.bar.valid == true then
-								if cd.data["highlighted"] == true then
+								if cd.data["highlight"] == true then
 									if cd.data["currentCD"] > 0 then
 										if cd.data["currentCD"] < lowestTime then
 											if cd.data["type"] == "icds" then
@@ -3267,7 +3242,7 @@ private.customTextDynamicTags = {
 					for _, cd in ipairs(CDTL3.cooldowns) do
 						if cd.data["enabled"] == true then
 							if cd.icon.valid == true or cd.bar.valid == true then
-								if cd.data["highlighted"] == true then
+								if cd.data["highlight"] == true then
 									if cd.data["currentCD"] > 0 then
 										if cd.data["currentCD"] > lowestTime then
 											if cd.data["type"] == "icds" then
@@ -3297,7 +3272,7 @@ private.customTextDynamicTags = {
 					for _, cd in ipairs(CDTL3.cooldowns) do
 						if cd.data["enabled"] == true then
 							if cd.icon.valid == true or cd.bar.valid == true then
-								if cd.data["highlighted"] == true then
+								if cd.data["highlight"] == true then
 									if cd.data["currentCD"] > 0 then
 										if cd.data["currentCD"] < lowestTime then
 											timeString = CDTL3:GetReadableTime(cd.data["currentCD"])
@@ -3323,7 +3298,7 @@ private.customTextDynamicTags = {
 					for _, cd in ipairs(CDTL3.cooldowns) do
 						if cd.data["enabled"] == true then
 							if cd.icon.valid == true or cd.bar.valid == true then
-								if cd.data["highlighted"] == true then
+								if cd.data["highlight"] == true then
 									if cd.data["currentCD"] > 0 then
 										if cd.data["currentCD"] > lowestTime then
 											timeString = CDTL3:GetReadableTime(cd.data["currentCD"])
@@ -3345,7 +3320,7 @@ private.customTextDynamicTags = {
 		desc = "Show the current amount of power used by the player",
 		tag = "%[p.pow.cur%]",
 		func = function()
-					local className, _, _ = UnitClass("player")
+					local _, className = UnitClass("player")	-- class token ("ROGUE"), not the localized name
 					local powerType = CDTL3:GetPlayerPower(className)
 						
 					return UnitPower("player", powerType)
@@ -3356,7 +3331,7 @@ private.customTextDynamicTags = {
 		desc = "Show the max amount of power used by player",
 		tag = "%[p.pow.max%]",
 		func = function()
-					local className, _, _ = UnitClass("player")
+					local _, className = UnitClass("player")	-- class token ("ROGUE"), not the localized name
 					local powerType = CDTL3:GetPlayerPower(className)
 						
 					return UnitPowerMax("player", powerType)
@@ -3419,7 +3394,7 @@ private.customTextDynamicTags = {
 		tag = "%[f.pow.cur%]",
 		func = function()
 					if UnitExists("focus") then
-						local className, _, _ = UnitClass("focus")
+						local _, className = UnitClass("focus")	-- class token ("ROGUE"), not the localized name
 						local powerType = CDTL3:GetPlayerPower(className)
 						
 						return UnitPower("focus", powerType)
@@ -3434,7 +3409,7 @@ private.customTextDynamicTags = {
 		tag = "%[f.pow.max%]",
 		func = function()
 					if UnitExists("focus") then
-						local className, _, _ = UnitClass("focus")
+						local _, className = UnitClass("focus")	-- class token ("ROGUE"), not the localized name
 						local powerType = CDTL3:GetPlayerPower(className)
 						
 						return UnitPowerMax("focus", powerType)
@@ -3512,7 +3487,7 @@ private.customTextDynamicTags = {
 		tag = "%[t.pow.cur%]",
 		func = function()
 					if UnitExists("target") then
-						local className, _, _ = UnitClass("target")
+						local _, className = UnitClass("target")	-- class token ("ROGUE"), not the localized name
 						local powerType = CDTL3:GetPlayerPower(className)
 						
 						return UnitPower("target", powerType)
@@ -3527,7 +3502,7 @@ private.customTextDynamicTags = {
 		tag = "%[t.pow.max%]",
 		func = function()
 					if UnitExists("target") then
-						local className, _, _ = UnitClass("target")
+						local _, className = UnitClass("target")	-- class token ("ROGUE"), not the localized name
 						local powerType = CDTL3:GetPlayerPower(className)
 						
 						return UnitPowerMax("target", powerType)

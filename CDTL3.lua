@@ -757,6 +757,7 @@ local defaults = {
 					linearAbs = {
 						max = 120,
 						hideTimeSurplus = true,
+						timeFormat = "XhYmZs",
 					},
 					split = {
 						max = 120,
@@ -779,6 +780,7 @@ local defaults = {
 						s3p = 0.75,
 						max = 120,
 						hideTimeSurplus = true,
+						timeFormat = "XhYmZs",
 					},
 				},
 				
@@ -1125,6 +1127,7 @@ local defaults = {
 					linearAbs = {
 						max = 120,
 						hideTimeSurplus = true,
+						timeFormat = "XhYmZs",
 					},
 					split = {
 						max = 120,
@@ -1147,6 +1150,7 @@ local defaults = {
 						s3p = 0.75,
 						max = 120,
 						hideTimeSurplus = true,
+						timeFormat = "XhYmZs",
 					},
 				},
 				
@@ -2139,7 +2143,9 @@ function CDTL3:OnInitialize()
 		customs = true,
 		detected = true,
 	}
-	CDTL3.currentFilter = {}
+	-- "default" (Filters -> Defaults) is read as soon as the options window opens, which
+	-- can be before OnEnable's delayed step fills the rest
+	CDTL3.currentFilter = { default = "SPELLS" }
 	
 	self.db.RegisterCallback(self, "OnProfileChanged", "RefreshConfig")
 	self.db.RegisterCallback(self, "OnProfileCopied", "RefreshConfig")
