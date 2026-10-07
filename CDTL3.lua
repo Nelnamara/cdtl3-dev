@@ -988,6 +988,14 @@ function CDTL3:OnInitialize()
 	self.registry = LibStub("AceConfigRegistry-3.0")
 	self.profile = LibStub("AceDBOptions-3.0"):GetOptionsTable(self.db)
 
+	-- Per-spec profiles (Profiles tab): LibDualSpec switches profile when the spec / talent
+	-- group changes, which fires OnProfileChanged -> RefreshConfig like a manual switch.
+	-- Guarded so a client without spec APIs can't stop the addon loading.
+	local LibDualSpec = LibStub("LibDualSpec-1.0", true)
+	if LibDualSpec and pcall(LibDualSpec.EnhanceDatabase, LibDualSpec, self.db, "CDTL3") then
+		pcall(LibDualSpec.EnhanceOptions, LibDualSpec, self.profile, self.db)
+	end
+
 	CDTL3.filterList = {}
 	CDTL3.currentFilterHidden = {
 		default = false,
