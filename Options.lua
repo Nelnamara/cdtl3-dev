@@ -1042,7 +1042,7 @@ function CDTL3:GetFilterOptions()
 								
 								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
-										if spell.data["baseCD"] / 1000 > val then
+										if spell.data["baseCD"] > val then	-- baseCD is already in seconds
 											CDTL3:SendToHolding(spell)
 											CDTL3:SendToBarHolding(spell)
 										else
@@ -1104,11 +1104,19 @@ function CDTL3:GetFilterOptions()
 							end,
 						width = "half",
 						func = function(info)
+								-- Move live cooldowns of this type too. (This used to compare seconds
+								-- against a frame number and disable every cooldown over 3s.) Only
+								-- icons still counting down are re-parented, keeping their remaining
+								-- time; finished ones just get the new lane for next time.
 								local default = CDTL3.currentFilter["default"]
+								local target = CDTL3.db.profile.global[string.lower(default)]["defaultLane"]
 								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
-										if spell.data["baseCD"] > CDTL3.db.profile.global[string.lower(default)]["defaultLane"] then
-											spell.data["enabled"] = false
+										spell.data["lane"] = target
+										local remaining = spell.data["currentCD"]
+										if remaining and remaining > 0 then
+											CDTL3:SendToLane(spell)
+											spell.data["currentCD"] = remaining
 										end
 									end
 								end
@@ -1162,11 +1170,19 @@ function CDTL3:GetFilterOptions()
 							end,
 						width = "half",
 						func = function(info)
+								-- Move live cooldowns of this type too. (This used to compare seconds
+								-- against a frame number and disable every cooldown over 3s.) Only
+								-- icons still counting down are re-parented, keeping their remaining
+								-- time; finished ones just get the new barFrame for next time.
 								local default = CDTL3.currentFilter["default"]
+								local target = CDTL3.db.profile.global[string.lower(default)]["defaultBar"]
 								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
-										if spell.data["baseCD"] > CDTL3.db.profile.global[string.lower(default)]["defaultBar"] then
-											spell.data["enabled"] = false
+										spell.data["barFrame"] = target
+										local remaining = spell.data["currentCD"]
+										if remaining and remaining > 0 then
+											CDTL3:SendToBarFrame(spell)
+											spell.data["currentCD"] = remaining
 										end
 									end
 								end
@@ -1222,12 +1238,14 @@ function CDTL3:GetFilterOptions()
 							end,
 						width = "half",
 						func = function(info)
+								-- Update live cooldowns of this type too. (This used to compare seconds
+								-- against a frame number and disable every cooldown over 3s.) Icons
+								-- only reach a Ready frame when they finish, so just record it.
 								local default = CDTL3.currentFilter["default"]
+								local target = CDTL3.db.profile.global[string.lower(default)]["defaultReady"]
 								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
-										if spell.data["baseCD"] > CDTL3.db.profile.global[string.lower(default)]["defaultReady"] then
-											spell.data["enabled"] = false
-										end
+										spell.data["readyFrame"] = target
 									end
 								end
 								
@@ -6309,13 +6327,10 @@ private.GetTextText = function(s, o, i, r, d)
 		set = function(info, val)
 				s["text"] = val
 				
-				if CDTL3:ScanForDynamicTags(val) then
-					s["dtags"] = true
-				end
-				
-				if CDTL3:ScanForTimeTags(val) then
-					s["ttags"] = true
-				end
+				-- recompute both flags: they used to only ever switch on, so an edited
+				-- text kept being redrawn from a tag family it no longer contains
+				s["dtags"] = CDTL3:ScanForDynamicTags(val)
+				s["ttags"] = CDTL3:ScanForTimeTags(val)
 				
 				if r == "LANE" then
 					CDTL3:RefreshLane(i)

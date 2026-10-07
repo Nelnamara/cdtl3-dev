@@ -332,7 +332,7 @@ function CDTL3:RefreshBar(cd)
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
 			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -373,7 +373,7 @@ function CDTL3:RefreshBar(cd)
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
 			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -414,7 +414,7 @@ function CDTL3:RefreshBar(cd)
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
 			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -615,7 +615,7 @@ function CDTL3:RefreshIcon(cd)
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
 			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -656,7 +656,7 @@ function CDTL3:RefreshIcon(cd)
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
 			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -697,7 +697,7 @@ function CDTL3:RefreshIcon(cd)
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
 			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -1863,22 +1863,25 @@ end
 
 private.UpdateText = function(f, tf, s, iString)
 	if s["enabled"] then
-		if s["dtags"] then
-			if f.updateCount % private.dynamicTextPollRate == 0 then
-				tf:SetText(CDTL3:ConvertTextDynamicTags(s["text"], f))
-			end
+		-- dynamic tags poll at their rate, time tags faster in the last 10s; whenever
+		-- either is due the whole text is converted (all tag families in one pass)
+		local due = false
+		if s["dtags"] and f.updateCount % private.dynamicTextPollRate == 0 then
+			due = true
 		end
 		
 		if s["ttags"] then
-			if f.data["currentCD"] <= 10 then
-				if f.updateCount % private.timeTextPollRate == 0 then
-					tf:SetText(CDTL3:ConvertTextTimeTags(s["text"], f))
-				end
-			else
-				if f.updateCount % (private.timeTextPollRate * 3) == 0 then
-					tf:SetText(CDTL3:ConvertTextTimeTags(s["text"], f))
-				end
+			local timeRate = private.timeTextPollRate
+			if f.data["currentCD"] > 10 then
+				timeRate = timeRate * 3
 			end
+			if f.updateCount % timeRate == 0 then
+				due = true
+			end
+		end
+		
+		if due then
+			tf:SetText(CDTL3:ConvertAllTextTags(s["text"], f))
 		end
 	end
 end

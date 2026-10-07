@@ -441,9 +441,7 @@ private.RefreshText = function(f, s)
 		tObject:SetShadowOffset(tSettings["shadX"], tSettings["shadY"])
 		tObject:SetNonSpaceWrap(false)
 		
-		tObject:SetText(CDTL3:ConvertTextTags(tSettings["text"], f))
-		tObject:SetText(CDTL3:ConvertTextDynamicTags(tSettings["text"], f))
-		tObject:SetText(CDTL3:ConvertTextTimeTags(tSettings["text"], f))
+		tObject:SetText(CDTL3:ConvertAllTextTags(tSettings["text"], f))
 		
 		if tSettings["enabled"] == true and tSettings["used"] == true then
 			tObject:SetAlpha(1)
@@ -1122,16 +1120,10 @@ private.UpdateText = function(f, s)
 		end
 		
 		if tSettings["enabled"] then
-			if tSettings["dtags"] then
-				if f.updateCount % private.dynamicTextPollRate == 0 then
-					tObject:SetText(CDTL3:ConvertTextDynamicTags(tSettings["text"], f))
-				end
-			end
-			
-			if tSettings["ttags"] then
-				if f.updateCount % private.timeTextPollRate == 0 then
-					tObject:SetText(CDTL3:ConvertTextTimeTags(tSettings["text"], f))
-				end
+			-- whenever a tag family is due, convert the whole text in one pass
+			if (tSettings["dtags"] and f.updateCount % private.dynamicTextPollRate == 0)
+				or (tSettings["ttags"] and f.updateCount % private.timeTextPollRate == 0) then
+				tObject:SetText(CDTL3:ConvertAllTextTags(tSettings["text"], f))
 			end
 		end
 	end
