@@ -266,7 +266,7 @@ function CDTL3:RefreshBar(cd)
 	-- FOREGROUND
 	f.bar:SetMinMaxValues(0, 1)
 	f.bar:SetValue(0.5)
-	f.bar:SetStatusBarTexture(CDTL3.LSM:Fetch("statusbar", s["bar"]["fgTexture"]))
+	CDTL3:SetBarTexture(f.bar, s["bar"]["fgTexture"])
 	f.bar:GetStatusBarTexture():SetHorizTile(false)
 	f.bar:GetStatusBarTexture():SetVertTile(false)
 	--[[f.bar:SetStatusBarColor(
@@ -286,7 +286,7 @@ function CDTL3:RefreshBar(cd)
 	)
 	
 	-- BACKGROUND
-	f.bar.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["bar"]["bgTexture"]))
+	CDTL3:SetBarTexture(f.bar.bg, s["bar"]["bgTexture"])
 	f.bar.bg:SetAllPoints(true)
 	--[[f.bar.bg:SetVertexColor(
 		s["bar"]["bgTextureColor"]["r"],
@@ -1163,7 +1163,7 @@ private.CalcTransitionIndicator = function(f, s)
 			f.bar.bar.ti:ClearAllPoints()
 			f.bar.bar.ti:SetPoint("LEFT", position, 0)
 			f.bar.bar.ti:SetSize(width, s["height"])
-			f.bar.bar.ti.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["transition"]["texture"]))
+			CDTL3:SetBarTexture(f.bar.bar.ti.bg, s["transition"]["texture"])
 			f.bar.bar.ti.bg:SetAllPoints(true)
 			f.bar.bar.ti.bg:SetVertexColor(
 				s["transition"]["textureColor"]["r"],

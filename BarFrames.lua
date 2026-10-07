@@ -71,7 +71,7 @@ function CDTL3:RefreshBarFrame(i)
 	f.mf:SetSize(s["width"], s["height"])
 	
 	-- MOVE FRAME BACKGROUND
-	f.mf.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["bgTexture"]))
+	CDTL3:SetBarTexture(f.mf.bg, s["bgTexture"])
 	f.mf.bg:SetAllPoints(true)
 	f.mf.bg:SetVertexColor(
 		s["bgTextureColor"]["r"],
