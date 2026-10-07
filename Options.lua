@@ -91,6 +91,119 @@ private.AddBorderArgs = function(args, base, border, refresh, first)
 	}
 end
 
+-- Spell school colors (Colors tab). Schools are learned from the combat log, so these and
+-- the bar frames' "Spell School Color" option are hidden where the log is closed.
+private.SCHOOLS = { "Physical", "Holy", "Fire", "Nature", "Frost", "Shadow", "Arcane", "Other" }
+
+private.AddSchoolColorArgs = function(args)
+	args["spacer300"] = {
+		name = "\n\nSpell School Colors\n|cffaaaaaaUsed by bar frames with Spell School Color ticked. Multi-school and not-yet-seen spells use Other.|r",
+		type = "description",
+		fontSize = "large",
+		order = 300,
+		hidden = private.NoCombatLog,
+	}
+	for n, school in ipairs(private.SCHOOLS) do
+		args["school"..school] = {
+			name = school,
+			desc = "Set the "..school.." school color",
+			order = 300 + n,
+			type = "color",
+			hasAlpha = true,
+			hidden = private.NoCombatLog,
+			get = function(info)
+					local c = CDTL3.db.profile.global["schoolColors"][school]
+					return c["r"], c["g"], c["b"], c["a"]
+				end,
+			set = function(info, red, green, blue, alpha)
+					CDTL3.db.profile.global["schoolColors"][school] = { r = red, g = green, b = blue, a = alpha }
+					CDTL3:RefreshAllBars()
+				end,
+		}
+	end
+end
+
+-- The Filters entry being edited: the saved entry, or the in-progress custom when adding one
+private.FilterEntry = function(t)
+	if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+		return CDTL3.custom
+	end
+
+	return CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, t == "items")
+end
+
+-- Per-entry bar colour (Filters): wins over school, class and the bar frame's own colour
+private.AddEntryColorArgs = function(args, t)
+	local function apply(key, val)
+		local s = private.FilterEntry(t)
+		if not s then
+			return
+		end
+
+		s[key] = val
+		if s == CDTL3.custom then
+			return
+		end
+
+		-- live icons/bars of this entry (items are listed by item name)
+		local name = CDTL3.currentFilter[t]
+		for _, cd in pairs(CDTL3.cooldowns) do
+			if cd.data["type"] == t and (cd.data["name"] == name or cd.data["itemName"] == name) then
+				cd.data[key] = val
+			end
+		end
+		CDTL3:RefreshAllBars()
+	end
+
+	args["spacer700"] = {
+		name = "\n",
+		type = "description",
+		order = 700,
+		hidden = function(info)
+				return CDTL3.currentFilterHidden[t]
+			end,
+	}
+	args["customColor"] = {
+		name = "Own Bar Color",
+		desc = "Give this entry's bar its own color instead of the bar frame's (class / school / frame color)",
+		order = 701,
+		type = "toggle",
+		hidden = function(info)
+				return CDTL3.currentFilterHidden[t]
+			end,
+		get = function(info)
+				local s = private.FilterEntry(t)
+				return s and s["customColor"] or false
+			end,
+		set = function(info, val)
+				apply("customColor", val)
+			end,
+	}
+	args["color"] = {
+		name = "Bar Color",
+		desc = "This entry's bar color",
+		order = 702,
+		type = "color",
+		hasAlpha = true,
+		hidden = function(info)
+				if CDTL3.currentFilterHidden[t] then
+					return true
+				end
+
+				local s = private.FilterEntry(t)
+				return not (s and s["customColor"])
+			end,
+		get = function(info)
+				local s = private.FilterEntry(t)
+				local c = s and s["color"] or { r = 1, g = 1, b = 1, a = 1 }
+				return c["r"], c["g"], c["b"], c["a"]
+			end,
+		set = function(info, red, green, blue, alpha)
+				apply("color", { r = red, g = green, b = blue, a = alpha })
+			end,
+	}
+end
+
 -- Lane tracking choices; melee swings come from SWING_DAMAGE/SWING_MISSED in the combat log
 private.TrackingValues = function(info)
 	local swingNote = ""
@@ -902,7 +1015,9 @@ function CDTL3:GetMainOptions()
 			},
 		},
 	}
-	
+
+	private.AddSchoolColorArgs(options.args.colors.args)
+
 	return options
 end
 
@@ -2046,10 +2161,11 @@ private.GetBarFrameSet = function(i)
 					},
 					fgSchoolColor = {
 						name = "Spell School Color",
-						desc = "Color each bar by its spell's school (fire, frost, etc)",
+						desc = "Color each bar by its spell's school (fire, frost, etc). Schools are learned from the combat log as you cast; set the colors under Colors.",
 						order = 108,
 						type = "toggle",
 						width = 0.7,
+						hidden = private.NoCombatLog,
 						get = function(info)
 								return frame["bar"]["fgSchoolColor"]
 							end,
@@ -3466,6 +3582,8 @@ private.GetFilterSet = function(t, o)
 			},			
 		},
 	}
+
+	private.AddEntryColorArgs(options.args, t)
 
 	return options
 end
