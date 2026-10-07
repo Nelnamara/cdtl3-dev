@@ -1732,7 +1732,7 @@ private.GetBarFrameSet = function(i)
 								return true
 							end,
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return frame["transition"]["texture"]
 							end,
@@ -1952,7 +1952,7 @@ private.GetBarFrameSet = function(i)
 						order = 301,
 						type = "select",
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return frame["bgTexture"]
 							end,
@@ -2037,7 +2037,7 @@ private.GetBarFrameSet = function(i)
 						type = "select",
 						width = 0.7,
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return frame["bar"]["fgTexture"]
 							end,
@@ -2104,7 +2104,7 @@ private.GetBarFrameSet = function(i)
 						type = "select",
 						width = 0.7,
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return frame["bar"]["bgTexture"]
 							end,
@@ -4586,7 +4586,7 @@ private.GetLaneSet = function(i)
 							return true
 						end,
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return lane["tracking"]["stTexture"]
 							end,
@@ -4736,7 +4736,7 @@ private.GetLaneSet = function(i)
 						type = "select",
 						width = 0.7,
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return lane["fgTexture"]
 							end,
@@ -4799,7 +4799,7 @@ private.GetLaneSet = function(i)
 						type = "select",
 						width = 0.7,
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return lane["bgTexture"]
 							end,
@@ -5818,7 +5818,7 @@ private.GetReadySet = function(i)
 						order = 301,
 						type = "select",
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return ready["bgTexture"]
 							end,

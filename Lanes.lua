@@ -65,7 +65,7 @@ function CDTL3:RefreshLane(i)
 	f:SetMinMaxValues(0, 1)
 	f:SetValue(1)
 	f:SetReverseFill(s["tracking"]["primaryReversed"])
-	f:SetStatusBarTexture(CDTL3.LSM:Fetch("statusbar", s["fgTexture"]))
+	CDTL3:SetBarTexture(f, s["fgTexture"])
 	f:GetStatusBarTexture():SetHorizTile(false)
 	f:GetStatusBarTexture():SetVertTile(false)
 	
@@ -94,7 +94,7 @@ function CDTL3:RefreshLane(i)
 	end
 	
 	-- BACKGROUND
-	f.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["bgTexture"]))
+	CDTL3:SetBarTexture(f.bg, s["bgTexture"])
 	f.bg:SetAllPoints(true)
 	--[[f.bg:SetVertexColor(
 		s["bgTextureColor"]["r"],
@@ -128,7 +128,7 @@ function CDTL3:RefreshLane(i)
 	if s["tracking"]["secondaryTracking"] ~= "NONE" then
 		f.st:ClearAllPoints()
 		f.st:SetSize(s["tracking"]["stWidth"], s["tracking"]["stHeight"])
-		f.st.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["tracking"]["stTexture"]))
+		CDTL3:SetBarTexture(f.st.bg, s["tracking"]["stTexture"])
 		f.st.bg:SetAllPoints(true)
 		f.st.bg:SetVertexColor(
 			s["tracking"]["stTextureColor"]["r"],
