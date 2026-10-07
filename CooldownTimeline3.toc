@@ -12,6 +12,7 @@
 ## X-License: All Rights Reserved
 
 embeds.xml
+Libs\LibEditMode\embed.xml
 
 CDTL3.lua
 Data.lua
@@ -24,3 +25,4 @@ Lanes.lua
 BarFrames.lua
 Ready.lua
 Cooldown.lua
+EditMode.lua

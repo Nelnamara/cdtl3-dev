@@ -20,3 +20,4 @@ Lanes.lua
 BarFrames.lua
 Ready.lua
 Cooldown.lua
+EditMode.lua
