@@ -2971,52 +2971,49 @@ function CDTL3:ScanForTimeTags(iString)
 	return false
 end
 
-function CDTL3:ConvertTextTags(iString, frame)
-	local oString = iString
-			
-	for _, tag in pairs(private.customTextTags) do
-		if tostring(iString):find(tag["tag"]) then
-			-- unit health/power tags can return SECRET values (Midnight / WoW: Forever)
+-- Replace every tag of one family in oString. The template (unconverted text) decides
+-- which tags are present, so detection never runs on an already-converted string. Tag
+-- functions can return SECRET values (unit health/power on Midnight / WoW: Forever):
+-- a substitution that fails shows "?" instead, and both attempts run inside pcalls.
+local function ApplyTags(tags, template, oString, frame)
+	for _, tag in pairs(tags) do
+		if tostring(template):find(tag["tag"]) then
 			local ok, replaced = pcall(function()
 				return (string.gsub(oString, tag["tag"], tag["func"](frame)))
 			end)
-			oString = ok and replaced or string.gsub(oString, tag["tag"], "?")
+			if not ok then
+				ok, replaced = pcall(function()
+					return (string.gsub(oString, tag["tag"], "?"))
+				end)
+			end
+			if ok then
+				oString = replaced
+			end
 		end
 	end
-	
+
 	return oString
+end
+
+function CDTL3:ConvertTextTags(iString, frame)
+	return ApplyTags(private.customTextTags, iString, iString, frame)
 end
 
 function CDTL3:ConvertTextDynamicTags(iString, frame)
-	local oString = iString
-			
-	for _, tag in pairs(private.customTextDynamicTags) do
-		if tostring(iString):find(tag["tag"]) then
-			-- unit health/power tags can return SECRET values (Midnight / WoW: Forever)
-			local ok, replaced = pcall(function()
-				return (string.gsub(oString, tag["tag"], tag["func"](frame)))
-			end)
-			oString = ok and replaced or string.gsub(oString, tag["tag"], "?")
-		end
-	end
-	
-	return oString
+	return ApplyTags(private.customTextDynamicTags, iString, iString, frame)
 end
 
 function CDTL3:ConvertTextTimeTags(iString, frame)
-	local oString = iString
-			
-	for _, tag in pairs(private.customTextTimeTags) do
-		if tostring(iString):find(tag["tag"]) then
-			-- unit health/power tags can return SECRET values (Midnight / WoW: Forever)
-			local ok, replaced = pcall(function()
-				return (string.gsub(oString, tag["tag"], tag["func"](frame)))
-			end)
-			oString = ok and replaced or string.gsub(oString, tag["tag"], "?")
-		end
-	end
-	
-	return oString
+	return ApplyTags(private.customTextTimeTags, iString, iString, frame)
+end
+
+-- Static, dynamic and time tags in one pass. Converting the raw template with one
+-- family at a time (and letting the last SetText win) left the other families as
+-- literal "[tag]" text, e.g. "[cd.name] [cd.time]" showed as "[cd.name] 12".
+function CDTL3:ConvertAllTextTags(iString, frame)
+	local oString = ApplyTags(private.customTextTags, iString, iString, frame)
+	oString = ApplyTags(private.customTextDynamicTags, iString, oString, frame)
+	return ApplyTags(private.customTextTimeTags, iString, oString, frame)
 end
 
 -- Holds all the custom text tags
