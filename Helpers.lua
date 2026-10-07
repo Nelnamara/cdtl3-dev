@@ -5,6 +5,117 @@
 
 local private = {}
 
+-- NEW SAVED ENTRIES
+-- Everything that discovers a spell/item/aura/rune for the first time builds its saved
+-- entry here, so the per-type Filters -> Defaults and the ignore rule apply the same way
+-- whichever event or scan found it.
+
+-- Per-type defaults (lane, bar frame, ready frame, shown by default); owned by this character
+function CDTL3:ApplyEntryDefaults(s, type)
+	local d = CDTL3.db.profile.global[type]
+
+	s["lane"] = d["defaultLane"]
+	s["barFrame"] = d["defaultBar"]
+	s["readyFrame"] = d["defaultReady"]
+	s["enabled"] = d["showByDefault"]
+	s["highlight"] = false
+	s["pinned"] = false
+	s["usedBy"] = { CDTL3.player["guid"] }
+
+	return s
+end
+
+-- New entries start ignored when the cooldown (ms) is GCD length (3s or less) or longer
+-- than the type's Ignore Threshold
+function CDTL3:IgnoredByDefault(type, bCD)
+	local seconds = (tonumber(bCD) or 0) / 1000
+
+	return not (seconds > 3 and seconds <= CDTL3.db.profile.global[type]["ignoreThreshold"])
+end
+
+-- A new player or pet spell: charge recharge time when it has charges, else its base cooldown
+function CDTL3:NewSpellEntry(spellID, spellName, icon, type)
+	local _, maxCharges, _, cooldownDuration = CDTL3:GetSpellCharges(spellID)
+	local cooldownMS = GetSpellBaseCooldown(spellID)
+	if cooldownDuration ~= nil and cooldownDuration ~= 0 then
+		cooldownMS = cooldownDuration * 1000
+	end
+
+	local s = CDTL3:ApplyEntryDefaults({
+		id = spellID,
+		name = spellName,
+		type = type,
+		icon = icon,
+		bCD = cooldownMS,
+		setCustomCD = false,
+	}, type)
+
+	if maxCharges and maxCharges ~= 0 then
+		s["charges"] = maxCharges
+	end
+
+	s["link"] = CDTL3:GetSpellLink(spellID)
+	s["ignored"] = CDTL3:IgnoredByDefault(type, s["bCD"])
+
+	return s
+end
+
+-- A new item use-spell. icon is the spell's, itemIcon the item's (Filters -> Items ->
+-- Use Item Icon picks between them); names/link fill in once the item is cached.
+function CDTL3:NewItemEntry(spellName, spellID, itemId, bCD)
+	local s = CDTL3:ApplyEntryDefaults({
+		name = spellName,
+		id = spellID,
+		bCD = bCD,
+		itemID = itemId,
+	}, "items")
+
+	local _, icon = CDTL3:GetSpellInfo(spellID)
+	s["icon"] = icon
+
+	local item = Item:CreateFromItemID(itemId)
+	item:ContinueOnItemLoad(function()
+		s["itemName"] = item:GetItemName()
+		s["itemIcon"] = item:GetItemIcon()
+		s["link"] = item:GetItemLink()
+	end)
+
+	return s
+end
+
+-- Save a new entry and start its icon unless it starts ignored or its type is switched off.
+-- Returns the new cooldown frame, if one was made.
+function CDTL3:SaveNewEntry(s, type)
+	table.insert(CDTL3.db.profile.tables[type], s)
+
+	if not s["ignored"] and CDTL3.db.profile.global[type]["enabled"] then
+		return CDTL3:CreateCooldown(CDTL3:GetUID(), type, s)
+	end
+end
+
+-- Item IDs of everything the player carries: equipped slots 0-23, then bags 0-4
+private.CarriedItemIDs = function()
+	local ids = {}
+
+	for slot = 0, 23 do
+		local itemId = GetInventoryItemID("player", slot)
+		if itemId then
+			table.insert(ids, itemId)
+		end
+	end
+
+	for bag = 0, 4 do
+		for slot = 1, C_Container.GetContainerNumSlots(bag) do
+			local itemId = C_Container.GetContainerItemID(bag, slot)
+			if itemId then
+				table.insert(ids, itemId)
+			end
+		end
+	end
+
+	return ids
+end
+
 function CDTL3:AddUsedBy(type, id, guid)
 	for _, data in pairs(CDTL3.db.profile.tables[type]) do
 		if data["id"] == id then
@@ -146,33 +257,12 @@ function CDTL3:CheckEdgeCases(spellName)
 		else
 			s = CDTL3:GetSpellData(0, "Stealth")
 			if s then
-				local spellName, icon, originalIcon = CDTL3:GetSpellInfo(s["id"])
-				
-				s["icon"] = icon
-				s["lane"] = CDTL3.db.profile.global["spells"]["defaultLane"]
-				s["barFrame"] = CDTL3.db.profile.global["spells"]["defaultBar"]
-				s["readyFrame"] = CDTL3.db.profile.global["spells"]["defaultReady"]
-				s["enabled"] = CDTL3.db.profile.global["spells"]["showByDefault"]
-				s["highlight"] = false
-				s["pinned"] = false
-				s["usedBy"] = { CDTL3.player["guid"] }
-				
-				local link, _ = CDTL3:GetSpellLink(s["id"])
-				s["link"] = link
-				
-				if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 < CDTL3.db.profile.global["spells"]["ignoreThreshold"] then
-					s["ignored"] = false
-				else
-					s["ignored"] = true
-				end
-				
-				table.insert(CDTL3.db.profile.tables["spells"], s)
-				
-				if not s["ignored"] then
-					if CDTL3.db.profile.global["spells"]["enabled"] then
-						CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-					end
-				end
+				CDTL3:ApplyEntryDefaults(s, "spells")
+				s["icon"] = select(2, CDTL3:GetSpellInfo(s["id"]))
+				s["link"] = CDTL3:GetSpellLink(s["id"])
+				s["ignored"] = CDTL3:IgnoredByDefault("spells", s["bCD"])
+
+				CDTL3:SaveNewEntry(s, "spells")
 			end
 		end
 	end
@@ -202,33 +292,12 @@ function CDTL3:CheckEdgeCases(spellName)
 		else
 			s = CDTL3:GetSpellData(0, "Shadowmeld")
 			if s then
-				local spellName, icon, originalIcon = CDTL3:GetSpellInfo(s["id"])
-				
-				s["icon"] = icon
-				s["lane"] = CDTL3.db.profile.global["spells"]["defaultLane"]
-				s["barFrame"] = CDTL3.db.profile.global["spells"]["defaultBar"]
-				s["readyFrame"] = CDTL3.db.profile.global["spells"]["defaultReady"]
-				s["enabled"] = CDTL3.db.profile.global["spells"]["showByDefault"]
-				s["highlight"] = false
-				s["pinned"] = false
-				s["usedBy"] = { CDTL3.player["guid"] }
-				
-				local link, _ = CDTL3:GetSpellLink(s["id"])
-				s["link"] = link
-				
-				if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 < CDTL3.db.profile.global["spells"]["ignoreThreshold"] then
-					s["ignored"] = false
-				else
-					s["ignored"] = true
-				end
-				
-				table.insert(CDTL3.db.profile.tables["spells"], s)
-				
-				if not s["ignored"] then
-					if CDTL3.db.profile.global["spells"]["enabled"] then
-						CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-					end
-				end
+				CDTL3:ApplyEntryDefaults(s, "spells")
+				s["icon"] = select(2, CDTL3:GetSpellInfo(s["id"]))
+				s["link"] = CDTL3:GetSpellLink(s["id"])
+				s["ignored"] = CDTL3:IgnoredByDefault("spells", s["bCD"])
+
+				CDTL3:SaveNewEntry(s, "spells")
 			end
 		end
 	end
@@ -291,35 +360,15 @@ function CDTL3:CheckEdgeCases(spellName)
 					else
 						s = CDTL3:GetSpellData(0, secondarySpellName)
 						if s then
-							local spellName, icon, originalIcon = CDTL3:GetSpellInfo(s["id"])
-							
-							s["icon"] = icon
-							s["lane"] = CDTL3.db.profile.global["spells"]["defaultLane"]
-							s["barFrame"] = CDTL3.db.profile.global["spells"]["defaultBar"]
-							s["readyFrame"] = CDTL3.db.profile.global["spells"]["defaultReady"]
-							s["enabled"] = CDTL3.db.profile.global["spells"]["showByDefault"]
-							s["highlight"] = false
-							s["pinned"] = false
-							s["usedBy"] = { CDTL3.player["guid"] }
-							
-							local link, _ = CDTL3:GetSpellLink(s["id"])
-							s["link"] = link
-							
-							if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 < CDTL3.db.profile.global["spells"]["ignoreThreshold"] then
-								s["ignored"] = false
-							else
-								s["ignored"] = true
-							end
-							
-							table.insert(CDTL3.db.profile.tables["spells"], s)
-							
-							if not s["ignored"] then
-								if CDTL3.db.profile.global["spells"]["enabled"] then
-									local f = CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-									
-									f.data["currentCD"] = lockoutTime
-									f.data["overrideCD"] = true
-								end
+							CDTL3:ApplyEntryDefaults(s, "spells")
+							s["icon"] = select(2, CDTL3:GetSpellInfo(s["id"]))
+							s["link"] = CDTL3:GetSpellLink(s["id"])
+							s["ignored"] = CDTL3:IgnoredByDefault("spells", s["bCD"])
+
+							local f = CDTL3:SaveNewEntry(s, "spells")
+							if f then
+								f.data["currentCD"] = lockoutTime
+								f.data["overrideCD"] = true
 							end
 						end
 					end
@@ -373,35 +422,15 @@ function CDTL3:CheckEdgeCases(spellName)
 			else
 				s = CDTL3:GetSpellData(0, secondarySpellName)
 				if s then
-					local spellName, icon, originalIcon = CDTL3:GetSpellInfo(s["id"])
-					
-					s["icon"] = icon
-					s["lane"] = CDTL3.db.profile.global["spells"]["defaultLane"]
-					s["barFrame"] = CDTL3.db.profile.global["spells"]["defaultBar"]
-					s["readyFrame"] = CDTL3.db.profile.global["spells"]["defaultReady"]
-					s["enabled"] = CDTL3.db.profile.global["spells"]["showByDefault"]
-					s["highlight"] = false
-					s["pinned"] = false
-					s["usedBy"] = { CDTL3.player["guid"] }
-					
-					local link, _ = CDTL3:GetSpellLink(s["id"])
-					s["link"] = link
-					
-					if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 < CDTL3.db.profile.global["spells"]["ignoreThreshold"] then
-						s["ignored"] = false
-					else
-						s["ignored"] = true
-					end
-					
-					table.insert(CDTL3.db.profile.tables["spells"], s)
-					
-					if not s["ignored"] then
-						if CDTL3.db.profile.global["spells"]["enabled"] then
-							local f = CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-							
-							f.data["currentCD"] = lockoutTime
-							f.data["overrideCD"] = true
-						end
+					CDTL3:ApplyEntryDefaults(s, "spells")
+					s["icon"] = select(2, CDTL3:GetSpellInfo(s["id"]))
+					s["link"] = CDTL3:GetSpellLink(s["id"])
+					s["ignored"] = CDTL3:IgnoredByDefault("spells", s["bCD"])
+
+					local f = CDTL3:SaveNewEntry(s, "spells")
+					if f then
+						f.data["currentCD"] = lockoutTime
+						f.data["overrideCD"] = true
 					end
 				end
 			end
@@ -564,76 +593,16 @@ function CDTL3:GetCharacterData()
 	end
 end
 
+-- The new saved entry for the carried item whose use-spell is this spell ID, or nil
 function CDTL3:GetItemSpell(id)
-	-- EQUIPPED ITEMS
-	for i = 0, 23, 1 do
-		local itemId = GetInventoryItemID("player", i)
-		local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId or -1)
-		
-		if spellID and (spellID == id) then
-			local s = {}
-				s["name"] = spellName
-				s["id"] = spellID
-				s["bCD"] = 0
-				s["itemID"] = itemId
-				s["lane"] = CDTL3.db.profile.global["items"]["defaultLane"]
-				s["barFrame"] = CDTL3.db.profile.global["items"]["defaultBar"]
-				s["readyFrame"] = CDTL3.db.profile.global["items"]["defaultReady"]
-				s["enabled"] = CDTL3.db.profile.global["items"]["showByDefault"]
-				s["highlight"] = false
-				s["pinned"] = false
-			
-			local spellName, icon, originalIcon = CDTL3:GetSpellInfo(id)
-			s["icon"] = icon
-			
-			local item = Item:CreateFromItemID(itemId)
-			item:ContinueOnItemLoad(function()
-				s["itemName"] = item:GetItemName()
-				s["itemIcon"] = item:GetItemIcon()
-				s["link"] = item:GetItemLink()
-			end)
+	for _, itemId in ipairs(private.CarriedItemIDs()) do
+		local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId)
 
-			return s
+		if spellID and spellID == id then
+			return CDTL3:NewItemEntry(spellName, spellID, itemId, 0)
 		end
 	end
-	
-	-- INVENTORY
-	for i = 0, 4, 1 do
-		local numberOfSlots = 0
-		local numberOfSlots = C_Container.GetContainerNumSlots(i)
-		for x = 0, numberOfSlots, 1 do
-			local itemId = C_Container.GetContainerItemID(i, x)
-			local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId or -1)
-			
-			if spellID and (spellID == id) then
-				local s = {}
-					s["name"] = spellName
-					s["id"] = spellID
-					s["bCD"] = 0
-					s["itemID"] = itemId
-					s["lane"] = CDTL3.db.profile.global["items"]["defaultLane"]
-					s["barFrame"] = CDTL3.db.profile.global["items"]["defaultBar"]
-					s["readyFrame"] = CDTL3.db.profile.global["items"]["defaultReady"]
-					s["enabled"] = CDTL3.db.profile.global["items"]["showByDefault"]
-					s["highlight"] = false
-					s["pinned"] = false
-				
-				local spellName, icon, originalIcon = CDTL3:GetSpellInfo(id)
-				s["icon"] = icon
-				
-				local item = Item:CreateFromItemID(itemId)
-				item:ContinueOnItemLoad(function()
-					s["itemName"] = item:GetItemName()
-					s["itemIcon"] = item:GetItemIcon()
-					s["link"] = item:GetItemLink()
-				end)
-				
-				return s
-			end
-			
-		end
-	end
-	
+
 	return nil
 end
 
@@ -1294,34 +1263,17 @@ function CDTL3:ScanSharedSpellCooldown(initialName, initialDuration)
 						else
 							local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spell["id"])
 							
-							local s = {
+							local s = CDTL3:ApplyEntryDefaults({
 								id = spell["id"],
 								bCD = duration * 1000,	-- bCD is milliseconds everywhere else
 								name = spell["name"],
 								type = "spells",
 								icon = icon,
-								lane = CDTL3.db.profile.global["spells"]["defaultLane"],
-								barFrame = CDTL3.db.profile.global["spells"]["defaultBar"],
-								readyFrame = CDTL3.db.profile.global["spells"]["defaultReady"],
-								enabled = CDTL3.db.profile.global["spells"]["showByDefault"],
-								highlight = false,
-								pinned = false,
-								usedBy = { CDTL3.player["guid"] },
-							}
-							
-							if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 < CDTL3.db.profile.global["spells"]["ignoreThreshold"] then
-								s["ignored"] = false
-							else
-								s["ignored"] = true
-							end
-							
-							table.insert(CDTL3.db.profile.tables["spells"], s)
-							
-							if not s["ignored"] then
-								if CDTL3.db.profile.global["spells"]["enabled"] then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-								end
-							end
+							}, "spells")
+							s["link"] = CDTL3:GetSpellLink(spell["id"])
+							s["ignored"] = CDTL3:IgnoredByDefault("spells", s["bCD"])
+
+							CDTL3:SaveNewEntry(s, "spells")
 						end
 					end
 				end
@@ -1372,55 +1324,10 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 							end
 						end
 					else
-						s = {}
-					
-						local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
-						
-						--local currentCharges, maxCharges, _, cooldownDuration, _ = GetSpellCharges(spellID)
-						local currentCharges, maxCharges, _, cooldownDuration = CDTL3:GetSpellCharges(spellID)
-						local cooldownMS, gcdMS = GetSpellBaseCooldown(spellID)
-				
-						if cooldownDuration ~= nil and cooldownDuration ~= 0 then
-							cooldownMS = cooldownDuration * 1000
-						end
-				
-						s["id"] = spellID
-						s["name"] = spellName
-						--s["rank"] = rank
-						s["bCD"] = cooldownMS
-						s["type"] = "spells"
-				
-						if maxCharges and maxCharges ~= 0 then
-							s["charges"] = maxCharges
-							s["bCD"] = cooldownMS
-						end
-
-						s["icon"] = icon
-						s["lane"] = CDTL3.db.profile.global["spells"]["defaultLane"]
-						s["barFrame"] = CDTL3.db.profile.global["spells"]["defaultBar"]
-						s["readyFrame"] = CDTL3.db.profile.global["spells"]["defaultReady"]
-						s["enabled"] = CDTL3.db.profile.global["spells"]["showByDefault"]
-						s["highlight"] = false
-						s["pinned"] = false
-						s["usedBy"] = { CDTL3.player["guid"] }
-						s["setCustomCD"] = false
-						
-						local link, _ = CDTL3:GetSpellLink(spellID)
-						s["link"] = link
-						
-						if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= CDTL3.db.profile.global["spells"]["ignoreThreshold"] then
-							s["ignored"] = false
-						else
-							s["ignored"] = true
-						end
-						
-						table.insert(CDTL3.db.profile.tables["spells"], s)
-						
-						if not s["ignored"] then
-							if CDTL3.db.profile.global["spells"]["enabled"] then
-								CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-								CDTL3:CheckEdgeCases(spellName)
-							end
+						local spellName, icon = CDTL3:GetSpellInfo(spellID)
+						s = CDTL3:NewSpellEntry(spellID, spellName, icon, "spells")
+						if CDTL3:SaveNewEntry(s, "spells") then
+							CDTL3:CheckEdgeCases(spellName)
 						end
 					end
 				end
@@ -1461,55 +1368,10 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 								end
 							end
 						else
-							s = {}
-						
-							local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
-							
-							--local currentCharges, maxCharges, _, cooldownDuration, _ = GetSpellCharges(spellID)
-							local currentCharges, maxCharges, _, cooldownDuration = CDTL3:GetSpellCharges(spellID)
-							local cooldownMS, gcdMS = GetSpellBaseCooldown(spellID)
-					
-							if cooldownDuration ~= nil and cooldownDuration ~= 0 then
-								cooldownMS = cooldownDuration * 1000
-							end
-					
-							s["id"] = spellID
-							s["name"] = spellName
-							--s["rank"] = rank
-							s["bCD"] = cooldownMS
-							s["type"] = "spells"
-					
-							if maxCharges and maxCharges ~= 0 then
-								s["charges"] = maxCharges
-								s["bCD"] = cooldownMS
-							end
-
-							s["icon"] = icon
-							s["lane"] = CDTL3.db.profile.global["spells"]["defaultLane"]
-							s["barFrame"] = CDTL3.db.profile.global["spells"]["defaultBar"]
-							s["readyFrame"] = CDTL3.db.profile.global["spells"]["defaultReady"]
-							s["enabled"] = CDTL3.db.profile.global["spells"]["showByDefault"]
-							s["highlight"] = false
-							s["pinned"] = false
-							s["usedBy"] = { CDTL3.player["guid"] }
-							s["setCustomCD"] = false
-							
-							local link, _ = CDTL3:GetSpellLink(spellID)
-							s["link"] = link
-							
-							if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= CDTL3.db.profile.global["spells"]["ignoreThreshold"] then
-								s["ignored"] = false
-							else
-								s["ignored"] = true
-							end
-							
-							table.insert(CDTL3.db.profile.tables["spells"], s)
-							
-							if not s["ignored"] then
-								if CDTL3.db.profile.global["spells"]["enabled"] then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-									CDTL3:CheckEdgeCases(spellName)
-								end
+							local spellName, icon = CDTL3:GetSpellInfo(spellID)
+							s = CDTL3:NewSpellEntry(spellID, spellName, icon, "spells")
+							if CDTL3:SaveNewEntry(s, "spells") then
+								CDTL3:CheckEdgeCases(spellName)
 							end
 						end
 					end
@@ -1528,143 +1390,34 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 		print("spellID", spellId)
 	end]]--
 	
-	-- ITEMS EQUIPPED
-	for i = 0, 23, 1 do
-		local itemId = GetInventoryItemID("player", i)
-		local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId or -1)
-		
-		if spellName then
-			if itemId then
-				if CDTL3:IsValidItem(itemId) then
-					local start, duration, enabled = CDTL3:GetItemCooldown(itemId)
-					
-					if duration and duration > 1.5 then
-						if CDTL3:GetExistingCooldown(spellName, "items") then
-							--CDTL3:Print("    EXISTING FOUND: "..spell["id"].." - "..spell["name"])
-						else
-							local s = CDTL3:GetSpellSettings(spellName, "items")
-							if s then
-								if not s["ignored"] then
-									if CDTL3.db.profile.global["items"]["enabled"] then
-										CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
-									end
-									
-									if not CDTL3:IsUsedBy("items", s["id"]) then
-										CDTL3:AddUsedBy("items", s["id"], CDTL3.player["guid"])
-									end
-								end
-							else
-								s = {}
-									s["name"] = spellName
-									s["id"] = spellID
-									if duration and duration > 1.5 then s["bCD"] = duration * 1000 end
-									s["itemID"] = itemId
-									s["lane"] = CDTL3.db.profile.global["items"]["defaultLane"]
-									s["barFrame"] = CDTL3.db.profile.global["items"]["defaultBar"]
-									s["readyFrame"] = CDTL3.db.profile.global["items"]["defaultReady"]
-									s["enabled"] = CDTL3.db.profile.global["items"]["showByDefault"]
-									s["highlight"] = false
-									s["pinned"] = false
-									s["usedBy"] = { CDTL3.player["guid"] }
-									
-								local item = Item:CreateFromItemID(itemId)
-								item:ContinueOnItemLoad(function()
-									s["itemName"] = item:GetItemName()
-									s["icon"] = item:GetItemIcon()
-									s["link"] = item:GetItemLink()
-								end)
-								
-								if duration > 3 and duration < CDTL3.db.profile.global["items"]["ignoreThreshold"] then
-									s["ignored"] = false
-								else
-									s["ignored"] = true
-								end
-								
-								table.insert(CDTL3.db.profile.tables["items"], s)
-								
-								if not s["ignored"] then
-									if CDTL3.db.profile.global["items"]["enabled"] then
-										CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
-									end
-								end
-							end
+	-- ITEMS (equipped, then bags)
+	for _, itemId in ipairs(private.CarriedItemIDs()) do
+		local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId)
+
+		if spellName and CDTL3:IsValidItem(itemId) then
+			local start, duration, enabled = CDTL3:GetItemCooldown(itemId)
+
+			if duration and duration > 1.5 and not CDTL3:GetExistingCooldown(spellName, "items") then
+				local s = CDTL3:GetSpellSettings(spellName, "items")
+				if s then
+					if not s["ignored"] then
+						if CDTL3.db.profile.global["items"]["enabled"] then
+							CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+						end
+
+						if not CDTL3:IsUsedBy("items", s["id"]) then
+							CDTL3:AddUsedBy("items", s["id"], CDTL3.player["guid"])
 						end
 					end
+				else
+					s = CDTL3:NewItemEntry(spellName, spellID, itemId, duration * 1000)
+					s["ignored"] = CDTL3:IgnoredByDefault("items", s["bCD"])
+
+					CDTL3:SaveNewEntry(s, "items")
 				end
 			end
 		end
 	end
-	
-	-- ITEMS BAGS
-	for i = 0, 4, 1 do
-		local numberOfSlots = C_Container.GetContainerNumSlots(i)
-		for x = 0, numberOfSlots, 1 do
-			local itemId = C_Container.GetContainerItemID(i, x)
-			local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId or -1)
-			
-			if spellName then
-				if itemId then
-					if CDTL3:IsValidItem(itemId) then
-						local start, duration, enabled = CDTL3:GetItemCooldown(itemId)
-						
-						if duration and duration > 1.5 then
-							if CDTL3:GetExistingCooldown(spellName, "items") then
-								--CDTL3:Print("    EXISTING FOUND: "..spell["id"].." - "..spell["name"])
-							else
-								local s = CDTL3:GetSpellSettings(spellName, "items")
-								if s then
-									if not s["ignored"] then
-										if CDTL3.db.profile.global["items"]["enabled"] then
-											CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
-										end
-										
-										if not CDTL3:IsUsedBy("items", s["id"]) then
-											CDTL3:AddUsedBy("items", s["id"], CDTL3.player["guid"])
-										end
-									end
-								else
-									s = {}
-										s["name"] = spellName
-										s["id"] = spellID
-										if duration and duration > 1.5 then s["bCD"] = duration * 1000 end
-										s["itemID"] = itemId
-										s["lane"] = CDTL3.db.profile.global["items"]["defaultLane"]
-										s["barFrame"] = CDTL3.db.profile.global["items"]["defaultBar"]
-										s["readyFrame"] = CDTL3.db.profile.global["items"]["defaultReady"]
-										s["enabled"] = CDTL3.db.profile.global["items"]["showByDefault"]
-										s["highlight"] = false
-										s["pinned"] = false
-										s["usedBy"] = { CDTL3.player["guid"] }
-										
-									local item = Item:CreateFromItemID(itemId)
-									item:ContinueOnItemLoad(function()
-										s["itemName"] = item:GetItemName()
-										s["icon"] = item:GetItemIcon()
-										s["link"] = item:GetItemLink()
-									end)
-									
-									if duration > 3 and duration < CDTL3.db.profile.global["items"]["ignoreThreshold"] then
-										s["ignored"] = false
-									else
-										s["ignored"] = true
-									end
-									
-									table.insert(CDTL3.db.profile.tables["items"], s)
-									
-									if not s["ignored"] then
-										if CDTL3.db.profile.global["items"]["enabled"] then
-											CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
-										end
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-		end
-	end
-	
 end
 
 function CDTL3:SetBorder(f, s)

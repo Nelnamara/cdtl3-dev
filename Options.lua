@@ -2516,20 +2516,12 @@ private.GetFilterSet = function(t, o)
 								CDTL3.custom["type"] = "customs"
 
 								CDTL3.custom["bCD"] = 60000
-								CDTL3.custom["usedBy"] = { CDTL3.player["guid"] }
 								CDTL3.custom["setCustomCD"] = false
-								
-								local link, _ = CDTL3:GetSpellLink(val)
-								CDTL3.custom["link"] = link
+								CDTL3.custom["link"] = CDTL3:GetSpellLink(val)
 
-								local cDefaults = CDTL3.db.profile.global["customs"]
-								CDTL3.custom["enabled"] = cDefaults["showByDefault"]
-								CDTL3.custom["highlight"] = false
-								CDTL3.custom["pinned"] = false
+								-- a custom the user is adding by hand is never ignored
+								CDTL3:ApplyEntryDefaults(CDTL3.custom, "customs")
 								CDTL3.custom["ignored"] = false
-								CDTL3.custom["lane"] = cDefaults["defaultLane"]
-								CDTL3.custom["barFrame"] = cDefaults["defaultBar"]
-								CDTL3.custom["readyFrame"] = cDefaults["defaultReady"]
 
 								CDTL3.customIsValid = true
 							else
@@ -3718,24 +3710,11 @@ private.GetCustomSet = function(t, o)
 									if existingData then
 										--CDTL3:Print("CUSTOM_ALREADY_EXISTS: "..CDTL3.currentFilter["detected"])
 									else
-										local c = CDTL3:TableCopy(s)
-
+										local c = CDTL3:ApplyEntryDefaults(CDTL3:TableCopy(s), "customs")
 										c["bCD"] = 60000
-										c["usedBy"] = { CDTL3.player["guid"] }
-
 										c["type"] = "customs"
 										c["triggerType"] = "spell"
-
-										c["lane"] = CDTL3.db.profile.global["customs"]["defaultLane"]
-										c["barFrame"] = CDTL3.db.profile.global["customs"]["defaultBar"]
-										c["readyFrame"] = CDTL3.db.profile.global["customs"]["defaultReady"]
-										c["enabled"] = CDTL3.db.profile.global["customs"]["showByDefault"]
-
-										if c["bCD"] / 1000 > 3 and c["bCD"] / 1000 <= CDTL3.db.profile.global["customs"]["ignoreThreshold"] then
-											c["ignored"] = false
-										else
-											c["ignored"] = true
-										end
+										c["ignored"] = CDTL3:IgnoredByDefault("customs", c["bCD"])
 										
 										table.insert(CDTL3.db.profile.tables["customs"], c)
 										CDTL3.currentFilter["customs"] = c["name"]

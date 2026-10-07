@@ -1724,63 +1724,18 @@ function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer,
 				if ef then
 					CDTL3:SendToLane(ef)
 					CDTL3:SendToBarFrame(ef)
-				else
-					if CDTL3.db.profile.global["buffs"]["enabled"] and auraType == "buffs"  then
-						CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-						if not CDTL3:IsUsedBy("buffs", s["id"]) then
-							CDTL3:AddUsedBy("buffs", s["id"], CDTL3.player["guid"])
-						end
-					elseif CDTL3.db.profile.global["debuffs"]["enabled"] and auraType == "debuffs" then
-						CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-						if not CDTL3:IsUsedBy("debuffs", s["id"]) then
-							CDTL3:AddUsedBy("debuffs", s["id"], CDTL3.player["guid"])
-						end
-					end
+				elseif CDTL3.db.profile.global[auraType]["enabled"] then
+					CDTL3:CreateCooldown(CDTL3:GetUID(), auraType, s)
 				end
 			end
 		else
 			s = CDTL3:AuraExists("player", spellName)
 			if s then
-				s["highlight"] = false
-				s["pinned"] = false
-				
-				s["usedBy"] = { CDTL3.player["guid"] }
-				
-				local ignoreThreshold = 0
-				local link, _ = CDTL3:GetSpellLink(spellID)
-				s["link"] = link
-				
-				if auraType == "buffs" then
-					ignoreThreshold = CDTL3.db.profile.global["buffs"]["ignoreThreshold"]
-					
-					s["enabled"] = CDTL3.db.profile.global["buffs"]["showByDefault"]
-					s["lane"] = CDTL3.db.profile.global["buffs"]["defaultLane"]
-					s["barFrame"] = CDTL3.db.profile.global["buffs"]["defaultBar"]
-					s["readyFrame"] = CDTL3.db.profile.global["buffs"]["defaultReady"]
-				elseif auraType == "debuffs" then
-					ignoreThreshold = CDTL3.db.profile.global["debuffs"]["ignoreThreshold"]
-					
-					s["enabled"] = CDTL3.db.profile.global["debuffs"]["showByDefault"]
-					s["lane"] = CDTL3.db.profile.global["debuffs"]["defaultLane"]
-					s["barFrame"] = CDTL3.db.profile.global["debuffs"]["defaultBar"]
-					s["readyFrame"] = CDTL3.db.profile.global["debuffs"]["defaultReady"]
-				end
-				
-				if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= ignoreThreshold then
-					s["ignored"] = false
-				else
-					s["ignored"] = true
-				end
+				CDTL3:ApplyEntryDefaults(s, auraType)
+				s["link"] = CDTL3:GetSpellLink(spellID)
+				s["ignored"] = CDTL3:IgnoredByDefault(auraType, s["bCD"])
 
-				table.insert(CDTL3.db.profile.tables[auraType], s)
-				
-				if not s["ignored"] then
-					if CDTL3.db.profile.global["buffs"]["enabled"] and auraType == "buffs" then
-						CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-					elseif CDTL3.db.profile.global["debuffs"]["enabled"] and auraType == "debuffs" then
-						CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-					end
-				end
+				CDTL3:SaveNewEntry(s, auraType)
 			end
 		end
 	end
@@ -2055,25 +2010,15 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 				else
 					local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
 					
-					local s = {
+					-- no ignore check: an offensive's length is only known once it lands
+					local s = CDTL3:ApplyEntryDefaults({
 						id = spellID,
 						bCD = 0,
 						name = spellName,
 						type = "offensives",
 						icon = icon,
-						lane = CDTL3.db.profile.global["offensives"]["defaultLane"],
-						barFrame = CDTL3.db.profile.global["offensives"]["defaultBar"],
-						readyFrame = CDTL3.db.profile.global["offensives"]["defaultReady"],
-					}
-					
-					s["enabled"] = CDTL3.db.profile.global["offensives"]["showByDefault"]
-					s["highlight"] = false
-					s["pinned"] = false
-					
-					s["usedBy"] = { CDTL3.player["guid"] }
-					
-					local link, _ = CDTL3:GetSpellLink(spellID)
-					s["link"] = link
+					}, "offensives")
+					s["link"] = CDTL3:GetSpellLink(spellID)
 					
 					table.insert(CDTL3.db.profile.tables["offensives"], s)
 										
@@ -2207,53 +2152,9 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 					end
 				end
 			else
-				s = {}
-				
-				--local currentCharges, maxCharges, _, cooldownDuration, _ = GetSpellCharges(spellID)
-				local currentCharges, maxCharges, cooldownStart, cooldownDuration  = CDTL3:GetSpellCharges(spellID)
-				local cooldownMS, gcdMS = GetSpellBaseCooldown(spellID)
-		
-				if cooldownDuration ~= nil and cooldownDuration ~= 0 then
-					cooldownMS = cooldownDuration * 1000
-				end
-		
-				s["id"] = spellID
-				s["name"] = spellName
-				--s["rank"] = rank
-				s["bCD"] = cooldownMS
-				s["type"] = "spells"
-		
-				if maxCharges ~= 0 then
-					s["charges"] = maxCharges
-					s["bCD"] = cooldownMS
-				end
-
-				s["icon"] = icon
-				s["lane"] = CDTL3.db.profile.global["spells"]["defaultLane"]
-				s["barFrame"] = CDTL3.db.profile.global["spells"]["defaultBar"]
-				s["readyFrame"] = CDTL3.db.profile.global["spells"]["defaultReady"]
-				s["enabled"] = CDTL3.db.profile.global["spells"]["showByDefault"]
-				s["highlight"] = false
-				s["pinned"] = false
-				s["usedBy"] = { CDTL3.player["guid"] }
-				s["setCustomCD"] = false
-				
-				local link, _ = CDTL3:GetSpellLink(spellID)
-				s["link"] = link
-				
-				if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= CDTL3.db.profile.global["spells"]["ignoreThreshold"] then
-					s["ignored"] = false
-				else
-					s["ignored"] = true
-				end
-				
-				table.insert(CDTL3.db.profile.tables["spells"], s)
-				
-				if not s["ignored"] then
-					if CDTL3.db.profile.global["spells"]["enabled"] then
-						CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-						CDTL3:CheckEdgeCases(spellName)
-					end
+				s = CDTL3:NewSpellEntry(spellID, spellName, icon, "spells")
+				if CDTL3:SaveNewEntry(s, "spells") then
+					CDTL3:CheckEdgeCases(spellName)
 				end
 			end
 		else
@@ -2286,7 +2187,6 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 				s = is
 				if s then
 					if CDTL3:IsValidItem(s["itemID"]) then
-						s["usedBy"] = { CDTL3.player["guid"] }
 						table.insert(CDTL3.db.profile.tables["items"], s)
 						
 						if CDTL3.db.profile.global["items"]["enabled"] then
@@ -2413,53 +2313,9 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 					end
 				end
 			else
-				s = {}
-			
-				--local currentCharges, maxCharges, _, cooldownDuration, _ = GetSpellCharges(spellID)
-				local currentCharges, maxCharges, cooldownStart, cooldownDuration = CDTL3:GetSpellCharges(spellID)
-				local cooldownMS, gcdMS = GetSpellBaseCooldown(spellID)
-		
-				if cooldownDuration ~= nil and cooldownDuration ~= 0 then
-					cooldownMS = cooldownDuration * 1000
-				end
-		
-				s["id"] = spellID
-				s["name"] = spellName
-				--s["rank"] = rank
-				s["bCD"] = cooldownMS
-				s["type"] = "petspells"
-		
-				if maxCharges then
-					s["charges"] = maxCharges
-					s["bCD"] = cooldownMS
-				end
-
-				s["icon"] = icon
-				s["lane"] = CDTL3.db.profile.global["petspells"]["defaultLane"]
-				s["barFrame"] = CDTL3.db.profile.global["petspells"]["defaultBar"]
-				s["readyFrame"] = CDTL3.db.profile.global["petspells"]["defaultReady"]
-				s["enabled"] = CDTL3.db.profile.global["petspells"]["showByDefault"]
-				s["highlight"] = false
-				s["pinned"] = false
-				s["usedBy"] = { CDTL3.player["guid"] }
-				s["setCustomCD"] = false
-				
-				local link, _ = CDTL3:GetSpellLink(spellID)
-				s["link"] = link
-				
-				if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= CDTL3.db.profile.global["petspells"]["ignoreThreshold"] then
-					s["ignored"] = false
-				else
-					s["ignored"] = true
-				end
-				
-				table.insert(CDTL3.db.profile.tables["petspells"], s)
-				
-				if not s["ignored"] then
-					if CDTL3.db.profile.global["petspells"]["enabled"] then
-						CDTL3:CreateCooldown(CDTL3:GetUID(),"petspells" , s)
-						CDTL3:CheckEdgeCases(spellName)
-					end
+				s = CDTL3:NewSpellEntry(spellID, spellName, icon, "petspells")
+				if CDTL3:SaveNewEntry(s, "petspells") then
+					CDTL3:CheckEdgeCases(spellName)
 				end
 			end
 		end
@@ -2505,7 +2361,6 @@ function CDTL3:ITEM_LOCK_CHANGED(...)
 					s = CDTL3:GetItemSpell(spellID)
 					if s then
 						if CDTL3:IsValidItem(s["itemID"]) then
-							s["usedBy"] = { CDTL3.player["guid"] }
 							table.insert(CDTL3.db.profile.tables["items"], s)
 							
 							if CDTL3.db.profile.global["items"]["enabled"] then
@@ -2707,42 +2562,23 @@ function CDTL3:RUNE_POWER_UPDATE(...)
 				end
 			end
 		else
-			local s = {}
-		
-			s["name"] = spellName
-			s["type"] = "runes"
-			s["runeIndex"] = runeIndex
-			s["icon"] = icon
-			s["lane"] = CDTL3.db.profile.global["runes"]["defaultLane"]
-			s["barFrame"] = CDTL3.db.profile.global["runes"]["defaultBar"]
-			s["readyFrame"] = CDTL3.db.profile.global["runes"]["defaultReady"]
-			s["enabled"] = CDTL3.db.profile.global["runes"]["showByDefault"]
-			s["highlight"] = false
-			s["pinned"] = false
-			
 			-- the rune duration can be secret on retail: fall back to the 10s rune base
 			local bCD = 10000
 			pcall(function()
 				local _, duration = GetRuneCooldown(runeIndex)
 				bCD = (duration + 0) * 1000
 			end)
-			
-			s["bCD"] = bCD
-			s["usedBy"] = { CDTL3.player["guid"] }
-			
-			if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= CDTL3.db.profile.global["runes"]["ignoreThreshold"] then
-				s["ignored"] = false
-			else
-				s["ignored"] = true
-			end
-			
-			table.insert(CDTL3.db.profile.tables["runes"], s)
-			
-			if not s["ignored"] then
-				if CDTL3.db.profile.global["runes"]["enabled"] then
-					CDTL3:CreateCooldown(CDTL3:GetUID(),"runes" , s)
-				end
-			end
+
+			local s = CDTL3:ApplyEntryDefaults({
+				name = spellName,
+				type = "runes",
+				runeIndex = runeIndex,
+				icon = icon,
+				bCD = bCD,
+			}, "runes")
+			s["ignored"] = CDTL3:IgnoredByDefault("runes", s["bCD"])
+
+			CDTL3:SaveNewEntry(s, "runes")
 		end
 	else
 		for _, rune in pairs(CDTL3.cooldowns) do
