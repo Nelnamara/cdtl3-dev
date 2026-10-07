@@ -2438,13 +2438,7 @@ function CDTL3:UNIT_POWER_FREQUENT(...)
 	local _, unitTarget, powerType = ...
 	
 	if unitTarget == "player" and powerType == "MANA" then
-		if	CDTL3.db.profile.lanes["lane1"]["tracking"]["primaryTracking"] == "MANA_TICK" or
-			CDTL3.db.profile.lanes["lane1"]["tracking"]["secondaryTracking"] == "MANA_TICK" or
-			CDTL3.db.profile.lanes["lane2"]["tracking"]["primaryTracking"] == "MANA_TICK" or
-			CDTL3.db.profile.lanes["lane2"]["tracking"]["secondaryTracking"] == "MANA_TICK" or
-			CDTL3.db.profile.lanes["lane3"]["tracking"]["primaryTracking"] == "MANA_TICK" or
-			CDTL3.db.profile.lanes["lane3"]["tracking"]["secondaryTracking"] == "MANA_TICK"
-		then
+		if CDTL3:AnyLaneTracks("MANA_TICK") then
 			-- mana can be SECRET (Midnight / WoW: Forever): skip the tick estimate then
 			pcall(function()
 				local currentTime = GetTime()
@@ -2491,13 +2485,7 @@ function CDTL3:UNIT_POWER_UPDATE(...)
 	local _, unitTarget, powerType = ...
 	
 	if unitTarget == "player" and powerType == "ENERGY" then
-		if	CDTL3.db.profile.lanes["lane1"]["tracking"]["primaryTracking"] == "ENERGY_TICK" or
-			CDTL3.db.profile.lanes["lane1"]["tracking"]["secondaryTracking"] == "ENERGY_TICK" or
-			CDTL3.db.profile.lanes["lane2"]["tracking"]["primaryTracking"] == "ENERGY_TICK" or
-			CDTL3.db.profile.lanes["lane2"]["tracking"]["secondaryTracking"] == "ENERGY_TICK" or
-			CDTL3.db.profile.lanes["lane3"]["tracking"]["primaryTracking"] == "ENERGY_TICK" or
-			CDTL3.db.profile.lanes["lane3"]["tracking"]["secondaryTracking"] == "ENERGY_TICK"
-		then
+		if CDTL3:AnyLaneTracks("ENERGY_TICK") then
 			-- energy can be SECRET (Midnight / WoW: Forever): skip the tick estimate then
 			pcall(function()
 				local currentTime = GetTime()
@@ -2660,6 +2648,35 @@ function CDTL3:DetermineOnOff()
 	return turnOn
 end
 
+-- Unit events are only wanted for the player (and pet). Registering them per unit on a
+-- private frame stops the client waking the addon for every raid member's casts, auras
+-- and power changes. Handlers keep the AceEvent signature: CDTL3:EVENT(event, unit, ...).
+CDTL3.unitEventFrame = CreateFrame("Frame")
+CDTL3.unitEventFrame:SetScript("OnEvent", function(_, event, ...)
+	CDTL3[event](CDTL3, event, ...)
+end)
+
+function CDTL3:RegisterUnitEvents(event, unit1, unit2)
+	local f = CDTL3.unitEventFrame
+	if f.RegisterUnitEvent then
+		f:RegisterUnitEvent(event, unit1, unit2)
+	else
+		f:RegisterEvent(event)	-- handlers still check the unit
+	end
+end
+
+-- Does any lane show this tracking type, as primary or secondary?
+function CDTL3:AnyLaneTracks(kind)
+	for _, key in ipairs({ "lane1", "lane2", "lane3" }) do
+		local tracking = CDTL3.db.profile.lanes[key]["tracking"]
+		if tracking["primaryTracking"] == kind or tracking["secondaryTracking"] == kind then
+			return true
+		end
+	end
+
+	return false
+end
+
 function CDTL3:TurnOn()	
 	if not CDTL3.enabled then
 		if CDTL3.db.profile.global["debugMode"] then
@@ -2672,17 +2689,17 @@ function CDTL3:TurnOn()
 		if CombatLogGetCurrentEventInfo then
 			CDTL3.combatLogRegistered = pcall(CDTL3.RegisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
 		end
-		CDTL3:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+		CDTL3:RegisterUnitEvents("UNIT_SPELLCAST_SUCCEEDED", "player", "pet")
 		CDTL3:RegisterEvent("ITEM_LOCK_CHANGED")
 		CDTL3:RegisterEvent("PLAYER_REGEN_DISABLED")
 		CDTL3:RegisterEvent("PLAYER_REGEN_ENABLED")
-		CDTL3:RegisterEvent("UNIT_POWER_FREQUENT")
-		CDTL3:RegisterEvent("UNIT_POWER_UPDATE")
+		CDTL3:RegisterUnitEvents("UNIT_POWER_FREQUENT", "player")
+		CDTL3:RegisterUnitEvents("UNIT_POWER_UPDATE", "player")
 
 		CDTL3:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 		
 		if CDTL3.retailAPI then
-			CDTL3:RegisterEvent("UNIT_AURA")
+			CDTL3:RegisterUnitEvents("UNIT_AURA", "player")
 			--CDTL3:RegisterEvent("TRAIT_CONFIG_UPDATED")
 		end
 
@@ -2701,17 +2718,17 @@ function CDTL3:TurnOff()
 		end
 		
 		pcall(CDTL3.UnregisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
-		CDTL3:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+		CDTL3.unitEventFrame:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 		CDTL3:UnregisterEvent("ITEM_LOCK_CHANGED")
 		CDTL3:UnregisterEvent("PLAYER_REGEN_DISABLED")
 		CDTL3:UnregisterEvent("PLAYER_REGEN_ENABLED")
-		CDTL3:UnregisterEvent("UNIT_POWER_FREQUENT")
-		CDTL3:UnregisterEvent("UNIT_POWER_UPDATE")
+		CDTL3.unitEventFrame:UnregisterEvent("UNIT_POWER_FREQUENT")
+		CDTL3.unitEventFrame:UnregisterEvent("UNIT_POWER_UPDATE")
 
 		CDTL3:UnregisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 		
 		if CDTL3.retailAPI then
-			CDTL3:UnregisterEvent("UNIT_AURA")
+			CDTL3.unitEventFrame:UnregisterEvent("UNIT_AURA")
 			--CDTL3:UnregisterEvent("TRAIT_CONFIG_UPDATED")
 		end
 
