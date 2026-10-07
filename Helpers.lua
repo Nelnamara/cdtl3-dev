@@ -1534,7 +1534,8 @@ function CDTL3:ToggleDebug()
 	end
 end
 
-function CDTL3:ToggleFrameLock()
+-- quiet: no chat line and no unlock popup (Edit Mode shows/hides the frames itself)
+function CDTL3:ToggleFrameLock(quiet)
 	local unlockFrames = CDTL3.db.profile.global["unlockFrames"]
 
 	-- Guard: unlockFrame may be nil if OnEnable errored before CreateUnlockFrame ran.
@@ -1562,10 +1563,14 @@ function CDTL3:ToggleFrameLock()
 			CDTL3:RefreshReady(f.number)
 		end
 		
-		CDTL3:Print("Frames Locked")
+		if not quiet then
+			CDTL3:Print("Frames Locked")
+		end
 	else
 		CDTL3.db.profile.global["unlockFrames"] = true
-		CDTL3.unlockFrame:Show()
+		if not quiet then
+			CDTL3.unlockFrame:Show()
+		end
 		
 		for _, f in pairs(CDTL3.lanes) do
 			private.FrameUnlock(f)
@@ -1582,7 +1587,9 @@ function CDTL3:ToggleFrameLock()
 			CDTL3:RefreshReady(f.number)
 		end
 		
-		CDTL3:Print("Frames Unlocked")
+		if not quiet then
+			CDTL3:Print("Frames Unlocked")
+		end
 	end
 end
 
