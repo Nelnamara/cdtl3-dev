@@ -68,3 +68,5 @@ File lists: every TOC loads `Presets.lua` (after Media.lua) and `EditMode.lua` (
 
 ## Conventions
 - **Never** append a `Co-Authored-By` trailer to commits. Tabs for indentation (match the existing file).
+- **Never put any AI/assistant attribution or session reference anywhere**: no `Claude-Session:` lines, claude.ai session links, "Generated with …" footers or tool names in commit messages, PR titles/bodies, changelogs, release notes, README, in-game text or code comments. Commits are authored as the maintainer (repo git config `user.name`/`user.email`).
+- **Release notes come from `CHANGELOG.md`** (`.pkgmeta` `manual-changelog`), not from git commit messages. Update it before tagging a release. `.pkgmeta` also keeps `CLAUDE.md`, `README.md`, `docs/` and `.github/` out of the package.
