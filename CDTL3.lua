@@ -1237,6 +1237,9 @@ function CDTL3:ChatCommand(input)
 			CDTL3.minimapBtn:SetShown(not CDTL3.db.global.minimapHide)
 		end
 		CDTL3:Print("Minimap button " .. (CDTL3.db.global.minimapHide and "hidden" or "shown"))
+	elseif input:trim():match("^secrettest") then
+		-- developer spike for docs/secret-timers-scope.md (SecretTest.lua)
+		CDTL3:SecretTest(input:trim():sub(11))
     end
 end
 
