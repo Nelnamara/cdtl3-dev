@@ -1,4 +1,4 @@
-## Interface: 11509
+## Interface: 16001
 ## Title: |cFF54a3ffCDTL3|r |cffffffff(CooldownTimeline)|r
 ## IconTexture: Interface\AddOns\CooldownTimeline3\Media\icon-128.tga
 ## Author: cliffclive
@@ -6,8 +6,13 @@
 ## Version: 3.0.8
 ## SavedVariables: CDTL3DB CDTL2DB
 ## OptionalDeps: Masque
+## X-Curse-Project-ID: 1570576
+## X-Wago-ID: mKODORGx
+## X-Website: https://github.com/Nelnamara/cdtl3-dev
+## X-License: All Rights Reserved
 
 embeds.xml
+Libs\LibEditMode\embed.xml
 
 CDTL3.lua
 Data.lua

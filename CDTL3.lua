@@ -14,18 +14,59 @@ CDTL3.GUI = LibStub("AceGUI-3.0")
 local _, _, _, tocversion = GetBuildInfo()
 CDTL3.tocversion = tocversion
 
-CDTL3.version = "3.0.7"
+-- WoW: Forever runs the modern Mainline engine and API (the old spell/aura/spellbook
+-- globals are gone, values can be secret) but reports a vanilla-era interface number
+-- (16xxx). So tocversion only picks era CONTENT (spell lists, class colours);
+-- retailAPI picks which API calls exist. Detect Forever by its 16xxx interface band:
+-- WOW_PROJECT_ID was Mainline (1) on early beta builds but changed to 18 in 70205.
+CDTL3.isForever = (tocversion >= 16000 and tocversion < 17000)
+	or (WOW_PROJECT_MAINLINE ~= nil and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE and tocversion < 110000)
+CDTL3.retailAPI = tocversion >= 110000 or CDTL3.isForever
+
+-- Globals that no longer exist on Forever (or on retail from 12.1.5): GetItemSpell and
+-- GetItemInfoInstant were removed in 12.1.5 (C_Item since 10.2.6); IsSpellKnown and
+-- IsSpellKnownOrOverridesKnown survive only in Blizzard's deprecation fallbacks since 11.2.
+-- Resolved per call, preferring whatever the client still provides.
+local function SpellBank(isPet)
+	return isPet and Enum.SpellBookSpellBank.Pet or Enum.SpellBookSpellBank.Player
+end
+
+CDTL3.Compat = {
+	GetItemSpell = function(item)
+		-- inventory scans pass -1/0 for an empty slot; C_Item validates its argument
+		if not item or (type(item) == "number" and item <= 0) then
+			return nil
+		end
+		return ((C_Item and C_Item.GetItemSpell) or GetItemSpell)(item)
+	end,
+	GetItemInfoInstant = function(item)
+		return ((C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant)(item)
+	end,
+	IsSpellKnown = function(spellID, isPet)
+		if IsSpellKnown then
+			return IsSpellKnown(spellID, isPet)
+		end
+		return C_SpellBook.IsSpellKnown(spellID, SpellBank(isPet))
+	end,
+	IsSpellKnownOrOverridesKnown = function(spellID, isPet)
+		if IsSpellKnownOrOverridesKnown then
+			return IsSpellKnownOrOverridesKnown(spellID, isPet)
+		end
+		return C_SpellBook.IsSpellKnownOrInSpellBook(spellID, SpellBank(isPet), true)
+	end,
+}
+
+CDTL3.version = "3.0.8"
 CDTL3.noticeVersion = "2.6"
 CDTL3.cdUID = 999
-CDTL3.discordlink = ""
+-- where to report issues / make suggestions (first-run window, Changelog tab)
+CDTL3.supportlink = "https://github.com/Nelnamara/cdtl3-dev/issues"
 CDTL3.lanes = {}
 CDTL3.barFrames = {}
 CDTL3.readyFrames = {}
 CDTL3.holders = {}
-CDTL3.offensives = {}
 CDTL3.player = {}
 CDTL3.cooldowns = {}
-CDTL3.spellbook = {}
 CDTL3.testing = false
 CDTL3.tracking = {
 	mhSwingTime = -1,
@@ -33,16 +74,658 @@ CDTL3.tracking = {
 	rSwingTime = -1,
 }
 CDTL3.spellData = {}
-CDTL3.icdData = {}
+CDTL3.recentAuras = {}
+CDTL3.auraExpiry = {}
 CDTL3.colors = {
 	bg = {},
 	db = { r = 0.1, g = 0.1, b = 0.1, a = 0.85 },
 }
 CDTL3.custom = {}
-CDTL3.detected = {}
 CDTL3.combat = false
 CDTL3.enabled = false
 local private = {}
+
+-- Deep copy of base with overrides applied on top (nested tables merge key by key).
+-- Lanes, bar frames and ready frames 2 and 3 are #1 with a handful of values changed,
+-- so each is declared once below and only the differences are listed per index.
+local function WithOverrides(base, overrides)
+	local copy = {}
+	for k, v in pairs(base) do
+		copy[k] = type(v) == "table" and WithOverrides(v) or v
+	end
+
+	for k, v in pairs(overrides or {}) do
+		if type(v) == "table" then
+			copy[k] = WithOverrides(type(copy[k]) == "table" and copy[k] or {}, v)
+		else
+			copy[k] = v
+		end
+	end
+
+	return copy
+end
+
+local laneDefaults = {
+	enabled = true,
+	name = "Lane 1",
+	reversed = false,
+	vertical = false,
+
+	posX = 0,
+	posY = -250,
+	width = 400,
+	height = 44,
+	relativeTo = "CENTER",
+	alpha = 1,
+
+	iconOffset = 0,
+
+	tracking = {
+		primaryTracking = "NONE",
+		secondaryTracking = "GCD",
+
+		overrideAutohide = false,
+
+		primaryReversed = false,
+		secondaryReversed = false,
+
+		stTexture = "CDTL3 Smooth",
+		stTextureColor = { r = 1, g = 1, b = 1, a = 0.5 },
+
+		stWidth = 5,
+		stHeight = 44,
+	},
+
+	stacking = {
+		enabled = false,
+		raiseOnMouseOver = false,
+		style = "GROUPED",
+		grow = "UP",
+		height = 80,
+	},
+
+	fgTexture = "CDTL3 Smooth",
+	fgTextureColor = { r = 0.77647, g = 0.11765, b = 0.28235, a = 1 },
+	fgClassColor = true,
+	bgTexture = "CDTL3 Smooth",
+	bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
+	bgClassColor = false,
+
+	border = {
+		style = "CDTL3 Shadow",
+		color = { r = 0, g = 0, b = 0, a = 0.25 },
+		size = 5,
+		padding = 5,
+		inset = 0,
+	},
+
+	icons = {
+		size = 40,
+		hlStyle = "NONE",
+		timeFormat = "H:MM:SS.MS",
+
+		alpha = 1,
+
+		bgTexture = "CDTL3 Icon Shadow",
+		bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
+
+		border = {
+			style = "None",
+			color = { r = 0, g = 0, b = 0, a = 1 },
+			size = 5,
+			padding = 5,
+			inset = 0,
+		},
+
+		highlight = {
+			style = "BORDER",
+
+			border = {
+				style = "None",
+				color = { r = 1, g = 1, b = 1, a = 1 },
+				size = 5,
+				padding = 5,
+				inset = 0,
+				flash = false,
+			},
+		},
+
+		text1 = {
+			enabled = true,
+			used = true,
+			edit = false,
+			dtags = true,
+			ttags = false,
+			text = "[cd.stacks]",
+			font = "Fira Sans Condensed",
+			size = 11,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "LEFT",
+			anchor = "TOPLEFT",
+			offX = 2,
+			offY = -7,
+			outline = "OUTLINE",
+			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text2 = {
+			enabled = true,
+			used = true,
+			edit = false,
+			dtags = false,
+			ttags = true,
+			text = "[cd.time]",
+			font = "Fira Sans Condensed",
+			size = 16,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "CENTER",
+			offX = 0,
+			offY = 0,
+			outline = "OUTLINE",
+			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text3 = {
+			enabled = true,
+			used = true,
+			edit = false,
+			dtags = false,
+			ttags = false,
+			text = "",
+			font = "Fira Sans Condensed",
+			size = 11,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "BOTTOM",
+			offX = 2,
+			offY = 5,
+			outline = "OUTLINE",
+			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+	},
+
+	mode = {
+		type = "LINEAR",
+		linear = {
+			max = 120,
+			hideTimeSurplus = true,
+		},
+		linearAbs = {
+			max = 120,
+			hideTimeSurplus = true,
+			timeFormat = "XhYmZs",
+		},
+		split = {
+			max = 120,
+			hideTimeSurplus = true,
+			count = 2,
+			s1v = 10,
+			s1p = 0.33,
+			s2v = 33,
+			s2p = 0.66,
+			s3v = 66,
+			s3p = 0.75,
+		},
+		splitAbs = {
+			max = 120,
+			hideTimeSurplus = true,
+			timeFormat = "XhYmZs",
+			count = 3,
+			s1v = 10,
+			s1p = 0.25,
+			s2v = 30,
+			s2p = 0.5,
+			s3v = 60,
+			s3p = 0.75,
+		},
+	},
+
+	modeText = {
+		text1 = {
+			enabled = true,
+			used = true,
+			edit = false,
+			text = "T1",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "LEFT",
+			anchor = "LEFT",
+			pos = 0,
+			offX = 5,
+			offY = 0,
+			outline = "",
+			shadColor = { r = 0, g = 0, b = 0, a = 1 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text2 = {
+			enabled = true,
+			used = true,
+			text = "T2",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "LEFT",
+			pos = 0.25,
+			offX = 0,
+			offY = 0,
+			outline = "",
+			shadColor = { r = 0, g = 0, b = 0, a = 1 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text3 = {
+			enabled = true,
+			used = true,
+			text = "T3",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "LEFT",
+			pos = 0.5,
+			offX = 0,
+			offY = 0,
+			outline = "",
+			shadColor = { r = 0, g = 0, b = 0, a = 1 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text4 = {
+			enabled = true,
+			used = true,
+			text = "T4",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "LEFT",
+			pos = 0.75,
+			offX = 0,
+			offY = 0,
+			outline = "",
+			shadColor = { r = 0, g = 0, b = 0, a = 1 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text5 = {
+			enabled = true,
+			used = true,
+			text = "T5",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "RIGHT",
+			anchor = "LEFT",
+			pos = 1,
+			offX = -5,
+			offY = 0,
+			outline = "",
+			shadColor = { r = 0, g = 0, b = 0, a = 1 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+	},
+	customText = {				
+		text1 = {
+			enabled = false,
+			used = true,
+			edit = false,
+			dtags = false,
+			ttags = false,
+			text = "Custom Text 1",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "TOPLEFT",
+			pos = 0,
+			offX = 0,
+			offY = 0,
+			outline = "",
+			shadColor = { r = 0, g = 0, b = 0, a = 1 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text2 = {
+			enabled = false,
+			used = true,
+			edit = false,
+			dtags = false,
+			ttags = false,
+			text = "Custom Text 2",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "TOPRIGHT",
+			pos = 0,
+			offX = 0,
+			offY = 0,
+			outline = "",
+			shadColor = { r = 0, g = 0, b = 0, a = 1 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text3 = {
+			enabled = false,
+			used = true,
+			edit = false,
+			dtags = false,
+			ttags = false,
+			text = "Custom Text 3",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "CENTER",
+			pos = 0,
+			offX = 0,
+			offY = 0,
+			outline = "",
+			shadColor = { r = 0, g = 0, b = 0, a = 1 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text4 = {
+			enabled = false,
+			used = true,
+			edit = false,
+			dtags = false,
+			ttags = false,
+			text = "Custom Text 4",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "BOTTOMLEFT",
+			pos = 0,
+			offX = 0,
+			offY = 0,
+			outline = "",
+			shadColor = { r = 0, g = 0, b = 0, a = 1 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text5 = {
+			enabled = false,
+			used = true,
+			edit = false,
+			dtags = false,
+			ttags = false,
+			text = "Custom Text 5",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "BOTTOMRIGHT",
+			pos = 0,
+			offX = 0,
+			offY = 0,
+			outline = "",
+			shadColor = { r = 0, g = 0, b = 0, a = 1 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+	},
+}
+
+local barFrameDefaults = {
+	enabled = true,
+	name = "Bar Frame 1",
+	grow = "UP",
+	horizontal = false,
+	padding = 0,
+
+	posX = -300,
+	posY = 0,
+	width = 180,
+	height = 25,
+	relativeTo = "CENTER",
+	alpha = 1,
+
+	transition = {
+		hideTransitioned = true,
+
+		showTI = true,
+		style = "LINE",
+
+		texture = "CDTL3 Smooth",
+		textureColor = { r = 1, g = 1, b = 1, a = 0.5 },
+
+		width = 5,
+	},
+
+	bgTexture = "CDTL3 Smooth",
+	bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
+
+	border = {
+		style = "CDTL3 Shadow",
+		color = { r = 0, g = 0, b = 0, a = 0.25 },
+		size = 5,
+		padding = 5,
+		inset = 0,
+	},
+
+	bar = {
+		iconEnabled = true,
+		iconPosition = "LEFT",
+
+		alpha = 1,
+
+		xPadding = 0,
+		yPadding = 0,
+
+		fgTexture = "CDTL3 Smooth",
+		fgTextureColor = { r = 0.77647, g = 0.11765, b = 0.28235, a = 1 },	
+		fgClassColor = false,
+		fgSchoolColor = false,
+		bgTexture = "CDTL3 Smooth",
+		bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
+		bgClassColor = false,
+		bgSchoolColor = false,
+
+		dynamicColor = {
+			enabled = false,
+			warnTime = 5,
+			warnColor = { r = 1, g = 0.6, b = 0, a = 1 },
+			readyColor = { r = 0.2, g = 0.9, b = 0.2, a = 1 },
+		},
+
+		border = {
+			style = "None",
+			color = { r = 1, g = 1, b = 1, a = 0.25 },
+			size = 5,
+			padding = 5,
+			inset = 0,
+		},
+
+		text1 = {
+			enabled = true,
+			used = true,
+			edit = false,
+			dtags = true,
+			ttags = false,
+			text = "[cd.stacks]",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "LEFT",
+			offX = 14,
+			offY = 0,
+			outline = "OUTLINE",
+			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
+			shadX = 0,
+			shadY = 0,
+		},
+		text2 = {
+			enabled = true,
+			used = true,
+			edit = false,
+			dtags = false,
+			ttags = false,
+			text = "[cd.name]",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "LEFT",
+			anchor = "LEFT",
+			offX = 30,
+			offY = 0,
+			outline = "",
+			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text3 = {
+			enabled = true,
+			used = true,
+			edit = false,
+			dtags = false,
+			ttags = true,
+			text = "[cd.time]",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "RIGHT",
+			anchor = "RIGHT",
+			offX = -5,
+			offY = 0,
+			outline = "",
+			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+	}
+}
+
+local readyDefaults = {
+	enabled = true,
+	name = "Ready 1",
+	grow = "DOWN",
+	padding = 0,
+
+	nTime = 5,
+	nSound = "CDTL3 Click",
+	hTime = 10,
+	hSound = "None",
+	pTime = 10,
+
+	posX = -300,
+	posY = -75,
+	relativeTo = "CENTER",
+	alpha = 1,
+
+	bgTexture = "CDTL3 Smooth",
+	bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
+
+	border = {
+		style = "CDTL3 Shadow",
+		color = { r = 0, g = 0, b = 0, a = 0.25 },
+		size = 5,
+		padding = 5,
+		inset = 0,
+	},
+
+	icons = {
+		size = 50,
+
+		alpha = 1,
+
+		xPadding = 0,
+		yPadding = 0,
+
+		bgTexture = "CDTL3 Icon Shadow",
+		bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
+
+		border = {
+			style = "None",
+			color = { r = 0, g = 0, b = 0, a = 0.25 },
+			size = 5,
+			padding = 5,
+			inset = 0,
+		},
+
+		highlight = {
+			style = "BORDER",
+
+			border = {
+				style = "None",
+				color = { r = 1, g = 1, b = 1, a = 0.25 },
+				size = 5,
+				padding = 5,
+				inset = 0,
+				flash = false,
+			},
+		},
+
+		text1 = {
+			enabled = true,
+			used = true,
+			edit = false,
+			dtags = false,
+			ttags = false,
+			text = "[cd.name.s]",
+			font = "Fira Sans Condensed",
+			size = 18,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "CENTER",
+			offX = 0,
+			offY = 7,
+			outline = "OUTLINE",
+			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text2 = {
+			enabled = true,
+			used = true,
+			edit = false,
+			dtags = false,
+			ttags = false,
+			text = "READY",
+			font = "Fira Sans Condensed",
+			size = 12,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "CENTER",
+			offX = 0,
+			offY = -7,
+			outline = "OUTLINE",
+			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+		text3 = {
+			enabled = false,
+			used = true,
+			edit = false,
+			dtags = false,
+			ttags = false,
+			text = "[cd.type]",
+			font = "Fira Sans Condensed",
+			size = 10,
+			color = { r = 1, g = 1, b = 1, a = 1 },
+			align = "CENTER",
+			anchor = "BOTTOM",
+			offX = 0,
+			offY = 7,
+			outline = "OUTLINE",
+			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
+			shadX = 1.5,
+			shadY = -1,
+		},
+	},
+}
 
 local defaults = {
     profile = {
@@ -193,1864 +876,84 @@ local defaults = {
 				bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
 				bgClassColor = false,
 			},
-			lane1 = {
-				enabled = true,
-				name = "Lane 1",
-				reversed = false,
-				vertical = false,
-				
-				posX = 0,
-				posY = -250,
-				width = 400,
-				height = 44,
-				relativeTo = "CENTER",
-				alpha = 1,
-				
-				iconOffset = 0,
-				
-				tracking = {
-					primaryTracking = "NONE",
-					secondaryTracking = "GCD",
-					
-					overrideAutohide = false,
-					
-					primaryReversed = false,
-					secondaryReversed = false,
-					
-					stTexture = "CDTL3 Smooth",
-					stTextureColor = { r = 1, g = 1, b = 1, a = 0.5 },
-					
-					stWidth = 5,
-					stHeight = 44,
-				},
-				
-				stacking = {
-					enabled = false,
-					raiseOnMouseOver = false,
-					style = "GROUPED",
-					grow = "UP",
-					height = 80,
-				},
-				
-				fgTexture = "CDTL3 Smooth",
-				fgTextureColor = { r = 0.77647, g = 0.11765, b = 0.28235, a = 1 },
-				fgClassColor = true,
-				bgTexture = "CDTL3 Smooth",
-				bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-				bgClassColor = false,
-				
-				border = {
-					style = "CDTL3 Shadow",
-					color = { r = 0, g = 0, b = 0, a = 0.25 },
-					size = 5,
-					padding = 5,
-					inset = 0,
-				},
-				
-				icons = {
-					size = 40,
-					hlStyle = "NONE",
-					timeFormat = "H:MM:SS.MS",
-					
-					alpha = 1,
-					
-					bgTexture = "CDTL3 Icon Shadow",
-					bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-					
-					border = {
-						style = "None",
-						color = { r = 0, g = 0, b = 0, a = 1 },
-						size = 5,
-						padding = 5,
-						inset = 0,
-					},
-					
-					highlight = {
-						style = "BORDER",
-						
-						border = {
-							style = "None",
-							color = { r = 1, g = 1, b = 1, a = 1 },
-							size = 5,
-							padding = 5,
-							inset = 0,
-							flash = false,
-						},
-					},
-					
-					text1 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = true,
-						ttags = false,
-						text = "[cd.stacks]",
-						font = "Fira Sans Condensed",
-						size = 11,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "LEFT",
-						anchor = "TOPLEFT",
-						offX = 2,
-						offY = -7,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text2 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = true,
-						text = "[cd.time]",
-						font = "Fira Sans Condensed",
-						size = 16,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "CENTER",
-						offX = 0,
-						offY = 0,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "",
-						font = "Fira Sans Condensed",
-						size = 11,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "BOTTOM",
-						offX = 2,
-						offY = 5,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-				},
-				
-				mode = {
-					type = "LINEAR",
-					linear = {
-						max = 120,
-						hideTimeSurplus = true,
-					},
-					linearAbs = {
-						max = 120,
-						hideTimeSurplus = true,
-						timeFormat = "XhYmZs",
-					},
-					split = {
-						max = 120,
-						hideTimeSurplus = true,
-						count = 2,
-						s1v = 10,
-						s1p = 0.33,
-						s2v = 33,
-						s2p = 0.66,
-						s3v = 66,
-						s3p = 0.75,
-					},
-					splitAbs = {
-						max = 120,
-						hideTimeSurplus = true,
-						timeFormat = "XhYmZs",
-						count = 3,
-						s1v = 10,
-						s1p = 0.25,
-						s2v = 30,
-						s2p = 0.5,
-						s3v = 60,
-						s3p = 0.75,
-					},
-				},
-				
-				modeText = {
-					text1 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						text = "T1",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "LEFT",
-						anchor = "LEFT",
-						pos = 0,
-						offX = 5,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text2 = {
-						enabled = true,
-						used = true,
-						text = "T2",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "LEFT",
-						pos = 0.25,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = true,
-						used = true,
-						text = "T3",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "LEFT",
-						pos = 0.5,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text4 = {
-						enabled = true,
-						used = true,
-						text = "T4",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "LEFT",
-						pos = 0.75,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text5 = {
-						enabled = true,
-						used = true,
-						text = "T5",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "RIGHT",
-						anchor = "LEFT",
-						pos = 1,
-						offX = -5,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-				},
-				customText = {				
-					text1 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 1",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "TOPLEFT",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text2 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 2",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "TOPRIGHT",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 3",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "CENTER",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text4 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 4",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "BOTTOMLEFT",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text5 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 5",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "BOTTOMRIGHT",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-				},
-			},
-			lane2 = {
-				enabled = true,
+			lane1 = WithOverrides(laneDefaults),
+			lane2 = WithOverrides(laneDefaults, {
 				name = "Lane 2",
-				reversed = false,
-				vertical = false,
-				
-				posX = 0,
+				height = 5,
 				posY = -200,
-				width = 400,
-				height = 5,
-				relativeTo = "CENTER",
-				alpha = 1,
-				
-				iconOffset = 0,
-				
-				tracking = {
-					primaryTracking = "NONE",
-					secondaryTracking = "NONE",
-					
-					overrideAutohide = false,
-					
-					primaryReversed = false,
-					secondaryReversed = false,
-					
-					stTexture = "CDTL3 Smooth",
-					stTextureColor = { r = 1, g = 1, b = 1, a = 0.5 },
-					
-					stHeight = 30,
-					stWidth = 5,
-				},
-				
-				stacking = {
-					enabled = false,
-					raiseOnMouseOver = false,
-					style = "GROUPED",
-					grow = "UP",
-					height = 80,
-				},
-				
-				fgTexture = "CDTL3 Smooth",
-				fgTextureColor = { r = 0.52941, g = 0.77647, b = 0.24314, a = 1 },
-				fgClassColor = true,
-				bgTexture = "CDTL3 Smooth",
-				bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-				bgClassColor = false,
-				
-				border = {
-					style = "CDTL3 Shadow",
-					color = { r = 0, g = 0, b = 0, a = 0.25 },
-					size = 5,
-					padding = 5,
-					inset = 0,
-				},
-				
+				fgTextureColor = { r = 0.52941, g = 0.77647, b = 0.24314 },
 				icons = {
 					size = 30,
-					hlStyle = "NONE",
-					timeFormat = "H:MM:SS.MS",
-					
-					alpha = 1,
-					
-					bgTexture = "CDTL3 Icon Shadow",
-					bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-					
-					border = {
-						style = "None",
-						color = { r = 0, g = 0, b = 0, a = 1 },
-						size = 5,
-						padding = 5,
-						inset = 0,
-					},
-					
-					highlight = {
-						style = "BORDER",
-						
-						border = {
-							style = "None",
-							color = { r = 1, g = 1, b = 1, a = 0.25 },
-							size = 5,
-							padding = 5,
-							inset = 0,
-							flash = false,
-						},
-					},
-					
-					text1 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = true,
-						ttags = false,
-						text = "[cd.stacks]",
-						font = "Fira Sans Condensed",
-						size = 10,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "LEFT",
-						anchor = "TOPLEFT",
-						offX = 0,
-						offY = -5,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text2 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = true,
-						text = "[cd.time]",
-						font = "Fira Sans Condensed",
-						size = 13,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "CENTER",
-						offX = 0,
-						offY = 0,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "",
-						font = "Fira Sans Condensed",
-						size = 10,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "RIGHT",
-						anchor = "BOTTOMRIGHT",
-						offX = 0,
-						offY = 5,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
+					highlight = { border = { color = { a = 0.25 } } },
+					text1 = { offX = 0, offY = -5, size = 10 },
+					text2 = { size = 13 },
+					text3 = { align = "RIGHT", anchor = "BOTTOMRIGHT", offX = 0, size = 10 },
 				},
-				
-				mode = {
-					type = "LINEAR",
-					linear = {
-						max = 120,
-						hideTimeSurplus = true,
-					},
-					linearAbs = {
-						max = 120,
-						hideTimeSurplus = true,
-					},
-					split = {
-						max = 120,
-						hideTimeSurplus = true,
-						count = 3,
-						s1v = 10,
-						s1p = 0.25,
-						s2v = 25,
-						s2p = 0.5,
-						s3v = 50,
-						s3p = 0.75,
-					},
-					splitAbs = {
-						count = 3,
-						s1v = 10,
-						s1p = 0.25,
-						s2v = 30,
-						s2p = 0.5,
-						s3v = 60,
-						s3p = 0.75,
-						max = 120,
-						hideTimeSurplus = true,
-					},
-				},
-				
+				mode = { split = { count = 3, s1p = 0.25, s2p = 0.5, s2v = 25, s3v = 50 } },
 				modeText = {
-					text1 = {
-						enabled = false,
-						used = true,
-						text = "T1",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "LEFT",
-						anchor = "LEFT",
-						pos = 0,
-						offX = 5,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text2 = {
-						enabled = false,
-						used = true,
-						text = "T2",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "LEFT",
-						pos = 0.25,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = false,
-						used = true,
-						text = "T3",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "LEFT",
-						pos = 0.5,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text4 = {
-						enabled = false,
-						used = true,
-						text = "T4",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "LEFT",
-						pos = 0.75,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text5 = {
-						enabled = false,
-						used = true,
-						text = "T5",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "RIGHT",
-						anchor = "LEFT",
-						pos = 1,
-						offX = -5,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
+					text1 = { enabled = false },
+					text2 = { enabled = false },
+					text3 = { enabled = false },
+					text4 = { enabled = false },
+					text5 = { enabled = false },
 				},
-				customText = {				
-					text1 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 1",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "TOPLEFT",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text2 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 2",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "TOPRIGHT",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 3",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "CENTER",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text4 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 4",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "BOTTOMLEFT",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text5 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 5",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "BOTTOMRIGHT",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-				},
-			},
-			lane3 = {
-				enabled = true,
+				tracking = { secondaryTracking = "NONE", stHeight = 30 },
+			}),
+			lane3 = WithOverrides(laneDefaults, {
 				name = "Lane 3",
-				reversed = false,
-				vertical = false,
-				
-				posX = 0,
-				posY = -160,
-				width = 400,
 				height = 5,
-				relativeTo = "CENTER",
-				alpha = 1,
-				
-				iconOffset = 0,
-				
-				tracking = {
-					primaryTracking = "NONE",
-					secondaryTracking = "NONE",
-					
-					overrideAutohide = false,
-					
-					primaryReversed = false,
-					secondaryReversed = false,
-					
-					stTexture = "CDTL3 Smooth",
-					stTextureColor = { r = 1, g = 1, b = 1, a = 0.5 },
-					
-					stHeight = 20,
-					stWidth = 5,
-				},
-				
-				stacking = {
-					enabled = false,
-					raiseOnMouseOver = false,
-					style = "GROUPED",
-					grow = "UP",
-					height = 80,
-				},
-				
-				fgTexture = "CDTL3 Smooth",
-				fgTextureColor = { r = 0.15294, g = 0.63922, b = 0.77647, a = 1 },
-				fgClassColor = true,
-				bgTexture = "CDTL3 Smooth",
-				bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-				bgClassColor = false,
-				
-				border = {
-					style = "CDTL3 Shadow",
-					color = { r = 0, g = 0, b = 0, a = 0.25 },
-					size = 5,
-					padding = 5,
-					inset = 0,
-				},
-				
+				posY = -160,
+				fgTextureColor = { r = 0.15294, g = 0.63922, b = 0.77647 },
 				icons = {
 					size = 30,
-					hlStyle = "NONE",
-					timeFormat = "H:MM:SS.MS",
-					
-					alpha = 1,
-					
-					bgTexture = "CDTL3 Icon Shadow",
-					bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-					
-					border = {
-						style = "None",
-						color = { r = 0, g = 0, b = 0, a = 1 },
-						size = 5,
-						padding = 5,
-						inset = 0,
-					},
-					
-					highlight = {
-						style = "BORDER",
-						
-						border = {
-							style = "None",
-							color = { r = 1, g = 1, b = 1, a = 0.25 },
-							size = 5,
-							padding = 5,
-							inset = 0,
-							flash = false,
-						},
-					},
-					
-					text1 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = true,
-						ttags = false,
-						text = "[cd.stacks]",
-						font = "Fira Sans Condensed",
-						size = 10,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "LEFT",
-						anchor = "TOPLEFT",
-						offX = 0,
-						offY = -3,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text2 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = true,
-						text = "[cd.time]",
-						font = "Fira Sans Condensed",
-						size = 13,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "CENTER",
-						offX = 0,
-						offY = 0,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "",
-						font = "Fira Sans Condensed",
-						size = 10,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "BOTTOMRIGHT",
-						offX = -10,
-						offY = 0,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
+					highlight = { border = { color = { a = 0.25 } } },
+					text1 = { offX = 0, offY = -3, size = 10 },
+					text2 = { size = 13 },
+					text3 = { anchor = "BOTTOMRIGHT", offX = -10, offY = 0, size = 10 },
 				},
-				
-				mode = {
-					type = "LINEAR",
-					linear = {
-						max = 120,
-						hideTimeSurplus = true,						
-					},
-					linearAbs = {
-						max = 120,
-						hideTimeSurplus = true,
-					},
-					split = {
-						max = 120,
-						hideTimeSurplus = true,
-						count = 3,
-						s1v = 5,
-						s1p = 0.25,
-						s2v = 25,
-						s2p = 0.5,
-						s3v = 50,
-						s3p = 0.75,
-					},
-					splitAbs = {
-						count = 3,
-						s1v = 10,
-						s1p = 0.25,
-						s2v = 30,
-						s2p = 0.5,
-						s3v = 60,
-						s3p = 0.75,
-						max = 120,
-						hideTimeSurplus = true,
-					},
-				},
-				
+				mode = { split = { count = 3, s1p = 0.25, s1v = 5, s2p = 0.5, s2v = 25, s3v = 50 } },
 				modeText = {
-					text1 = {
-						enabled = false,
-						used = true,
-						text = "T1",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "LEFT",
-						anchor = "LEFT",
-						pos = 0,
-						offX = 5,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text2 = {
-						enabled = false,
-						used = true,
-						text = "T2",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "LEFT",
-						pos = 0.25,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = false,
-						used = true,
-						text = "T3",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "LEFT",
-						pos = 0.5,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text4 = {
-						enabled = false,
-						used = true,
-						text = "T4",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "LEFT",
-						pos = 0.75,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text5 = {
-						enabled = false,
-						used = true,
-						text = "T5",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "RIGHT",
-						anchor = "LEFT",
-						pos = 1,
-						offX = -5,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
+					text1 = { enabled = false },
+					text2 = { enabled = false },
+					text3 = { enabled = false },
+					text4 = { enabled = false },
+					text5 = { enabled = false },
 				},
-				customText = {				
-					text1 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 1",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "TOPLEFT",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text2 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 2",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "TOPRIGHT",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 3",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "CENTER",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text4 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 4",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "BOTTOMLEFT",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text5 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "Custom Text 5",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "BOTTOMRIGHT",
-						pos = 0,
-						offX = 0,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 1 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-				},
-			},
+				tracking = { secondaryTracking = "NONE", stHeight = 20 },
+			}),
 		},
 		
 		barFrames = {
-			frame1 = {
-				enabled = true,
-				name = "Bar Frame 1",
-				grow = "UP",
-				horizontal = false,
-				sorting = "DESCENDING",
-				padding = 0,
-				
-				posX = -300,
-				posY = 0,
-				width = 180,
-				height = 25,
-				relativeTo = "CENTER",
-				alpha = 1,
-				
-				transition = {
-					hideTransitioned = true,
-					
-					showTI = true,
-					style = "LINE",
-					
-					texture = "CDTL3 Smooth",
-					textureColor = { r = 1, g = 1, b = 1, a = 0.5 },
-					
-					width = 5,
-				},
-				
-				bgTexture = "CDTL3 Smooth",
-				bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-				
-				border = {
-					style = "CDTL3 Shadow",
-					color = { r = 0, g = 0, b = 0, a = 0.25 },
-					size = 5,
-					padding = 5,
-					inset = 0,
-				},
-				
-				bar = {
-					iconEnabled = true,
-					iconPosition = "LEFT",
-					
-					alpha = 1,
-					
-					xPadding = 0,
-					yPadding = 0,
-				
-					fgTexture = "CDTL3 Smooth",
-					fgTextureColor = { r = 0.77647, g = 0.11765, b = 0.28235, a = 1 },	
-					fgClassColor = false,
-					fgSchoolColor = false,
-					bgTexture = "CDTL3 Smooth",
-					bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-					bgClassColor = false,
-					bgSchoolColor = false,
-
-					dynamicColor = {
-						enabled = false,
-						warnTime = 5,
-						warnColor = { r = 1, g = 0.6, b = 0, a = 1 },
-						readyColor = { r = 0.2, g = 0.9, b = 0.2, a = 1 },
-					},
-					
-					border = {
-						style = "None",
-						color = { r = 1, g = 1, b = 1, a = 0.25 },
-						size = 5,
-						padding = 5,
-						inset = 0,
-					},
-					
-					text1 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = true,
-						ttags = false,
-						text = "[cd.stacks]",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "LEFT",
-						offX = 14,
-						offY = 0,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 0,
-						shadY = 0,
-					},
-					text2 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "[cd.name]",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "LEFT",
-						anchor = "LEFT",
-						offX = 30,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = true,
-						text = "[cd.time]",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "RIGHT",
-						anchor = "RIGHT",
-						offX = -5,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-				}
-			},
-			frame2 = {
-				enabled = true,
+			frame1 = WithOverrides(barFrameDefaults),
+			frame2 = WithOverrides(barFrameDefaults, {
 				name = "Bar Frame 2",
-				grow = "UP",
-				horizontal = false,
-				padding = 0,
-				
 				posX = 300,
-				posY = 0,
-				width = 180,
-				height = 25,
-				relativeTo = "CENTER",
-				alpha = 1,
-				
-				transition = {
-					hideTransitioned = true,
-					
-					showTI = true,
-					style = "LINE",
-					
-					texture = "CDTL3 Smooth",
-					textureColor = { r = 1, g = 1, b = 1, a = 0.5 },
-					
-					width = 5,
-				},
-				
-				bgTexture = "CDTL3 Smooth",
-				bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-				
-				border = {
-					style = "CDTL3 Shadow",
-					color = { r = 0, g = 0, b = 0, a = 0.25 },
-					size = 5,
-					padding = 5,
-					inset = 0,
-				},
-				
-				bar = {
-					iconEnabled = true,
-					iconPosition = "LEFT",
-					
-					alpha = 1,
-					
-					xPadding = 0,
-					yPadding = 0,
-				
-					fgTexture = "CDTL3 Smooth",
-					fgTextureColor = { r = 0.52941, g = 0.77647, b = 0.24314, a = 1 },	
-					fgClassColor = false,
-					fgSchoolColor = false,
-					bgTexture = "CDTL3 Smooth",
-					bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-					bgClassColor = false,
-					bgSchoolColor = false,
-
-					dynamicColor = {
-						enabled = false,
-						warnTime = 5,
-						warnColor = { r = 1, g = 0.6, b = 0, a = 1 },
-						readyColor = { r = 0.2, g = 0.9, b = 0.2, a = 1 },
-					},
-					
-					border = {
-						style = "None",
-						color = { r = 1, g = 1, b = 1, a = 0.25 },
-						size = 5,
-						padding = 5,
-						inset = 0,
-					},
-					
-					text1 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = true,
-						ttags = false,
-						text = "[cd.stacks]",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "LEFT",
-						offX = 14,
-						offY = 0,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 0,
-						shadY = 0,
-					},
-					text2 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "[cd.name]",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "LEFT",
-						anchor = "LEFT",
-						offX = 30,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = true,
-						text = "[cd.time]",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "RIGHT",
-						anchor = "RIGHT",
-						offX = -5,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-				}
-			},
-			frame3 = {
-				enabled = true,
+				bar = { fgTextureColor = { r = 0.52941, g = 0.77647, b = 0.24314 } },
+			}),
+			frame3 = WithOverrides(barFrameDefaults, {
 				name = "Bar Frame 3",
-				grow = "UP",
-				horizontal = false,
-				padding = 0,
-				
 				posX = 0,
 				posY = 175,
-				width = 180,
-				height = 25,
-				relativeTo = "CENTER",
-				alpha = 1,
-				
-				transition = {
-					hideTransitioned = true,
-					
-					showTI = true,
-					style = "LINE",
-					
-					texture = "CDTL3 Smooth",
-					textureColor = { r = 1, g = 1, b = 1, a = 0.5 },
-					
-					width = 5,
-				},
-				
-				bgTexture = "CDTL3 Smooth",
-				bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-				
-				border = {
-					style = "CDTL3 Shadow",
-					color = { r = 0, g = 0, b = 0, a = 0.25 },
-					size = 5,
-					padding = 5,
-					inset = 0,
-				},
-				
-				bar = {
-					iconEnabled = true,
-					iconPosition = "LEFT",
-					
-					alpha = 1,
-					
-					xPadding = 0,
-					yPadding = 0,
-				
-					fgTexture = "CDTL3 Smooth",
-					fgTextureColor = { r = 0.15294, g = 0.63922, b = 0.77647, a = 1 },
-					fgClassColor = false,
-					fgSchoolColor = false,
-					bgTexture = "CDTL3 Smooth",
-					bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-					bgClassColor = false,
-					bgSchoolColor = false,
-
-					dynamicColor = {
-						enabled = false,
-						warnTime = 5,
-						warnColor = { r = 1, g = 0.6, b = 0, a = 1 },
-						readyColor = { r = 0.2, g = 0.9, b = 0.2, a = 1 },
-					},
-					
-					border = {
-						style = "None",
-						color = { r = 1, g = 1, b = 1, a = 0.25 },
-						size = 5,
-						padding = 5,
-						inset = 0,
-					},
-					
-					text1 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = true,
-						ttags = false,
-						text = "[cd.stacks]",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "LEFT",
-						offX = 14,
-						offY = 0,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 0,
-						shadY = 0,
-					},
-					text2 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "[cd.name]",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "LEFT",
-						anchor = "LEFT",
-						offX = 30,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = true,
-						text = "[cd.time]",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "RIGHT",
-						anchor = "RIGHT",
-						offX = -5,
-						offY = 0,
-						outline = "",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-				}
-			},
+				bar = { fgTextureColor = { r = 0.15294, g = 0.63922, b = 0.77647 } },
+			}),
 		},
 		
 		ready = {
-			ready1 = {
-				enabled = true,
-				name = "Ready 1",
-				grow = "DOWN",
-				padding = 0,
-				
-				nTime = 5,
-				nSound = "CDTL3 Click",
-				hTime = 10,
-				hSound = "None",
-				pTime = 10,
-			
-				posX = -300,
-				posY = -75,
-				relativeTo = "CENTER",
-				alpha = 1,
-				
-				bgTexture = "CDTL3 Smooth",
-				bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-				
-				border = {
-					style = "CDTL3 Shadow",
-					color = { r = 0, g = 0, b = 0, a = 0.25 },
-					size = 5,
-					padding = 5,
-					inset = 0,
-				},
-				
-				icons = {
-					size = 50,
-					
-					alpha = 1,
-					
-					xPadding = 0,
-					yPadding = 0,
-					
-					bgTexture = "CDTL3 Icon Shadow",
-					bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-					
-					border = {
-						style = "None",
-						color = { r = 0, g = 0, b = 0, a = 0.25 },
-						size = 5,
-						padding = 5,
-						inset = 0,
-					},
-					
-					highlight = {
-						style = "BORDER",
-						
-						border = {
-							style = "None",
-							color = { r = 1, g = 1, b = 1, a = 0.25 },
-							size = 5,
-							padding = 5,
-							inset = 0,
-							flash = false,
-						},
-					},
-					
-					text1 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "[cd.name.s]",
-						font = "Fira Sans Condensed",
-						size = 18,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "CENTER",
-						offX = 0,
-						offY = 7,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text2 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "READY",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "CENTER",
-						offX = 0,
-						offY = -7,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "[cd.type]",
-						font = "Fira Sans Condensed",
-						size = 10,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "BOTTOM",
-						offX = 0,
-						offY = 7,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-				},
-			},
-			ready2 = {
-				enabled = true,
+			ready1 = WithOverrides(readyDefaults),
+			ready2 = WithOverrides(readyDefaults, {
 				name = "Ready 2",
-				grow = "DOWN",
-				padding = 0,
-				
-				nTime = 5,
-				nSound = "CDTL3 Tinks",
-				hTime = 10,
-				hSound = "None",
-				pTime = 10,
-			
 				posX = 300,
-				posY = -75,
-				relativeTo = "CENTER",
-				alpha = 1,
-				
-				bgTexture = "CDTL3 Smooth",
-				bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-				
-				border = {
-					style = "CDTL3 Shadow",
-					color = { r = 0, g = 0, b = 0, a = 0.25 },
-					size = 5,
-					padding = 5,
-					inset = 0,
-				},
-				
-				icons = {
-					size = 50,
-					
-					alpha = 1,
-					
-					xPadding = 0,
-					yPadding = 0,
-					
-					bgTexture = "CDTL3 Icon Shadow",
-					bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-					
-					border = {
-						style = "None",
-						color = { r = 0, g = 0, b = 0, a = 1 },
-						size = 5,
-						padding = 5,
-						inset = 0,
-					},
-					
-					highlight = {
-						style = "BORDER",
-						
-						border = {
-							style = "None",
-							color = { r = 1, g = 1, b = 1, a = 0.25 },
-							size = 5,
-							padding = 5,
-							inset = 0,
-							flash = false,
-						},
-					},
-					
-					text1 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "[cd.name.s]",
-						font = "Fira Sans Condensed",
-						size = 18,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "CENTER",
-						offX = 0,
-						offY = 7,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text2 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "READY",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "CENTER",
-						offX = 0,
-						offY = -7,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "[cd.type]",
-						font = "Fira Sans Condensed",
-						size = 10,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "BOTTOM",
-						offX = 0,
-						offY = 7,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-				},
-			},
-			ready3 = {
-				enabled = true,
+				nSound = "CDTL3 Tinks",
+				icons = { border = { color = { a = 1 } } },
+			}),
+			ready3 = WithOverrides(readyDefaults, {
 				name = "Ready 3",
 				grow = "CENTER_H",
-				padding = 0,
-				
-				nTime = 5,
-				nSound = "CDTL3 Tinks",
-				hTime = 10,
-				hSound = "None",
-				pTime = 10,
-			
 				posX = 0,
 				posY = 100,
-				relativeTo = "CENTER",
-				alpha = 1,
-				
-				bgTexture = "CDTL3 Smooth",
-				bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-				
-				border = {
-					style = "CDTL3 Shadow",
-					color = { r = 0, g = 0, b = 0, a = 0.25 },
-					size = 5,
-					padding = 5,
-					inset = 0,
-				},
-				
-				icons = {
-					size = 50,
-					
-					alpha = 1,
-					
-					xPadding = 0,
-					yPadding = 0,
-					
-					bgTexture = "CDTL3 Icon Shadow",
-					bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-					
-					border = {
-						style = "None",
-						color = { r = 0, g = 0, b = 0, a = 1 },
-						size = 5,
-						padding = 5,
-						inset = 0,
-					},
-					
-					highlight = {
-						style = "BORDER",
-						
-						border = {
-							style = "None",
-							color = { r = 1, g = 1, b = 1, a = 0.25 },
-							size = 5,
-							padding = 5,
-							inset = 0,
-							flash = false,
-						},
-					},
-					
-					text1 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "[cd.name.s]",
-						font = "Fira Sans Condensed",
-						size = 18,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "CENTER",
-						offX = 0,
-						offY = 7,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text2 = {
-						enabled = true,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "READY",
-						font = "Fira Sans Condensed",
-						size = 12,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "CENTER",
-						offX = 0,
-						offY = -7,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-					text3 = {
-						enabled = false,
-						used = true,
-						edit = false,
-						dtags = false,
-						ttags = false,
-						text = "[cd.type]",
-						font = "Fira Sans Condensed",
-						size = 10,
-						color = { r = 1, g = 1, b = 1, a = 1 },
-						align = "CENTER",
-						anchor = "BOTTOM",
-						offX = 0,
-						offY = 7,
-						outline = "OUTLINE",
-						shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-						shadX = 1.5,
-						shadY = -1,
-					},
-				},
-			},
+				nSound = "CDTL3 Tinks",
+				icons = { border = { color = { a = 1 } } },
+			}),
 		},
 		
 		holders = {
@@ -2086,6 +989,14 @@ function CDTL3:OnInitialize()
 	self.registry = LibStub("AceConfigRegistry-3.0")
 	self.profile = LibStub("AceDBOptions-3.0"):GetOptionsTable(self.db)
 
+	-- Per-spec profiles (Profiles tab): LibDualSpec switches profile when the spec / talent
+	-- group changes, which fires OnProfileChanged -> RefreshConfig like a manual switch.
+	-- Guarded so a client without spec APIs can't stop the addon loading.
+	local LibDualSpec = LibStub("LibDualSpec-1.0", true)
+	if LibDualSpec and pcall(LibDualSpec.EnhanceDatabase, LibDualSpec, self.db, "CDTL3") then
+		pcall(LibDualSpec.EnhanceOptions, LibDualSpec, self.profile, self.db)
+	end
+
 	CDTL3.filterList = {}
 	CDTL3.currentFilterHidden = {
 		default = false,
@@ -2099,7 +1010,9 @@ function CDTL3:OnInitialize()
 		customs = true,
 		detected = true,
 	}
-	CDTL3.currentFilter = {}
+	-- "default" (Filters -> Defaults) is read as soon as the options window opens, which
+	-- can be before OnEnable's delayed step fills the rest
+	CDTL3.currentFilter = { default = "SPELLS" }
 	
 	self.db.RegisterCallback(self, "OnProfileChanged", "RefreshConfig")
 	self.db.RegisterCallback(self, "OnProfileCopied", "RefreshConfig")
@@ -2251,6 +1164,11 @@ function CDTL3:OnEnable()
 
 		CDTL3:ScanCurrentCooldowns(CDTL3.player["class"], CDTL3.player["race"])
 
+		-- pick up auras the login full update had to skip (see UNIT_AURA)
+		if CDTL3.retailAPI and CDTL3.enabled then
+			CDTL3:UNIT_AURA("UNIT_AURA", "player")
+		end
+
 		if CDTL3.player["class"] == "DEATHKNIGHT" then
 			self:RegisterEvent("RUNE_POWER_UPDATE")
 		end
@@ -2260,9 +1178,7 @@ function CDTL3:OnEnable()
 		CDTL3:RefreshLane(3)
 	end)
 	
-	local vMajor = 0
-	local vMinor = 0
-	if CDTL3.db.profile.global["firstRun"] or IsNewerVersion() then
+	if CDTL3.db.profile.global["firstRun"] or CDTL3:IsNewerVersion() then
 		C_Timer.After(10, function()
 			private.CreateFirstRunFrame()
 		end)
@@ -2288,13 +1204,24 @@ function CDTL3:ChatCommand(input)
 		LibStub("AceConfigDialog-3.0"):Open("CDTL3")
 		LibStub("AceConfigDialog-3.0"):SelectGroup("CDTL3", "profiles")
 	elseif input:trim() == "lock" then
-		CDTL3:ToggleFrameLock()
+		-- lock / unlock set a state; ToggleFrameLock flips it, so only call it when needed
+		if CDTL3.db.profile.global["unlockFrames"] then
+			CDTL3:ToggleFrameLock()
+		else
+			CDTL3:Print("Frames are already locked")
+		end
 	elseif input:trim() == "unlock" then
-		CDTL3:ToggleFrameLock()
+		if not CDTL3.db.profile.global["unlockFrames"] then
+			CDTL3:ToggleFrameLock()
+		else
+			CDTL3:Print("Frames are already unlocked")
+		end
 	elseif input:trim() == "test" then
 		CDTL3:EnableTesting()
 	elseif input:trim() == "debug" then
 		CDTL3:ToggleDebug()
+	elseif input:trim() == "auras" then
+		CDTL3:DiagnoseAuras()
     end
 end
 
@@ -2357,7 +1284,8 @@ private.CreateDebugFrame = function()
 	b:SetText("Options")
 	b:SetPoint("TOPLEFT", 5, -50)
 	b:SetScript("OnClick", function()
-		Settings.OpenToCategory("CDTL3")
+		-- Settings.OpenToCategory("CDTL3") errors on Midnight / Forever (string category)
+		LibStub("AceConfigDialog-3.0"):Open("CDTL3")
 	end)
 	
 	local b = CreateFrame("Button", frameName.."_B_UnLock", f, "UIPanelButtonTemplate", BackdropTemplateMixin and "BackdropTemplate" or nil)
@@ -2446,8 +1374,8 @@ private.CreateFirstRunFrame = function()
 	
 	-- TEXT FOR THE BOX
 	local text = ""
-	text = text.."If you have any issues or suggestions, or just want to chat, please feel free to join the CDTL3 Discord:\n\n"
-	text = text.."|cFF54a3ff"..CDTL3.discordlink.."|r\n\n"
+	text = text.."Found a problem or have a suggestion? Open an issue on GitHub (or leave a comment on CurseForge):\n\n"
+	text = text.."|cFF54a3ff"..CDTL3.supportlink.."|r\n\n"
 
 	text = text..CDTL3:GetSpecialMessage()
 	text = text..CDTL3:GetChangeLog()
@@ -2723,15 +1651,334 @@ function CDTL3:CreateTestingFrame()
 			end)
 		f:AddChild(btnClear)
 
-		if CDTL3.db.profile.global["debug"] then
+		if CDTL3.db.profile.global["debugMode"] then
 			CDTL3:Print("Created Testing Frame")
 		end
 	end
 end
 
+-- A buff/debuff landed on the player. Fed by the combat log (SPELL_AURA_APPLIED) where
+-- addons get it, and by UNIT_AURA on retail-API clients (WoW: Forever closes the combat
+-- log, so UNIT_AURA is its only source). Both can report the same application, so a
+-- repeat of the same aura within half a second is ignored. isScan: the aura was already
+-- there (login / zoning / combat-end rescan), so custom aura triggers don't start.
+function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer, isScan)
+	local key = auraType..":"..tostring(spellName)
+	local now = GetTime()
+	if CDTL3.recentAuras[key] and now - CDTL3.recentAuras[key] < 0.5 then
+		return
+	end
+	CDTL3.recentAuras[key] = now
+
+	local validSource = false
+	if sourceIsPlayer then
+		validSource = true
+	else
+		if auraType == "buffs" and not CDTL3.db.profile.global["buffs"]["onlyPlayer"] then
+			validSource = true
+		end
+		
+		if auraType == "debuffs" and not CDTL3.db.profile.global["debuffs"]["onlyPlayer"] then
+			validSource = true
+		end
+	end
+	
+	if validSource then
+		-- CHECK FOR TRIGGERS
+		--local spellName, _, _ = CDTL3:GetSpellInfo(spellID)
+		--local s = CDTL3:GetSpellSettings(spellName, "customs")
+		-- a scan sighting is an aura that was already there, not a new application
+		local s = not isScan and CDTL3:GetCustomSpellSettings(spellName, "aura")
+		if s then
+			--if s["triggerType"] and s["triggerType"] == "aura" then
+				if CDTL3.db.profile.global["debugMode"] then
+					CDTL3:Print("CUSTOM_FOUND: aura - "..spellName)
+				end
+
+				if not s["ignored"] then
+					local ef = CDTL3:GetExistingCooldown(s["name"], "customs")
+					if ef then
+						CDTL3:SendToLane(ef)
+						CDTL3:SendToBarFrame(ef)
+						--+CDTL3:CheckEdgeCases(spellName)
+					else
+						if CDTL3.db.profile.global["customs"]["enabled"] then
+							CDTL3:CreateCooldown(CDTL3:GetUID(),"customs" , s)
+							CDTL3:CheckEdgeCases(spellName)
+							
+							if CDTL3:IsUsedBy("customs", s["id"]) then
+								--CDTL3:Print("USEDBY MATCH: "..s["id"])
+							else
+								CDTL3:AddUsedBy("customs", s["id"], CDTL3.player["guid"])
+							end
+						end
+					end
+				end
+			--end
+		else
+			
+		end
+
+		local s = CDTL3:GetSpellSettings(spellName, auraType)
+		if s then
+			-- List it for this character: entries saved before the character was known
+			-- (login), or by another character on this profile, weren't marked as theirs
+			-- and so never showed up in Filters.
+			if CDTL3.player["guid"] and not CDTL3:IsUsedBy(auraType, s["id"]) then
+				CDTL3:AddUsedBy(auraType, s["id"], CDTL3.player["guid"])
+			end
+
+			if not s["ignored"] then
+				local ef = CDTL3:GetExistingCooldown(s["name"], auraType)
+				if ef then
+					CDTL3:SendToLane(ef)
+					CDTL3:SendToBarFrame(ef)
+				elseif CDTL3.db.profile.global[auraType]["enabled"] then
+					CDTL3:CreateCooldown(CDTL3:GetUID(), auraType, s)
+				end
+			end
+		else
+			s = CDTL3:AuraExists("player", spellName)
+			if s then
+				CDTL3:ApplyEntryDefaults(s, auraType)
+				s["link"] = CDTL3:GetSpellLink(spellID)
+				s["ignored"] = CDTL3:IgnoredByDefault(auraType, s["bCD"])
+
+				CDTL3:SaveNewEntry(s, auraType)
+			end
+		end
+	end
+end
+
+-- auraInstanceID and expiry of an aura; each is nil if secret (+ 0 forces the throw).
+-- CDTL3.auraExpiry maps id -> expiry, or true for "seen, expiry unknown".
+local function AuraKey(aura)
+	local idOK, id = pcall(function()
+		return aura.auraInstanceID + 0
+	end)
+	if not idOK then
+		return nil
+	end
+
+	local expiryOK, expiry = pcall(function()
+		return aura.expirationTime + 0
+	end)
+
+	return id, expiryOK and expiry or nil
+end
+
+-- Player auras from UNIT_AURA (see OnPlayerAuraApplied). Covers what the combat log's
+-- SPELL_AURA_APPLIED would, plus two cases it never reported as "applied":
+--  * a recast of a buff you already have arrives as an UPDATE, not an add
+--  * on login, /reload or zoning, buffs already on you arrive only as a FULL update
+-- Aura data can be SECRET (12.1 rules: combat, encounters, M+, PvP): the accessors and
+-- the field reads/compares all run inside pcalls, and secret auras are skipped.
+function CDTL3:UNIT_AURA(_, unitTarget, updateInfo)
+	if unitTarget ~= "player" then
+		return
+	end
+
+	CDTL3.unitAuraEvents = (CDTL3.unitAuraEvents or 0) + 1
+
+	-- The login full update can arrive before the character is known (GetPlayerInfoByGUID
+	-- isn't ready yet). Anything saved then would have no owner and never be listed, so
+	-- wait: OnEnable rescans the player's auras once GetCharacterData has succeeded.
+	if not CDTL3.player["guid"] then
+		CDTL3:GetCharacterData()
+		if not CDTL3.player["guid"] then
+			return
+		end
+	end
+
+	-- The event payload itself can be secret too (even isFullUpdate), so every read of
+	-- it happens inside this pcall. Whatever was collected before a secret read stops
+	-- the scan is still processed below.
+	--
+	-- Only a real application counts as "applied" (it restarts timers via SendToLane):
+	--  * added auras
+	--  * updated auras whose expiry moved later (a recast); stack / value / tooltip
+	--    updates must not restart buff timers or custom aura triggers (ICDs)
+	--  * on a full update (login, /reload, zoning, the combat-end rescan) only auras not
+	--    seen before or refreshed meanwhile. These are flagged as scan sightings: they
+	--    can add or restore buff entries but never start a custom aura trigger.
+	local auras, scanned = {}, {}
+	local known = CDTL3.auraExpiry
+	pcall(function()
+		if not updateInfo or updateInfo.isFullUpdate then
+			local fresh = {}
+			for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
+				for i = 1, 40 do
+					local aura = C_UnitAuras.GetAuraDataByIndex("player", i, filter)
+					if not aura then
+						break
+					end
+
+					local id, expiry = AuraKey(aura)
+					if id then
+						local old = known[id]
+						fresh[id] = expiry or old or true
+						if not old or (expiry and old ~= true and expiry > old + 0.5) then
+							table.insert(auras, aura)
+							scanned[aura] = true
+						end
+					end
+				end
+			end
+			CDTL3.auraExpiry = fresh
+		else
+			for _, aura in ipairs(updateInfo.addedAuras or {}) do
+				local id, expiry = AuraKey(aura)
+				if id then
+					known[id] = expiry or true
+				end
+				table.insert(auras, aura)
+			end
+
+			for _, auraInstanceID in ipairs(updateInfo.updatedAuraInstanceIDs or {}) do
+				local ok, aura = pcall(C_UnitAuras.GetAuraDataByAuraInstanceID, "player", auraInstanceID)
+				if ok and aura then
+					local id, expiry = AuraKey(aura)
+					if id and expiry then
+						local old = known[id]
+						known[id] = expiry
+						if not old then
+							-- first readable sighting (it was added while auras were secret)
+							table.insert(auras, aura)
+							scanned[aura] = true
+						elseif old ~= true and expiry > old + 0.5 then
+							table.insert(auras, aura)
+						end
+					end
+				end
+			end
+
+			for _, auraInstanceID in ipairs(updateInfo.removedAuraInstanceIDs or {}) do
+				known[auraInstanceID] = nil
+			end
+		end
+	end)
+
+	for _, aura in ipairs(auras) do
+		local ok, spellID, spellName, auraType = pcall(function()
+			if aura.spellId > 0 and aura.name ~= "" then
+				return aura.spellId, aura.name, aura.isHarmful and "debuffs" or "buffs"
+			end
+		end)
+
+		if ok and spellID then
+			local sourceOK, sourceIsPlayer = pcall(function()
+				return aura.sourceUnit == "player"
+			end)
+
+			if CDTL3.db.profile.global["debugMode"] then
+				CDTL3:Print("AURA ADDED: "..spellID.." - "..spellName.." - "..auraType.." - from player: "..tostring(sourceOK and sourceIsPlayer))
+			end
+
+			CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceOK and sourceIsPlayer, scanned[aura])
+		end
+	end
+end
+
+-- /cdtl3 auras: read-only report of what CDTL3 can see of the player's auras and what it
+-- has saved for each, to pin down why a buff isn't detected (detection off, no UNIT_AURA
+-- events, secret aura data, or a saved entry that is ignored / not marked as yours).
+function CDTL3:DiagnoseAuras()
+	local g = CDTL3.db.profile.global
+	CDTL3:Print("AURA CHECK v"..CDTL3.version.." | detection on: "..tostring(CDTL3.enabled)
+		.." | UNIT_AURA events: "..tostring(CDTL3.unitAuraEvents or 0)
+		.." | combat log: "..tostring(CDTL3.combatLogRegistered))
+	CDTL3:Print("guid: "..tostring(CDTL3.player["guid"])
+		.." | buffs enabled: "..tostring(g["buffs"]["enabled"])
+		.." | only mine: "..tostring(g["buffs"]["onlyPlayer"])
+		.." | ignore over: "..tostring(g["buffs"]["ignoreThreshold"]).."s"
+		.." | default lane: "..tostring(g["buffs"]["defaultLane"]))
+
+	for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
+		local t = (filter == "HELPFUL") and "buffs" or "debuffs"
+		for i = 1, 40 do
+			local readOK, aura = pcall(C_UnitAuras.GetAuraDataByIndex, "player", i, filter)
+			if not readOK then
+				CDTL3:Print(t.." #"..i..": can't read auras right now (secret)")
+				break
+			end
+			if not aura then
+				break
+			end
+
+			local ok, line = pcall(function()
+				if not (aura.spellId > 0) then
+					return nil
+				end
+
+				local text = string.format("%s #%d: %s (%d) from %s, %ds", t, i, aura.name, aura.spellId,
+					tostring(aura.sourceUnit), math.floor(aura.duration or 0))
+
+				local s = CDTL3:GetSpellSettings(aura.name, t)
+				if s then
+					text = text.." -> saved: ignored="..tostring(s["ignored"]).." enabled="..tostring(s["enabled"])
+						.." lane="..tostring(s["lane"]).." yours="..tostring(CDTL3:IsUsedBy(t, s["id"]))
+						.." savedID="..tostring(s["id"])
+				else
+					text = text.." -> not saved"
+				end
+
+				if CDTL3:GetCustomSpellSettings(aura.name, "aura") then
+					text = text.." (also a custom aura trigger)"
+				end
+
+				return text
+			end)
+
+			if ok and line then
+				CDTL3:Print(line)
+			else
+				CDTL3:Print(t.." #"..i..": details hidden (secret)")
+			end
+		end
+	end
+end
+
+-- Spell school bitmask (combat log) -> the schoolColors key; multi-school -> Other
+local SCHOOL_NAMES = { [1] = "Physical", [2] = "Holy", [4] = "Fire", [8] = "Nature", [16] = "Frost", [32] = "Shadow", [64] = "Arcane" }
+CDTL3.spellSchools = {}
+
+-- The combat log is the only place a spell's school is exposed. Remember it per spell name
+-- (saved entries and live bars are matched by name) and apply it once when it's first seen.
+function CDTL3:RecordSpellSchool(spellName, schoolMask)
+	local school = SCHOOL_NAMES[schoolMask] or "Other"
+	if not spellName or CDTL3.spellSchools[spellName] == school then
+		return
+	end
+	CDTL3.spellSchools[spellName] = school
+
+	for _, entries in pairs(CDTL3.db.profile.tables) do
+		for _, e in pairs(entries) do
+			if e["name"] == spellName then
+				e["school"] = school
+			end
+		end
+	end
+
+	local changed = false
+	for _, cd in pairs(CDTL3.cooldowns) do
+		if cd.data["name"] == spellName then
+			cd.data["school"] = school
+			changed = true
+		end
+	end
+	if changed then
+		CDTL3:RefreshAllBars()
+	end
+end
+
 function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 	local _, subevent, _, sourceGUID, sourceName, _, _, destGUID, destName, _, _ = CombatLogGetCurrentEventInfo()
-	
+
+	if sourceGUID == CDTL3.player["guid"] and (subevent == "SPELL_CAST_SUCCESS" or subevent == "SPELL_AURA_APPLIED") then
+		local _, spellName, spellSchool = select(12, CombatLogGetCurrentEventInfo())
+		CDTL3:RecordSpellSchool(spellName, spellSchool)
+	end
+
 	if subevent == "SPELL_AURA_APPLIED" then
 		if sourceGUID == CDTL3.player["guid"] or destGUID == CDTL3.player["guid"] then
 			local spellID, spellName, _, auraType, _, _, _, _, _, _, _, _, _ = select(12, CombatLogGetCurrentEventInfo())
@@ -2745,121 +1992,7 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 			
 			-- PLAYER AURAS
 			if destGUID == CDTL3.player["guid"] then
-				local validSource = false
-				if sourceGUID == CDTL3.player["guid"] then
-					validSource = true
-				else
-					if auraType == "buffs" and not CDTL3.db.profile.global["buffs"]["onlyPlayer"] then
-						validSource = true
-					end
-					
-					if auraType == "debuffs" and not CDTL3.db.profile.global["debuffs"]["onlyPlayer"] then
-						validSource = true
-					end
-				end
-				
-				if validSource then
-					-- CHECK FOR TRIGGERS
-					--local spellName, _, _ = CDTL3:GetSpellInfo(spellID)
-					--local s = CDTL3:GetSpellSettings(spellName, "customs")
-					local s = CDTL3:GetCustomSpellSettings(spellName, "aura")
-					if s then
-						--if s["triggerType"] and s["triggerType"] == "aura" then
-							if CDTL3.db.profile.global["debugMode"] then
-								CDTL3:Print("CUSTOM_FOUND: aura - "..spellName)
-							end
-
-							if not s["ignored"] then
-								local ef = CDTL3:GetExistingCooldown(s["name"], "customs")
-								if ef then
-									CDTL3:SendToLane(ef)
-									CDTL3:SendToBarFrame(ef)
-									--+CDTL3:CheckEdgeCases(spellName)
-								else
-									if CDTL3.db.profile.global["customs"]["enabled"] then
-										CDTL3:CreateCooldown(CDTL3:GetUID(),"customs" , s)
-										CDTL3:CheckEdgeCases(spellName)
-										
-										if CDTL3:IsUsedBy("customs", spellID) then
-											--CDTL3:Print("USEDBY MATCH: "..s["id"])
-										else
-											CDTL3:AddUsedBy("customs", spellID, CDTL3.player["guid"])
-										end
-									end
-								end
-							end
-						--end
-					else
-						
-					end
-
-					local s = CDTL3:GetSpellSettings(spellName, auraType)
-					if s then
-						if not s["ignored"] then
-							local ef = CDTL3:GetExistingCooldown(s["name"], auraType)
-							if ef then
-								CDTL3:SendToLane(ef)
-								CDTL3:SendToBarFrame(ef)
-							else
-								if CDTL3.db.profile.global["buffs"]["enabled"] and auraType == "buffs"  then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-									if not CDTL3:IsUsedBy("buffs", spellID) then
-										CDTL3:AddUsedBy("buffs", spellID, CDTL3.player["guid"])
-									end
-								elseif CDTL3.db.profile.global["debuffs"]["enabled"] and auraType == "debuffs" then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-									if not CDTL3:IsUsedBy("debuffs", spellID) then
-										CDTL3:AddUsedBy("debuffs", spellID, CDTL3.player["guid"])
-									end
-								end
-							end
-						end
-					else
-						s = CDTL3:AuraExists("player", spellName)
-						if s then
-							s["highlight"] = false
-							s["pinned"] = false
-							
-							s["usedBy"] = { CDTL3.player["guid"] }
-							
-							local ignoreThreshold = 0
-							local link, _ = CDTL3:GetSpellLink(spellID)
-							s["link"] = link
-							
-							if auraType == "buffs" then
-								ignoreThreshold = CDTL3.db.profile.global["buffs"]["ignoreThreshold"]
-								
-								s["enabled"] = CDTL3.db.profile.global["buffs"]["showByDefault"]
-								s["lane"] = CDTL3.db.profile.global["buffs"]["defaultLane"]
-								s["barFrame"] = CDTL3.db.profile.global["buffs"]["defaultBar"]
-								s["readyFrame"] = CDTL3.db.profile.global["buffs"]["defaultReady"]
-							elseif auraType == "debuffs" then
-								ignoreThreshold = CDTL3.db.profile.global["debuffs"]["ignoreThreshold"]
-								
-								s["enabled"] = CDTL3.db.profile.global["debuffs"]["showByDefault"]
-								s["lane"] = CDTL3.db.profile.global["debuffs"]["defaultLane"]
-								s["barFrame"] = CDTL3.db.profile.global["debuffs"]["defaultBar"]
-								s["readyFrame"] = CDTL3.db.profile.global["debuffs"]["defaultReady"]
-							end
-							
-							if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= ignoreThreshold then
-								s["ignored"] = false
-							else
-								s["ignored"] = true
-							end
-
-							table.insert(CDTL3.db.profile.tables[auraType], s)
-							
-							if not s["ignored"] then
-								if CDTL3.db.profile.global["buffs"]["enabled"] and auraType == "buffs" then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-								elseif CDTL3.db.profile.global["debuffs"]["enabled"] and auraType == "debuffs" then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),auraType , s)
-								end
-							end
-						end
-					end
-				end
+				CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceGUID == CDTL3.player["guid"])
 			
 			-- OFFENSIVE AURAS
 			else
@@ -2883,8 +2016,12 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 								rcd.data["desc"] = s["desc"]
 								rcd.data["icon"] = s["icon"]
 								
-								rcd.data["ignored"] = ""
-								rcd.data["highlighted"] = ""
+								-- copy the entry's flags ("" is truthy in Lua, so the old
+								-- ignored = "" hid every recycled offensive icon)
+								rcd.data["ignored"] = s["ignored"]
+								rcd.data["highlight"] = s["highlight"]
+								rcd.data["enabled"] = s["enabled"]
+								rcd.data["link"] = s["link"]
 								
 								rcd.data["lane"] = s["lane"]
 								rcd.data["barFrame"] = s["barFrame"]
@@ -2910,8 +2047,8 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 									ncd.data["targetID"] = destGUID
 									ncd.data["targetName"] = destName
 									
-									if not CDTL3:IsUsedBy("offensives", spellID) then
-										CDTL3:AddUsedBy("offensives", spellID, CDTL3.player["guid"])
+									if not CDTL3:IsUsedBy("offensives", s["id"]) then
+										CDTL3:AddUsedBy("offensives", s["id"], CDTL3.player["guid"])
 									end
 								end
 							end
@@ -2920,25 +2057,15 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 				else
 					local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
 					
-					local s = {
+					-- no ignore check: an offensive's length is only known once it lands
+					local s = CDTL3:ApplyEntryDefaults({
 						id = spellID,
 						bCD = 0,
 						name = spellName,
 						type = "offensives",
 						icon = icon,
-						lane = CDTL3.db.profile.global["offensives"]["defaultLane"],
-						barFrame = CDTL3.db.profile.global["offensives"]["defaultBar"],
-						readyFrame = CDTL3.db.profile.global["offensives"]["defaultReady"],
-					}
-					
-					s["enabled"] = CDTL3.db.profile.global["offensives"]["showByDefault"]
-					s["highlight"] = false
-					s["pinned"] = false
-					
-					s["usedBy"] = { CDTL3.player["guid"] }
-					
-					local link, _ = CDTL3:GetSpellLink(spellID)
-					s["link"] = link
+					}, "offensives")
+					s["link"] = CDTL3:GetSpellLink(spellID)
 					
 					table.insert(CDTL3.db.profile.tables["offensives"], s)
 										
@@ -3015,11 +2142,26 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 	local temp, unitTarget, castGUID, spellID = ...
 
 	if unitTarget == "player" then
+		-- a cast in the first seconds after login can beat OnEnable's GetCharacterData;
+		-- anything saved without the character's GUID would never be listed
+		if not CDTL3.player["guid"] then
+			CDTL3:GetCharacterData()
+		end
+
 		-- Midnight 12.x: track cast times so GetSpellCooldown fallback can compute
 		-- time-remaining without accessing secret startTime/duration fields.
 		if not CDTL3.spellCastTimes then CDTL3.spellCastTimes = {} end
 		if not CDTL3.spellBaseCDs   then CDTL3.spellBaseCDs   = {} end
 		CDTL3.spellCastTimes[spellID] = GetTime()
+
+		-- Ranged swing timer: Auto Shot (75) and wand Shoot (5019) fire this event on
+		-- every shot, so it works without the combat log. The ranged speed can be
+		-- secret; the timer is only started when it's readable.
+		if spellID == 75 or spellID == 5019 then
+			pcall(function()
+				CDTL3.tracking["rSwingTime"] = UnitRangedDamage("player") + 0
+			end)
+		end
 		if GetSpellBaseCooldown and not CDTL3.spellBaseCDs[spellID] then
 			local ms = GetSpellBaseCooldown(spellID)
 			if ms and ms > 0 then CDTL3.spellBaseCDs[spellID] = ms / 1000 end
@@ -3027,8 +2169,8 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 
 		local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
 
-		local isKnown = IsSpellKnown(spellID)
-		local isKnownOrOverridesKnown = IsSpellKnownOrOverridesKnown(spellID)
+		local isKnown = CDTL3.Compat.IsSpellKnown(spellID)
+		local isKnownOrOverridesKnown = CDTL3.Compat.IsSpellKnownOrOverridesKnown(spellID)
 
 		if CDTL3.db.profile.global["debugMode"] then
 			CDTL3:Print("SPELLCAST: "..spellName.."-"..castGUID)
@@ -3048,62 +2190,18 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 							CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
 							CDTL3:CheckEdgeCases(spellName)
 							
-							if CDTL3:IsUsedBy("spells", spellID) then
+							if CDTL3:IsUsedBy("spells", s["id"]) then
 								--CDTL3:Print("USEDBY MATCH: "..s["id"])
 							else
-								CDTL3:AddUsedBy("spells", spellID, CDTL3.player["guid"])
+								CDTL3:AddUsedBy("spells", s["id"], CDTL3.player["guid"])
 							end
 						end
 					end
 				end
 			else
-				s = {}
-				
-				--local currentCharges, maxCharges, _, cooldownDuration, _ = GetSpellCharges(spellID)
-				local currentCharges, maxCharges, cooldownStart, cooldownDuration  = CDTL3:GetSpellCharges(spellID)
-				local cooldownMS, gcdMS = GetSpellBaseCooldown(spellID)
-		
-				if cooldownDuration ~= nil and cooldownDuration ~= 0 then
-					cooldownMS = cooldownDuration * 1000
-				end
-		
-				s["id"] = spellID
-				s["name"] = spellName
-				--s["rank"] = rank
-				s["bCD"] = cooldownMS
-				s["type"] = "spells"
-		
-				if maxCharges ~= 0 then
-					s["charges"] = maxCharges
-					s["bCD"] = cooldownMS
-				end
-
-				s["icon"] = icon
-				s["lane"] = CDTL3.db.profile.global["spells"]["defaultLane"]
-				s["barFrame"] = CDTL3.db.profile.global["spells"]["defaultBar"]
-				s["readyFrame"] = CDTL3.db.profile.global["spells"]["defaultReady"]
-				s["enabled"] = CDTL3.db.profile.global["spells"]["showByDefault"]
-				s["highlight"] = false
-				s["pinned"] = false
-				s["usedBy"] = { CDTL3.player["guid"] }
-				s["setCustomCD"] = false
-				
-				local link, _ = CDTL3:GetSpellLink(spellID)
-				s["link"] = link
-				
-				if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= CDTL3.db.profile.global["spells"]["ignoreThreshold"] then
-					s["ignored"] = false
-				else
-					s["ignored"] = true
-				end
-				
-				table.insert(CDTL3.db.profile.tables["spells"], s)
-				
-				if not s["ignored"] then
-					if CDTL3.db.profile.global["spells"]["enabled"] then
-						CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-						CDTL3:CheckEdgeCases(spellName)
-					end
+				s = CDTL3:NewSpellEntry(spellID, spellName, icon, "spells")
+				if CDTL3:SaveNewEntry(s, "spells") then
+					CDTL3:CheckEdgeCases(spellName)
 				end
 			end
 		else
@@ -3124,8 +2222,8 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 						CDTL3:SendToBarFrame(ef)
 					else
 						if CDTL3.db.profile.global["items"]["enabled"] then
-							if not CDTL3:IsUsedBy("items", spellID) then
-								CDTL3:AddUsedBy("items", spellID, CDTL3.player["guid"])
+							if not CDTL3:IsUsedBy("items", s["id"]) then
+								CDTL3:AddUsedBy("items", s["id"], CDTL3.player["guid"])
 							end
 							
 							CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
@@ -3136,7 +2234,6 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 				s = is
 				if s then
 					if CDTL3:IsValidItem(s["itemID"]) then
-						s["usedBy"] = { CDTL3.player["guid"] }
 						table.insert(CDTL3.db.profile.tables["items"], s)
 						
 						if CDTL3.db.profile.global["items"]["enabled"] then
@@ -3167,10 +2264,10 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 										CDTL3:CreateCooldown(CDTL3:GetUID(),"customs" , s)
 										CDTL3:CheckEdgeCases(spellName)
 										
-										if CDTL3:IsUsedBy("customs", spellID) then
+										if CDTL3:IsUsedBy("customs", s["id"]) then
 											--CDTL3:Print("USEDBY MATCH: "..s["id"])
 										else
-											CDTL3:AddUsedBy("customs", spellID, CDTL3.player["guid"])
+											CDTL3:AddUsedBy("customs", s["id"], CDTL3.player["guid"])
 										end
 									end
 								end
@@ -3233,8 +2330,8 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 	elseif unitTarget == "pet" then
 		local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
 		
-		local isKnown = IsSpellKnown(spellID, true)
-		local isKnownOrOverridesKnown = IsSpellKnownOrOverridesKnown(spellID, true)
+		local isKnown = CDTL3.Compat.IsSpellKnown(spellID, true)
+		local isKnownOrOverridesKnown = CDTL3.Compat.IsSpellKnownOrOverridesKnown(spellID, true)
 
 		if CDTL3.db.profile.global["debugMode"] then
 			CDTL3:Print("PETCAST: "..spellName.."-"..castGUID)
@@ -3254,62 +2351,18 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 							CDTL3:CreateCooldown(CDTL3:GetUID(),"petspells" , s)
 							CDTL3:CheckEdgeCases(spellName)
 							
-							if CDTL3:IsUsedBy("petspells", spellID) then
+							if CDTL3:IsUsedBy("petspells", s["id"]) then
 								--CDTL3:Print("USEDBY MATCH: "..s["id"])
 							else
-								CDTL3:AddUsedBy("petspells", spellID, CDTL3.player["guid"])
+								CDTL3:AddUsedBy("petspells", s["id"], CDTL3.player["guid"])
 							end
 						end
 					end
 				end
 			else
-				s = {}
-			
-				--local currentCharges, maxCharges, _, cooldownDuration, _ = GetSpellCharges(spellID)
-				local currentCharges, maxCharges, cooldownStart, cooldownDuration = CDTL3:GetSpellCharges(spellID)
-				local cooldownMS, gcdMS = GetSpellBaseCooldown(spellID)
-		
-				if cooldownDuration ~= nil and cooldownDuration ~= 0 then
-					cooldownMS = cooldownDuration * 1000
-				end
-		
-				s["id"] = spellID
-				s["name"] = spellName
-				--s["rank"] = rank
-				s["bCD"] = cooldownMS
-				s["type"] = "petspells"
-		
-				if maxCharges then
-					s["charges"] = maxCharges
-					s["bCD"] = cooldownMS
-				end
-
-				s["icon"] = icon
-				s["lane"] = CDTL3.db.profile.global["petspells"]["defaultLane"]
-				s["barFrame"] = CDTL3.db.profile.global["petspells"]["defaultBar"]
-				s["readyFrame"] = CDTL3.db.profile.global["petspells"]["defaultReady"]
-				s["enabled"] = CDTL3.db.profile.global["petspells"]["showByDefault"]
-				s["highlight"] = false
-				s["pinned"] = false
-				s["usedBy"] = { CDTL3.player["guid"] }
-				s["setCustomCD"] = false
-				
-				local link, _ = CDTL3:GetSpellLink(spellID)
-				s["link"] = link
-				
-				if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= CDTL3.db.profile.global["petspells"]["ignoreThreshold"] then
-					s["ignored"] = false
-				else
-					s["ignored"] = true
-				end
-				
-				table.insert(CDTL3.db.profile.tables["petspells"], s)
-				
-				if not s["ignored"] then
-					if CDTL3.db.profile.global["petspells"]["enabled"] then
-						CDTL3:CreateCooldown(CDTL3:GetUID(),"petspells" , s)
-						CDTL3:CheckEdgeCases(spellName)
-					end
+				s = CDTL3:NewSpellEntry(spellID, spellName, icon, "petspells")
+				if CDTL3:SaveNewEntry(s, "petspells") then
+					CDTL3:CheckEdgeCases(spellName)
 				end
 			end
 		end
@@ -3324,25 +2377,30 @@ function CDTL3:ITEM_LOCK_CHANGED(...)
 	if not IsInventoryItemLocked(bagOrSlotIndex) and not IsInventoryItemLocked(slotIndex) then
 		if slotIndex == nil then
 			local itemId = GetInventoryItemID("player", bagOrSlotIndex)
-			local spellName, spellID = GetItemSpell(itemId)
+			local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId)
 			
 			if spellID then
 				local s = CDTL3:GetSpellSettings(spellName, "items", false, spellID)
 				if s then
 					if not s["ignored"] then
+						-- The equip lockout only changes the LIVE countdown. Writing 30000 into
+						-- bCD changed nothing for an existing icon (the loop reads baseCD) and
+						-- permanently overwrote the saved entry's real cooldown otherwise.
 						local ef = CDTL3:GetExistingCooldown(s["name"], "items")
 						if ef then
-							ef.data["bCD"] = 30000
 							CDTL3:SendToLane(ef)
 							CDTL3:SendToBarFrame(ef)
+							ef.data["currentCD"] = 30
 						else
 							if CDTL3.db.profile.global["items"]["enabled"] then
-								if not CDTL3:IsUsedBy("items", spellID) then
-									CDTL3:AddUsedBy("items", spellID, CDTL3.player["guid"])
+								if not CDTL3:IsUsedBy("items", s["id"]) then
+									CDTL3:AddUsedBy("items", s["id"], CDTL3.player["guid"])
 								end
 								
-								s["bCD"] = 30000
-								CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+								local ncd = CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+								if ncd then
+									ncd.data["currentCD"] = 30
+								end
 							end
 						end
 					end
@@ -3350,12 +2408,13 @@ function CDTL3:ITEM_LOCK_CHANGED(...)
 					s = CDTL3:GetItemSpell(spellID)
 					if s then
 						if CDTL3:IsValidItem(s["itemID"]) then
-							s["usedBy"] = { CDTL3.player["guid"] }
 							table.insert(CDTL3.db.profile.tables["items"], s)
 							
 							if CDTL3.db.profile.global["items"]["enabled"] then
-								s["bCD"] = 30000
-								CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+								local ncd = CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
+								if ncd then
+									ncd.data["currentCD"] = 30
+								end
 							end
 						end
 					else
@@ -3370,9 +2429,6 @@ end
 function CDTL3:PLAYER_REGEN_DISABLED()
 	CDTL3.combat = true
 	
-	local ready1Enabled = CDTL3.db.profile.ready["ready1"]["enabled"]
-	local ready2Enabled = CDTL3.db.profile.ready["ready2"]["enabled"]
-	local ready3Enabled = CDTL3.db.profile.ready["ready3"]["enabled"]
 	
 	if CDTL3_Ready_1 then
 		CDTL3_Ready_1.combatTimer = CDTL3.db.profile.ready["ready1"]["pTime"]
@@ -3389,6 +2445,11 @@ end
 
 function CDTL3:PLAYER_REGEN_ENABLED()
 	CDTL3.combat = false
+
+	-- auras were secret during combat: pick up buffs gained or recast meanwhile
+	if CDTL3.retailAPI and CDTL3.enabled then
+		CDTL3:UNIT_AURA("UNIT_AURA", "player")
+	end
 	
 	if CDTL3_Ready_1 then
 		CDTL3_Ready_1.combatTimer = 0
@@ -3420,54 +2481,49 @@ end
 	end
 end]]--
 
-function CDTL3:SPELL_UPDATE_CHARGES()
-	--CDTL3:Print("SPELL_UPDATE_CHARGES")
-end
-
 function CDTL3:UNIT_POWER_FREQUENT(...)
 	local _, unitTarget, powerType = ...
 	
 	if unitTarget == "player" and powerType == "MANA" then
-		if	CDTL3.db.profile.lanes["lane1"]["tracking"]["primaryTracking"] == "MANA_TICK" or
-			CDTL3.db.profile.lanes["lane1"]["tracking"]["secondaryTracking"] == "MANA_TICK" or
-			CDTL3.db.profile.lanes["lane2"]["tracking"]["primaryTracking"] == "MANA_TICK" or
-			CDTL3.db.profile.lanes["lane2"]["tracking"]["secondaryTracking"] == "MANA_TICK" or
-			CDTL3.db.profile.lanes["lane3"]["tracking"]["primaryTracking"] == "MANA_TICK" or
-			CDTL3.db.profile.lanes["lane3"]["tracking"]["secondaryTracking"] == "MANA_TICK"
-		then
-			local currentTime = GetTime()
-			local currentMana = UnitPower("player", Enum.PowerType.Mana)
-			if currentMana ~= UnitPowerMax("player", Enum.PowerType.Mana) then
-				local difference = currentMana - CDTL3.tracking["manaPrevious"]
+		if CDTL3:AnyLaneTracks("MANA_TICK") then
+			-- mana can be SECRET (Midnight / WoW: Forever): skip the tick estimate then
+			pcall(function()
+				local currentTime = GetTime()
+				local currentMana = UnitPower("player", Enum.PowerType.Mana)
+				if currentMana ~= UnitPowerMax("player", Enum.PowerType.Mana) then
+					local difference = currentMana - CDTL3.tracking["manaPrevious"]
 							
-				local timeDifference = 0
-				if CDTL3.tracking["manaTime"] then
-					timeDifference = currentTime - CDTL3.tracking["manaTime"]
-				end
-				
-				if difference < 0 then
-					if CDTL3.combat then
-						CDTL3.tracking["manaTime"] = currentTime
-						CDTL3.tracking["fsr"] = true
+					local timeDifference = 0
+					if CDTL3.tracking["manaTime"] then
+						timeDifference = currentTime - CDTL3.tracking["manaTime"]
 					end
-				end
 				
-				if difference > 0 then
-					local low = 0.1
-					local high = 1.9
+					if difference < 0 then
+						if CDTL3.combat then
+							CDTL3.tracking["manaTime"] = currentTime
+							CDTL3.tracking["fsr"] = true
+						end
+					end
+				
+					if difference > 0 then
+						local low = 0.1
+						local high = 1.9
 					
-					if CDTL3.tracking["fsr"] then
-						local high = 4.9
-					end
+						if CDTL3.tracking["fsr"] then
+							high = 4.9	-- was "local high", which never widened the window
+						end
 					
-					if timeDifference < low or  timeDifference > high then
-						CDTL3.tracking["fsr"] = false
-						CDTL3.tracking["manaTime"] = currentTime
+						if timeDifference < low or  timeDifference > high then
+							CDTL3.tracking["fsr"] = false
+							CDTL3.tracking["manaTime"] = currentTime
+						end
 					end
 				end
-				
+
+				-- track at full mana too, or the first cast after topping off reads as a
+				-- regen tick (e.g. 4900 -> 5000 unrecorded, then a cast to 4950 = "+50")
 				CDTL3.tracking["manaPrevious"] = currentMana
-			end
+			end)
 		end
 	end
 end
@@ -3476,25 +2532,22 @@ function CDTL3:UNIT_POWER_UPDATE(...)
 	local _, unitTarget, powerType = ...
 	
 	if unitTarget == "player" and powerType == "ENERGY" then
-		if	CDTL3.db.profile.lanes["lane1"]["tracking"]["primaryTracking"] == "ENERGY_TICK" or
-			CDTL3.db.profile.lanes["lane1"]["tracking"]["secondaryTracking"] == "ENERGY_TICK" or
-			CDTL3.db.profile.lanes["lane2"]["tracking"]["primaryTracking"] == "ENERGY_TICK" or
-			CDTL3.db.profile.lanes["lane2"]["tracking"]["secondaryTracking"] == "ENERGY_TICK" or
-			CDTL3.db.profile.lanes["lane3"]["tracking"]["primaryTracking"] == "ENERGY_TICK" or
-			CDTL3.db.profile.lanes["lane3"]["tracking"]["secondaryTracking"] == "ENERGY_TICK"
-		then
-			local currentTime = GetTime()
-			local maxenergy = UnitPowerMax("player", Enum.PowerType.Energy)
-			local currentEnergy = UnitPower("player", Enum.PowerType.Energy)
+		if CDTL3:AnyLaneTracks("ENERGY_TICK") then
+			-- energy can be SECRET (Midnight / WoW: Forever): skip the tick estimate then
+			pcall(function()
+				local currentTime = GetTime()
+				local maxenergy = UnitPowerMax("player", Enum.PowerType.Energy)
+				local currentEnergy = UnitPower("player", Enum.PowerType.Energy)
 			
-			if currentEnergy < maxenergy then
-				local difference = currentEnergy - CDTL3.tracking["energyPrevious"]
-				if (difference > 18 and difference < 22) or (difference > 38 and difference < 42) then
-					CDTL3.tracking["energyTimeCount"] = 0
+				if currentEnergy < maxenergy then
+					local difference = currentEnergy - CDTL3.tracking["energyPrevious"]
+					if (difference > 18 and difference < 22) or (difference > 38 and difference < 42) then
+						CDTL3.tracking["energyTimeCount"] = 0
+					end
 				end
-			end
 			
-			CDTL3.tracking["energyPrevious"] = currentEnergy
+				CDTL3.tracking["energyPrevious"] = currentEnergy
+			end)
 		end
 	end
 end
@@ -3544,37 +2597,23 @@ function CDTL3:RUNE_POWER_UPDATE(...)
 				end
 			end
 		else
-			local s = {}
-		
-			s["name"] = spellName
-			s["type"] = "runes"
-			s["runeIndex"] = runeIndex
-			s["icon"] = icon
-			s["lane"] = CDTL3.db.profile.global["runes"]["defaultLane"]
-			s["barFrame"] = CDTL3.db.profile.global["runes"]["defaultBar"]
-			s["readyFrame"] = CDTL3.db.profile.global["runes"]["defaultReady"]
-			s["enabled"] = CDTL3.db.profile.global["runes"]["showByDefault"]
-			s["highlight"] = false
-			s["pinned"] = false
-			
-			local start, duration, runeReady = GetRuneCooldown(runeIndex)
-			
-			s["bCD"] = duration * 1000
-			s["usedBy"] = { CDTL3.player["guid"] }
-			
-			if s["bCD"] / 1000 > 3 and s["bCD"] / 1000 <= CDTL3.db.profile.global["runes"]["ignoreThreshold"] then
-				s["ignored"] = false
-			else
-				s["ignored"] = true
-			end
-			
-			table.insert(CDTL3.db.profile.tables["runes"], s)
-			
-			if not s["ignored"] then
-				if CDTL3.db.profile.global["runes"]["enabled"] then
-					CDTL3:CreateCooldown(CDTL3:GetUID(),"runes" , s)
-				end
-			end
+			-- the rune duration can be secret on retail: fall back to the 10s rune base
+			local bCD = 10000
+			pcall(function()
+				local _, duration = GetRuneCooldown(runeIndex)
+				bCD = (duration + 0) * 1000
+			end)
+
+			local s = CDTL3:ApplyEntryDefaults({
+				name = spellName,
+				type = "runes",
+				runeIndex = runeIndex,
+				icon = icon,
+				bCD = bCD,
+			}, "runes")
+			s["ignored"] = CDTL3:IgnoredByDefault("runes", s["bCD"])
+
+			CDTL3:SaveNewEntry(s, "runes")
 		end
 	else
 		for _, rune in pairs(CDTL3.cooldowns) do
@@ -3633,11 +2672,6 @@ function CDTL3:GROUP_LEFT()
 	end
 end
 
-function CDTL3:SPELLS_CHANGED(...)
-    --CDTL3:Print("SPELLSCHANGED: re-scanning...")
-    --CDTL3:ScanSpellbook()
-end
-
 function CDTL3:DetermineOnOff()
 	local turnOn = false
 	
@@ -3661,28 +2695,62 @@ function CDTL3:DetermineOnOff()
 	return turnOn
 end
 
+-- Unit events are only wanted for the player (and pet). Registering them per unit on a
+-- private frame stops the client waking the addon for every raid member's casts, auras
+-- and power changes. Handlers keep the AceEvent signature: CDTL3:EVENT(event, unit, ...).
+CDTL3.unitEventFrame = CreateFrame("Frame")
+CDTL3.unitEventFrame:SetScript("OnEvent", function(_, event, ...)
+	CDTL3[event](CDTL3, event, ...)
+end)
+
+function CDTL3:RegisterUnitEvents(event, unit1, unit2)
+	local f = CDTL3.unitEventFrame
+	if f.RegisterUnitEvent then
+		f:RegisterUnitEvent(event, unit1, unit2)
+	else
+		f:RegisterEvent(event)	-- handlers still check the unit
+	end
+end
+
+-- Does any lane show this tracking type, as primary or secondary?
+function CDTL3:AnyLaneTracks(kind)
+	for _, key in ipairs({ "lane1", "lane2", "lane3" }) do
+		local tracking = CDTL3.db.profile.lanes[key]["tracking"]
+		if tracking["primaryTracking"] == kind or tracking["secondaryTracking"] == kind then
+			return true
+		end
+	end
+
+	return false
+end
+
 function CDTL3:TurnOn()	
 	if not CDTL3.enabled then
 		if CDTL3.db.profile.global["debugMode"] then
 			CDTL3:Print("ENABLING DETECTION")
 		end
 	
-		CDTL3:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-		CDTL3:RegisterEvent("SPELL_UPDATE_CHARGES")
-		CDTL3:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+		-- The combat log is closed to addons on WoW: Forever. Only register it where
+		-- its accessor exists, and never let a refusal abort the rest of TurnOn.
+		CDTL3.combatLogRegistered = false
+		if CombatLogGetCurrentEventInfo then
+			CDTL3.combatLogRegistered = pcall(CDTL3.RegisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
+		end
+		CDTL3:RegisterUnitEvents("UNIT_SPELLCAST_SUCCEEDED", "player", "pet")
 		CDTL3:RegisterEvent("ITEM_LOCK_CHANGED")
 		CDTL3:RegisterEvent("PLAYER_REGEN_DISABLED")
 		CDTL3:RegisterEvent("PLAYER_REGEN_ENABLED")
-		CDTL3:RegisterEvent("UNIT_POWER_FREQUENT")
-		CDTL3:RegisterEvent("UNIT_POWER_UPDATE")
+		CDTL3:RegisterUnitEvents("UNIT_POWER_FREQUENT", "player")
+		CDTL3:RegisterUnitEvents("UNIT_POWER_UPDATE", "player")
 
 		CDTL3:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 		
-		if CDTL3.tocversion >= 110000 then
+		if CDTL3.retailAPI then
+			CDTL3:RegisterUnitEvents("UNIT_AURA", "player")
 			--CDTL3:RegisterEvent("TRAIT_CONFIG_UPDATED")
 		end
 
-		if CDTL3.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 and not CDTL3.isForever then
 			CDTL3:RegisterEvent("RUNE_UPDATED")
 		end
 		
@@ -3696,22 +2764,22 @@ function CDTL3:TurnOff()
 			CDTL3:Print("DISABLING DETECTION")
 		end
 		
-		CDTL3:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-		CDTL3:UnregisterEvent("SPELL_UPDATE_CHARGES")
-		CDTL3:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+		pcall(CDTL3.UnregisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
+		CDTL3.unitEventFrame:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 		CDTL3:UnregisterEvent("ITEM_LOCK_CHANGED")
 		CDTL3:UnregisterEvent("PLAYER_REGEN_DISABLED")
 		CDTL3:UnregisterEvent("PLAYER_REGEN_ENABLED")
-		CDTL3:UnregisterEvent("UNIT_POWER_FREQUENT")
-		CDTL3:UnregisterEvent("UNIT_POWER_UPDATE")
+		CDTL3.unitEventFrame:UnregisterEvent("UNIT_POWER_FREQUENT")
+		CDTL3.unitEventFrame:UnregisterEvent("UNIT_POWER_UPDATE")
 
 		CDTL3:UnregisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 		
-		if CDTL3.tocversion >= 110000 then
+		if CDTL3.retailAPI then
+			CDTL3.unitEventFrame:UnregisterEvent("UNIT_AURA")
 			--CDTL3:UnregisterEvent("TRAIT_CONFIG_UPDATED")
 		end
 
-		if CDTL3.tocversion < 20000 then
+		if CDTL3.tocversion < 20000 and not CDTL3.isForever then
 			CDTL3:UnregisterEvent("RUNE_UPDATED")
 		end
 		
@@ -3719,7 +2787,7 @@ function CDTL3:TurnOff()
 	end
 end
 
-function IsNewerVersion()
+function CDTL3:IsNewerVersion()
 	local nv = tostring(CDTL3.noticeVersion)
 	local pv = tostring(CDTL3.db.profile.global["previousVersion"])
 

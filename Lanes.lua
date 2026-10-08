@@ -4,8 +4,6 @@
 ]]--
 
 local private = {}
-private.updatePollRate = 2
-private.autohidePollRate = 5
 private.stackingPollRate = 5
 private.dynamicTextPollRate = 10
 private.timeTextPollRate = 2
@@ -67,7 +65,7 @@ function CDTL3:RefreshLane(i)
 	f:SetMinMaxValues(0, 1)
 	f:SetValue(1)
 	f:SetReverseFill(s["tracking"]["primaryReversed"])
-	f:SetStatusBarTexture(CDTL3.LSM:Fetch("statusbar", s["fgTexture"]))
+	CDTL3:SetBarTexture(f, s["fgTexture"])
 	f:GetStatusBarTexture():SetHorizTile(false)
 	f:GetStatusBarTexture():SetVertTile(false)
 	
@@ -96,7 +94,7 @@ function CDTL3:RefreshLane(i)
 	end
 	
 	-- BACKGROUND
-	f.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["bgTexture"]))
+	CDTL3:SetBarTexture(f.bg, s["bgTexture"])
 	f.bg:SetAllPoints(true)
 	--[[f.bg:SetVertexColor(
 		s["bgTextureColor"]["r"],
@@ -120,16 +118,17 @@ function CDTL3:RefreshLane(i)
 	)
 	
 	-- SECONDARY TRACKING
-	if s["tracking"]["secondaryTracking"] ~= "None" then
-		if not f.bd then
-			f.st = CreateFrame("Frame", f:GetName().."_ST", f, BackdropTemplateMixin and "BackdropTemplate" or nil)
-			f.st:SetParent(f)
-			f.st.bg = f.st:CreateTexture(nil, "BACKGROUND")
-		end
-	
+	-- One marker per lane; LaneUpdate shows/hides it, so it must always exist.
+	if not f.st then
+		f.st = CreateFrame("Frame", f:GetName().."_ST", f, BackdropTemplateMixin and "BackdropTemplate" or nil)
+		f.st:SetParent(f)
+		f.st.bg = f.st:CreateTexture(nil, "BACKGROUND")
+	end
+
+	if s["tracking"]["secondaryTracking"] ~= "NONE" then
 		f.st:ClearAllPoints()
 		f.st:SetSize(s["tracking"]["stWidth"], s["tracking"]["stHeight"])
-		f.st.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["tracking"]["stTexture"]))
+		CDTL3:SetBarTexture(f.st.bg, s["tracking"]["stTexture"])
 		f.st.bg:SetAllPoints(true)
 		f.st.bg:SetVertexColor(
 			s["tracking"]["stTextureColor"]["r"],
@@ -138,9 +137,7 @@ function CDTL3:RefreshLane(i)
 			s["tracking"]["stTextureColor"]["a"]
 		)
 	else
-		if f.st then
-			f.st:Hide()
-		end
+		f.st:Hide()
 	end
 	
 	-- BORDER
@@ -165,25 +162,30 @@ function CDTL3:RefreshLane(i)
 	private.UpdateText(f, s)
 	
 	-- ANIMATION
-	f.animateIn = f:CreateAnimationGroup()
-	f.animateIn:SetLooping("NONE")
-	f.animateIn:SetToFinalAlpha(true)
-	local fadeIn = f.animateIn:CreateAnimation("Alpha")
-	fadeIn:SetFromAlpha(0)
-	fadeIn:SetToAlpha(s["alpha"])
-	fadeIn:SetDuration(0.3)
-	fadeIn:SetSmoothing("OUT")
-	fadeIn:SetOrder(1)
+	-- Fade animations are created once per frame; only their alpha targets change on
+	-- refresh (recreating them on every refresh leaked a pair of groups each time).
+	if not f.animateIn then
+		f.animateIn = f:CreateAnimationGroup()
+		f.animateIn:SetLooping("NONE")
+		f.animateIn:SetToFinalAlpha(true)
+		f.animateIn.fade = f.animateIn:CreateAnimation("Alpha")
+		f.animateIn.fade:SetDuration(0.3)
+		f.animateIn.fade:SetSmoothing("OUT")
+		f.animateIn.fade:SetOrder(1)
+		
+		f.animateOut = f:CreateAnimationGroup()
+		f.animateOut:SetLooping("NONE")
+		f.animateOut:SetToFinalAlpha(true)
+		f.animateOut.fade = f.animateOut:CreateAnimation("Alpha")
+		f.animateOut.fade:SetDuration(0.3)
+		f.animateOut.fade:SetSmoothing("OUT")
+		f.animateOut.fade:SetOrder(1)
+	end
 	
-	f.animateOut = f:CreateAnimationGroup()
-	f.animateOut:SetLooping("NONE")
-	f.animateOut:SetToFinalAlpha(true)
-	local fadeOut = f.animateOut:CreateAnimation("Alpha")
-	fadeOut:SetFromAlpha(s["alpha"])
-	fadeOut:SetToAlpha(0)
-	fadeOut:SetDuration(0.3)
-	fadeOut:SetSmoothing("OUT")
-	fadeOut:SetOrder(1)
+	f.animateIn.fade:SetFromAlpha(0)
+	f.animateIn.fade:SetToAlpha(s["alpha"])
+	f.animateOut.fade:SetFromAlpha(s["alpha"])
+	f.animateOut.fade:SetToAlpha(0)
 	
 	-- DEBUG/UNLOCK
 	f.db:ClearAllPoints()
@@ -439,9 +441,7 @@ private.RefreshText = function(f, s)
 		tObject:SetShadowOffset(tSettings["shadX"], tSettings["shadY"])
 		tObject:SetNonSpaceWrap(false)
 		
-		tObject:SetText(CDTL3:ConvertTextTags(tSettings["text"], f))
-		tObject:SetText(CDTL3:ConvertTextDynamicTags(tSettings["text"], f))
-		tObject:SetText(CDTL3:ConvertTextTimeTags(tSettings["text"], f))
+		tObject:SetText(CDTL3:ConvertAllTextTags(tSettings["text"], f))
 		
 		if tSettings["enabled"] == true and tSettings["used"] == true then
 			tObject:SetAlpha(1)
@@ -535,7 +535,7 @@ private.CalcStacking = function(f, s, count)
 						local iconOffset = 0
 						local stackOffset = 0
 						if iconSize * stackCount > height then
-							maxHeight = height - iconSize
+							local maxHeight = height - iconSize
 							iconOffset = (maxHeight / (stackCount - 1)) * (k - 1)
 							
 							stackOffset = maxHeight / 2
@@ -561,10 +561,10 @@ private.CalcStacking = function(f, s, count)
 						
 						icon:SetFrameLevel(baseLevel)
 						if icon.bd then
-							icon.bd:SetFrameLevel(baseLevel * k + 1)
+							icon.bd:SetFrameLevel(baseLevel + 1)
 						end
 						if icon.hl then
-							icon.hl:SetFrameLevel(baseLevel * k + 2)
+							icon.hl:SetFrameLevel(baseLevel + 2)
 						end
 					end
 				end
@@ -638,6 +638,57 @@ private.CalcStacking = function(f, s, count)
 	end
 end
 
+-- Player health/power (and some stats) can be SECRET on Midnight 12.x / WoW: Forever:
+-- comparing or doing arithmetic on them throws. A StatusBar still accepts them, so the
+-- HEALTH / CLASS_POWER / COMBO_POINTS trackers hand back (0, current, max) for the
+-- caller to feed the bar directly. f:GetValue() is then secret too: BarValueDiffers
+-- returns nil ("unknown") instead of throwing.
+private.BarValueDiffers = function(f, v)
+	local ok, differs = pcall(function()
+		return f:GetValue() ~= v
+	end)
+
+	if ok then
+		return differs
+	end
+end
+
+private.SetAutohideOverride = function(f, differs)
+	if differs then
+		f.overrideAutohide = true
+		f.forceShow = true
+	elseif differs == false then
+		f.overrideAutohide = false
+	end
+end
+
+-- current/max as a 0-1 fraction (0 when current is 0); nil if either is secret
+private.Fraction = function(current, max)
+	local ok, fraction = pcall(function()
+		if current ~= 0 then
+			return current / max
+		end
+		return 0
+	end)
+
+	if ok then
+		return fraction
+	end
+end
+
+-- The tick / swing timers are shared (CDTL3.tracking) but CalcTracking runs per lane and
+-- per primary/secondary slot, so advance each timer at most once per frame. GetTime() is
+-- constant within a frame.
+private.advancedAt = {}
+private.FrameElapsed = function(key, elapsed)
+	local now = GetTime()
+	if private.advancedAt[key] == now then
+		return 0
+	end
+	private.advancedAt[key] = now
+	return elapsed
+end
+
 private.CalcTracking = function(f, s, t, elapsed)	
 	local position = 0
 
@@ -652,20 +703,16 @@ private.CalcTracking = function(f, s, t, elapsed)
 		local hpMax = UnitHealthMax("player")
 		local hpCurrent = UnitHealth("player")
 		
-		if hpCurrent ~= 0 then
-			local percent = hpCurrent / hpMax
-			position = percent
-		end
+		position = private.Fraction(hpCurrent, hpMax)
 		
 		if s["tracking"]["overrideAutohide"] then
 			if not f.forceShow then
-				if f:GetValue() ~= 1 then
-					f.overrideAutohide = true
-					f.forceShow = true
-				else
-					f.overrideAutohide = false
-				end
+				private.SetAutohideOverride(f, private.BarValueDiffers(f, 1))
 			end
+		end
+
+		if not position then
+			return 0, hpCurrent, hpMax
 		end
 		
 	elseif t == "CLASS_POWER" then
@@ -680,39 +727,31 @@ private.CalcTracking = function(f, s, t, elapsed)
 		local pCurrent = UnitPower("player", pType)
 		
 		if pType then
-			if pCurrent ~= 0 then
-				local percent = pCurrent / pMax
-				position = percent
-			end
+			position = private.Fraction(pCurrent, pMax)
 		end
 		
 		if s["tracking"]["overrideAutohide"] then
 			if not f.forceShow then
 				if pType == Enum.PowerType.Rage then
-					if f:GetValue() ~= 0 then
-						f.overrideAutohide = true
-						f.forceShow = true
-					else
-						f.overrideAutohide = false
-					end
+					private.SetAutohideOverride(f, private.BarValueDiffers(f, 0))
 				else
-					if f:GetValue() ~= 1 then
-						f.overrideAutohide = true
-						f.forceShow = true
-					else
-						f.overrideAutohide = false
-					end
+					private.SetAutohideOverride(f, private.BarValueDiffers(f, 1))
 				end
 			end
+		end
+
+		if not position then
+			return 0, pCurrent, pMax
 		end
 	
 	elseif t == "COMBO_POINTS" then
 		local cpMax = UnitPowerMax("player", Enum.PowerType.ComboPoints)
 		local cpCurrent = UnitPower("player", Enum.PowerType.ComboPoints)
 		
-		if cpCurrent ~= 0 then
-			local percent = cpCurrent / cpMax
-			position = percent
+		position = private.Fraction(cpCurrent, cpMax)
+
+		if not position then
+			return 0, cpCurrent, cpMax
 		end
 	
 	elseif t == "MANA_TICK" then
@@ -726,7 +765,7 @@ private.CalcTracking = function(f, s, t, elapsed)
 		position = percent
 	
 	elseif t == "ENERGY_TICK" then
-		CDTL3.tracking["energyTimeCount"] = CDTL3.tracking["energyTimeCount"] + elapsed
+		CDTL3.tracking["energyTimeCount"] = CDTL3.tracking["energyTimeCount"] + private.FrameElapsed("energy", elapsed)
 		
 		if CDTL3.tracking["energyTimeCount"] >= 2 then
 			CDTL3.tracking["energyTimeCount"] = 0 + (CDTL3.tracking["energyTimeCount"] - 2)
@@ -752,11 +791,9 @@ private.CalcTracking = function(f, s, t, elapsed)
 		if CDTL3.tracking["mhSwingTime"] < 0 then
 			position = 1
 		else
-			CDTL3.tracking["mhSwingTime"] = CDTL3.tracking["mhSwingTime"] - elapsed
+			CDTL3.tracking["mhSwingTime"] = CDTL3.tracking["mhSwingTime"] - private.FrameElapsed("mhSwing", elapsed)
 			
-			local percent = CDTL3.tracking["mhSwingTime"] / mhSpeed
-			
-			position = percent
+			position = private.Fraction(CDTL3.tracking["mhSwingTime"], mhSpeed) or 1
 		end
 		
 	elseif t == "OH_SWING" then
@@ -765,11 +802,9 @@ private.CalcTracking = function(f, s, t, elapsed)
 		if CDTL3.tracking["ohSwingTime"] < 0 then
 			position = 1
 		else
-			CDTL3.tracking["ohSwingTime"] = CDTL3.tracking["ohSwingTime"] - elapsed
+			CDTL3.tracking["ohSwingTime"] = CDTL3.tracking["ohSwingTime"] - private.FrameElapsed("ohSwing", elapsed)
 			
-			local percent = CDTL3.tracking["ohSwingTime"] / ohSpeed
-			
-			position = percent
+			position = private.Fraction(CDTL3.tracking["ohSwingTime"], ohSpeed) or 1
 		end
 		
 	elseif t == "RANGE_SWING" then
@@ -778,11 +813,9 @@ private.CalcTracking = function(f, s, t, elapsed)
 		if CDTL3.tracking["rSwingTime"] < 0 then
 			position = 1
 		else
-			CDTL3.tracking["rSwingTime"] = CDTL3.tracking["rSwingTime"] - elapsed
+			CDTL3.tracking["rSwingTime"] = CDTL3.tracking["rSwingTime"] - private.FrameElapsed("rSwing", elapsed)
 			
-			local percent = CDTL3.tracking["rSwingTime"] / rSwingTime
-			
-			position = percent
+			position = private.Fraction(CDTL3.tracking["rSwingTime"], rSwingTime) or 1
 		end
 	end
 	
@@ -896,17 +929,33 @@ private.LaneUpdate = function(f, elapsed)
 	
 		-- PRIMARY TRACKING
 		if s["tracking"]["primaryTracking"] ~= "NONE" then
-			local tValue = private.CalcTracking(f, s, s["tracking"]["primaryTracking"], elapsed)
-			f:SetValue(tValue)
+			local tValue, secretCurrent, secretMax = private.CalcTracking(f, s, s["tracking"]["primaryTracking"], elapsed)
+			if secretCurrent then
+				f:SetMinMaxValues(0, secretMax)
+				f:SetValue(secretCurrent)
+				f.secretRange = true
+			else
+				if f.secretRange then
+					f:SetMinMaxValues(0, 1)
+					f.secretRange = false
+				end
+				f:SetValue(tValue)
+			end
 		else
+			-- tracking switched off: undo a secret health/power range, or the lane stays empty
+			if f.secretRange then
+				f:SetMinMaxValues(0, 1)
+				f.secretRange = false
+			end
 			f:SetValue(1)
 		end
 		
 		-- SECONDARY TRACKING
 		if s["tracking"]["secondaryTracking"] ~= "NONE" then
-			local tValue = private.CalcTracking(f, s, s["tracking"]["secondaryTracking"], elapsed)
+			local tValue, secretCurrent = private.CalcTracking(f, s, s["tracking"]["secondaryTracking"], elapsed)
 			
-			if tValue < 1 and tValue > 0 then
+			-- the marker is positioned by arithmetic, so it can't follow a secret value
+			if not secretCurrent and tValue < 1 and tValue > 0 then
 				local tPosition = (s["width"] - s["tracking"]["stWidth"]) * tValue
 				
 				f.st:ClearAllPoints()
@@ -1048,32 +1097,6 @@ private.SetModeText = function(f, s)
 	end
 end
 
-private.UpdateModeText = function(f, s)
-	for i = 1, 5, 1 do
-		local tSettings = nil
-		local tObject = nil
-	
-		if i == 1 then
-			tSettings = s["modeText"]["text1"]
-			tObject = f.t1
-		elseif i == 2 then
-			tSettings = s["modeText"]["text2"]
-			tObject = f.t2
-		elseif i == 3 then
-			tSettings = s["modeText"]["text3"]
-			tObject = f.t3
-		elseif i == 4 then
-			tSettings = s["modeText"]["text4"]
-			tObject = f.t4
-		elseif i == 5 then
-			tSettings = s["modeText"]["text5"]
-			tObject = f.t5
-		end
-		
-		tObject:SetText(CDTL3:ConvertTextTags(tSettings["text"], f))
-	end
-end 
-
 private.UpdateText = function(f, s)
 	for i = 1, 5, 1 do
 		local tSettings = nil
@@ -1097,16 +1120,10 @@ private.UpdateText = function(f, s)
 		end
 		
 		if tSettings["enabled"] then
-			if tSettings["dtags"] then
-				if f.updateCount % private.dynamicTextPollRate == 0 then
-					tObject:SetText(CDTL3:ConvertTextDynamicTags(tSettings["text"], f))
-				end
-			end
-			
-			if tSettings["ttags"] then
-				if f.updateCount % private.timeTextPollRate == 0 then
-					tObject:SetText(CDTL3:ConvertTextTimeTags(tSettings["text"], f))
-				end
+			-- whenever a tag family is due, convert the whole text in one pass
+			if (tSettings["dtags"] and f.updateCount % private.dynamicTextPollRate == 0)
+				or (tSettings["ttags"] and f.updateCount % private.timeTextPollRate == 0) then
+				tObject:SetText(CDTL3:ConvertAllTextTags(tSettings["text"], f))
 			end
 		end
 	end

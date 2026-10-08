@@ -114,7 +114,7 @@ private.HolderUpdate = function(f, elapsed)
 		end
 		
 		for k, child in ipairs(validChildren) do
-			local yOffset = (k - 1) * child:GetHeight() + (k - 1 * 5) + child:GetHeight()
+			local yOffset = (k - 1) * child:GetHeight() + (k - 1) * 5 + child:GetHeight()
 			child:ClearAllPoints()
 			child:SetPoint("CENTER", 0, -yOffset)
 		end
