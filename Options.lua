@@ -5,11 +5,387 @@
 
 local private = {}
 
+-- Free-text seconds inputs: reject anything that isn't a positive number before the
+-- setter runs (it used to do val * 1000 on raw text, which errors on "", "abc", "1,5")
+private.ValidateSeconds = function(info, val)
+	local n = tonumber(val)
+	if n and n > 0 then
+		return true
+	end
+
+	return "Enter a time in seconds, e.g. 30 or 1.5"
+end
+
+-- The combat log is closed to addons on WoW: Forever (CDTL3.lua TurnOn records whether
+-- COMBAT_LOG_EVENT_UNFILTERED could be registered). Anything fed only by it never fires there.
+private.NoCombatLog = function()
+	return CDTL3.combatLogRegistered == false or not CombatLogGetCurrentEventInfo
+end
+
+-- Border texture, colour, size and padding controls, added to args: texture and colour at
+-- first, first+1 (default base+1), size and padding at base+11, base+12. border() returns
+-- the live { style, color, size, padding } settings table.
+private.AddBorderArgs = function(args, base, border, refresh, first)
+	first = first or base + 1
+
+	args["border"] = {
+		name = "                    Border Texture",
+		desc = "Selects the border texture",
+		order = first,
+		type = "select",
+		dialogControl = 'LSM30_Border',
+		values = AceGUIWidgetLSMlists.border,
+		get = function(info) return border()["style"] end,
+		set = function(info, val)
+				border()["style"] = val
+				refresh()
+			end,
+	}
+	args["borderColor"] = {
+		name = "Color",
+		desc = "Selects the border color",
+		order = first + 1,
+		type = "color",
+		hasAlpha = true,
+		get = function(info)
+				local c = border()["color"]
+				return c["r"], c["g"], c["b"], c["a"]
+			end,
+		set = function(info, red, green, blue, alpha)
+				border()["color"] = { r = red, g = green, b = blue, a = alpha }
+				refresh()
+			end,
+	}
+	args["spacer"..(base + 10)] = {
+		name = "",
+		type = "description",
+		order = base + 10,
+	}
+	args["borderSize"] = {
+		name = "Size",
+		desc = "Sets the size of the border",
+		order = base + 11,
+		type = "range",
+		softMin = 1,
+		softMax = 40,
+		bigStep = 1,
+		get = function(info) return border()["size"] end,
+		set = function(info, val)
+				border()["size"] = val
+				refresh()
+			end,
+	}
+	args["borderPadding"] = {
+		name = "Padding",
+		desc = "Sets the space between the border and the frame",
+		order = base + 12,
+		type = "range",
+		softMin = 0,
+		softMax = 40,
+		bigStep = 1,
+		get = function(info) return border()["padding"] end,
+		set = function(info, val)
+				border()["padding"] = val
+				refresh()
+			end,
+	}
+end
+
+-- Spell school colors (Colors tab). Schools are learned from the combat log, so these and
+-- the bar frames' "Spell School Color" option are hidden where the log is closed.
+private.SCHOOLS = { "Physical", "Holy", "Fire", "Nature", "Frost", "Shadow", "Arcane", "Other" }
+
+private.AddSchoolColorArgs = function(args)
+	args["spacer300"] = {
+		name = "\n\nSpell School Colors\n|cffaaaaaaUsed by bar frames with Spell School Color ticked. Multi-school and not-yet-seen spells use Other.|r",
+		type = "description",
+		fontSize = "large",
+		order = 300,
+		hidden = private.NoCombatLog,
+	}
+	for n, school in ipairs(private.SCHOOLS) do
+		args["school"..school] = {
+			name = school,
+			desc = "Set the "..school.." school color",
+			order = 300 + n,
+			type = "color",
+			hasAlpha = true,
+			hidden = private.NoCombatLog,
+			get = function(info)
+					local c = CDTL3.db.profile.global["schoolColors"][school]
+					return c["r"], c["g"], c["b"], c["a"]
+				end,
+			set = function(info, red, green, blue, alpha)
+					CDTL3.db.profile.global["schoolColors"][school] = { r = red, g = green, b = blue, a = alpha }
+					CDTL3:RefreshAllBars()
+				end,
+		}
+	end
+end
+
+-- QUICK STYLE (main options tab): one-click looks for every lane, bar frame and ready frame
+private.selectedPreset = "minimal"
+
+private.AddStyleArgs = function(args)
+	args["style"] = {
+		name = "Quick Style",
+		type = "group",
+		order = 150,
+		args = {
+			intro = {
+				name = "\nPick a style and apply it to every lane, bar frame and ready frame at once. Only looks change (textures, colours, borders, fonts); sizes, positions and what is tracked stay as they are. Fine-tune anything afterwards in the Lanes, Bar Frames and Ready tabs.\n",
+				type = "description",
+				fontSize = "medium",
+				order = 100,
+			},
+			preset = {
+				name = "Style",
+				desc = function(info)
+						for _, preset in ipairs(CDTL3.presets) do
+							if preset.key == private.selectedPreset then
+								return preset.desc
+							end
+						end
+						return ""
+					end,
+				order = 101,
+				type = "select",
+				values = function() return CDTL3:GetPresetList() end,
+				get = function(info) return private.selectedPreset end,
+				set = function(info, val) private.selectedPreset = val end,
+			},
+			presetDesc = {
+				name = function(info)
+						for _, preset in ipairs(CDTL3.presets) do
+							if preset.key == private.selectedPreset then
+								return "|cffaaaaaa"..preset.desc.."|r"
+							end
+						end
+						return ""
+					end,
+				type = "description",
+				order = 102,
+			},
+			apply = {
+				name = "Apply Style",
+				desc = "Apply the selected style to every lane, bar frame and ready frame",
+				order = 103,
+				type = "execute",
+				confirm = true,
+				confirmText = "Apply this style to every lane, bar frame and ready frame? Your current textures, colours, borders and fonts will be replaced (export your profile first if you want to keep them).",
+				func = function(info)
+						CDTL3:ApplyPreset(private.selectedPreset)
+					end,
+			},
+		},
+	}
+end
+
+-- "Copy settings from" (each lane / bar frame / ready frame's General tab)
+private.copySource = {}
+
+private.AddCopyArgs = function(args, group, i, label)
+	local id = group..i
+
+	args["copyHeader"] = {
+		name = "Copy Settings",
+		type = "header",
+		order = 900,
+	}
+	args["copyFrom"] = {
+		name = "Copy From",
+		desc = "Copy every setting from another "..label:lower().." to this one, except its name, position and whether it's enabled",
+		order = 901,
+		type = "select",
+		values = function()
+				local list = {}
+				for n = 1, 3 do
+					if n ~= i then
+						list[n] = label.." "..n
+					end
+				end
+				return list
+			end,
+		get = function(info) return private.copySource[id] end,
+		set = function(info, val) private.copySource[id] = val end,
+	}
+	args["copyApply"] = {
+		name = "Copy",
+		order = 902,
+		type = "execute",
+		confirm = true,
+		confirmText = "Replace this "..label:lower().."'s settings with a copy?",
+		disabled = function(info) return not private.copySource[id] end,
+		func = function(info)
+				CDTL3:CopyFrameSettings(group, private.copySource[id], i)
+				private.copySource[id] = nil
+			end,
+	}
+end
+
+-- The Filters entry being edited: the saved entry, or the in-progress custom when adding one
+private.FilterEntry = function(t)
+	if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
+		return CDTL3.custom
+	end
+
+	return CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, t == "items")
+end
+
+-- Per-entry bar colour (Filters): wins over school, class and the bar frame's own colour
+private.AddEntryColorArgs = function(args, t)
+	local function apply(key, val)
+		local s = private.FilterEntry(t)
+		if not s then
+			return
+		end
+
+		s[key] = val
+		if s == CDTL3.custom then
+			return
+		end
+
+		-- live icons/bars of this entry (items are listed by item name)
+		local name = CDTL3.currentFilter[t]
+		for _, cd in pairs(CDTL3.cooldowns) do
+			if cd.data["type"] == t and (cd.data["name"] == name or cd.data["itemName"] == name) then
+				cd.data[key] = val
+			end
+		end
+		CDTL3:RefreshAllBars()
+	end
+
+	args["spacer700"] = {
+		name = "\n",
+		type = "description",
+		order = 700,
+		hidden = function(info)
+				return CDTL3.currentFilterHidden[t]
+			end,
+	}
+	args["customColor"] = {
+		name = "Own Bar Color",
+		desc = "Give this entry's bar its own color instead of the bar frame's (class / school / frame color)",
+		order = 701,
+		type = "toggle",
+		hidden = function(info)
+				return CDTL3.currentFilterHidden[t]
+			end,
+		get = function(info)
+				local s = private.FilterEntry(t)
+				return s and s["customColor"] or false
+			end,
+		set = function(info, val)
+				apply("customColor", val)
+			end,
+	}
+	args["color"] = {
+		name = "Bar Color",
+		desc = "This entry's bar color",
+		order = 702,
+		type = "color",
+		hasAlpha = true,
+		hidden = function(info)
+				if CDTL3.currentFilterHidden[t] then
+					return true
+				end
+
+				local s = private.FilterEntry(t)
+				return not (s and s["customColor"])
+			end,
+		get = function(info)
+				local s = private.FilterEntry(t)
+				local c = s and s["color"] or { r = 1, g = 1, b = 1, a = 1 }
+				return c["r"], c["g"], c["b"], c["a"]
+			end,
+		set = function(info, red, green, blue, alpha)
+				apply("color", { r = red, g = green, b = blue, a = alpha })
+			end,
+	}
+end
+
+-- Lane tracking choices; melee swings come from SWING_DAMAGE/SWING_MISSED in the combat log
+private.TrackingValues = function(info)
+	local swingNote = ""
+	if private.NoCombatLog() then
+		swingNote = " (needs combat log)"
+	end
+
+	return {
+		["NONE"] = "None",
+		["GCD"] = "GCD",
+		["HEALTH"] = "Health",
+		["CLASS_POWER"] = "Class Power",
+		["COMBO_POINTS"] = "Combo Points",
+		["MANA_TICK"] = "Mana Tick",
+		["ENERGY_TICK"] = "Energy Tick",
+		["MH_SWING"] = "MH Swing"..swingNote,
+		["OH_SWING"] = "OH Swing"..swingNote,
+		["RANGE_SWING"] = "Ranged Auto-attack",
+	}
+end
+
+-- Lanes and bars only ever draw the player's own class colour
+function CDTL3:RefreshClassColor(class)
+	if class == CDTL3.player["class"] then
+		for _, f in pairs(CDTL3.lanes) do
+			CDTL3:RefreshLane(f.number)
+		end
+		CDTL3:RefreshAllBars()
+	end
+end
+
 function CDTL3:GetChangeLog()
 	local changeLog = ""
 	changeLog = changeLog.."\n"
-	changeLog = changeLog.."CDTL3 is the Midnight (12.x) continuation of Cooldown Timeline,\n"
+	changeLog = changeLog.."CDTL3 continues Cooldown Timeline for Retail (Midnight), Classic Era,\n"
+	changeLog = changeLog.."TBC Anniversary, MoP Classic and World of Warcraft: Forever,\n"
 	changeLog = changeLog.."based on the original by Vreenak and the v2 rewrite by cliffclive.\n\n"
+	changeLog = changeLog.."Changelog 3.0.8:\n\n"
+	changeLog = changeLog.."  New:\n"
+	changeLog = changeLog.."  - Edit Mode: lanes, bar frames and ready frames can be moved and\n"
+	changeLog = changeLog.."    resized in Blizzard's Edit Mode (Retail, Forever, TBC Anniversary,\n"
+	changeLog = changeLog.."    MoP Classic), with positions saved per Edit Mode layout\n"
+	changeLog = changeLog.."  - Quick Style tab: one-click looks for everything (CDTL3 Classic,\n"
+	changeLog = changeLog.."    Minimal, Blizzard Modern, Class Colours)\n"
+	changeLog = changeLog.."  - Copy all settings from one lane / bar frame / ready frame to another\n"
+	changeLog = changeLog.."  - Per-spell bar colors (Filters -> any entry -> Own Bar Color)\n"
+	changeLog = changeLog.."  - Spell School Color now works: schools are learned as you cast, with\n"
+	changeLog = changeLog.."    a color per school under Colors (needs the combat log)\n"
+	changeLog = changeLog.."  - Blizzard's modern bar textures (unit-frame and cast bars) on Retail\n"
+	changeLog = changeLog.."    and Forever\n"
+	changeLog = changeLog.."  - Per-spec profiles (Profiles tab -> Enable spec profiles)\n\n"
+	changeLog = changeLog.."  Fixes and clean-up (a full audit of the code):\n"
+	changeLog = changeLog.."  - Import no longer silently fails to apply, and rejects bad strings\n"
+	changeLog = changeLog.."  - Filters: Set All, Clear Individual Settings, Save Custom and item\n"
+	changeLog = changeLog.."    entries fixed; time inputs are validated\n"
+	changeLog = changeLog.."  - Power text tags work for every class; highlight-based tags fixed\n"
+	changeLog = changeLog.."  - Class colour pickers update live; lane 2/3 time format fixed\n"
+	changeLog = changeLog.."  - New spells, items and buffs all follow Filters -> Defaults the same\n"
+	changeLog = changeLog.."    way (inclusive Ignore Threshold)\n"
+	changeLog = changeLog.."  - Less work in raids: only your own and your pet's events are handled\n"
+	changeLog = changeLog.."  - Options that need the combat log say so where it's closed\n\n"
+	changeLog = changeLog.."  Forever and compatibility:\n"
+	changeLog = changeLog.."  - World of Warcraft: Forever support — the addon now loads and tracks\n"
+	changeLog = changeLog.."    cooldowns on Forever using the modern spell/aura/spellbook API\n"
+	changeLog = changeLog.."  - Combat log registration can no longer abort cooldown detection on\n"
+	changeLog = changeLog.."    clients where the combat log is closed to addons\n"
+	changeLog = changeLog.."  - Updated Ace3 libraries (r1403): fixes options-window errors on\n"
+	changeLog = changeLog.."    Forever and WoW 12.1.5 (checkboxes, tooltips)\n"
+	changeLog = changeLog.."  - Item/spellbook lookups no longer use globals removed in 12.1.5\n"
+	changeLog = changeLog.."  - Buffs/debuffs on you (and custom aura triggers) are detected from\n"
+	changeLog = changeLog.."    aura updates, so they work on Forever without the combat log —\n"
+	changeLog = changeLog.."    including recasts of a buff you already have, and buffs already on\n"
+	changeLog = changeLog.."    you at login or after /reload\n"
+	changeLog = changeLog.."  - Fixed detected buffs/debuffs missing from Filters for your character\n"
+	changeLog = changeLog.."  - Fixed the debug frame's Options button erroring\n"
+	changeLog = changeLog.."  - New /cdtl3 auras: shows what CDTL3 can see of your buffs/debuffs\n"
+	changeLog = changeLog.."  - Fixed an options error when no entry is selected in a Filters list\n"
+	changeLog = changeLog.."  - Lane health/power tracking, swing timers, item cooldowns, text tags\n"
+	changeLog = changeLog.."    and aura detection no longer error on secret values (Forever, 12.x)\n"
+	changeLog = changeLog.."  - Fixed buffs/debuffs recording spell ID 0 on Classic clients\n"
+	changeLog = changeLog.."  - TOCs updated: MoP Classic 5.5.4, TBC Anniversary 2.5.6,\n"
+	changeLog = changeLog.."    Classic Era 1.15.9, Forever 1.60.1\n\n"
 	changeLog = changeLog.."Changelog 3.0.7:\n\n"
 	changeLog = changeLog.."  - ALL settings now live in one movable window (/cdtl3) — every panel\n"
 	changeLog = changeLog.."    (Lanes, Ready, Bar Frames, Filters, Profiles) is a tab there. The lane\n"
@@ -39,17 +415,6 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."  - Midnight 12.0.7 compatibility\n"
 		
 	return changeLog
-end
-
-function CDTL3:GetChangeLogMessage()
-	local message = ""
-	message = message.."\n"
-	message = message.."CDTL3 is an almost complete re-write of the mod\n\n"
-	message = message.."Version 1 settings are saved independent of version 2, so you can manually install and use old versions if you wish\n"
-	message = message.."This also means version 1 settings will not roll over into version 2\n\n"
-	message = message.."\n"
-	
-	return message
 end
 
 function CDTL3:GetSpecialMessage()
@@ -201,7 +566,7 @@ function CDTL3:GetMainOptions()
 					},
 					detectSharedCD = {
 						name = "Detect Shared Spell Cooldowns",
-						desc = "If selected the mod will attempt to dectect other spells that share a cooldown as the initially cast spell and generate icons/bars for them",
+						desc = "If selected the mod will attempt to detect other spells that share a cooldown as the initially cast spell and generate icons/bars for them",
 						order = 401,
 						type = "toggle",
 						width = "full",
@@ -239,8 +604,8 @@ function CDTL3:GetMainOptions()
 						order = 600,
 					},
 					notUsableTint = {
-						name = "Tint Unsuable Icons",
-						desc = "If selected unsuable icons (eg. not enough mana) will be desaturated/tinted",
+						name = "Tint Unusable Icons",
+						desc = "If selected unusable icons (eg. not enough mana) will be desaturated/tinted",
 						order = 601,
 						type = "toggle",
 						width = "full",
@@ -358,6 +723,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["DEATHKNIGHT"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("DEATHKNIGHT")
 							end,
 					},
 					demonhunterColor = {
@@ -384,6 +750,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["DEMONHUNTER"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("DEMONHUNTER")
 							end,
 					},
 					druidColor = {
@@ -403,6 +770,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["DRUID"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("DRUID")
 							end,
 					},
 					evokerColor = {
@@ -429,6 +797,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["EVOKER"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("EVOKER")
 							end,
 					},
 					hunterColor = {
@@ -448,6 +817,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["HUNTER"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("HUNTER")
 							end,
 					},
 					mageColor = {
@@ -467,6 +837,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["MAGE"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("MAGE")
 							end,
 					},
 					monkColor = {
@@ -493,6 +864,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["MONK"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("MONK")
 							end,
 					},
 					paladinColor = {
@@ -512,6 +884,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["PALADIN"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("PALADIN")
 							end,
 					},
 					priestColor = {
@@ -531,6 +904,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["PRIEST"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("PRIEST")
 							end,
 					},
 					rogueColor = {
@@ -550,6 +924,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["ROGUE"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("ROGUE")
 							end,
 					},
 					shamanColor = {
@@ -569,6 +944,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["SHAMAN"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("SHAMAN")
 							end,
 					},
 					warlockColor = {
@@ -588,6 +964,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["WARLOCK"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("WARLOCK")
 							end,
 					},
 					warriorColor = {
@@ -607,6 +984,7 @@ function CDTL3:GetMainOptions()
 							end,
 						set = function(info, red, green, blue, alpha)
 								CDTL3.db.profile.global["classColors"]["WARRIOR"] = { r = red, g = green, b = blue, a = alpha }
+								CDTL3:RefreshClassColor("WARRIOR")
 							end,
 					},
 				},
@@ -736,13 +1114,13 @@ function CDTL3:GetMainOptions()
 						type = "description",
 						order = 100,
 					},
-					cdtl2discord = {
-						name = "Discord",
+					support = {
+						name = "Issues & suggestions (GitHub; or comment on CurseForge)",
 						type = "input",
 						order = 200,
 						width = "full",
 						get = function(info)
-							return CDTL3.discordlink
+							return CDTL3.supportlink
 							end,
 						set = function(info, val)
 								return nil
@@ -751,7 +1129,6 @@ function CDTL3:GetMainOptions()
 					spacer300 = {
 						name = function(info)
 							local info = ""
-							--info = info..CDTL3:GetChangeLogMessage()
 							info = info..CDTL3:GetChangeLog()
 							return info
 						end,
@@ -762,7 +1139,10 @@ function CDTL3:GetMainOptions()
 			},
 		},
 	}
-	
+
+	private.AddSchoolColorArgs(options.args.colors.args)
+	private.AddStyleArgs(options.args)
+
 	return options
 end
 
@@ -792,7 +1172,7 @@ function CDTL3:GetFilterOptions()
 									choices["SPELLS"] = "Spells"
 									choices["ITEMS"] = "Items"
 									choices["BUFFS"] = "Buffs"
-									choices["DEBUFFS"] = "Debufs"
+									choices["DEBUFFS"] = "Debuffs"
 									choices["OFFENSIVES"] = "Offensives"
 									choices["PETSPELLS"] = "Pet Spells"
 									choices["CUSTOMS"] = "Customs"
@@ -848,7 +1228,7 @@ function CDTL3:GetFilterOptions()
 					clearQuestItems = {
 						name = "Clear Quest Items",
 						desc = function(info)
-								return "This will clear all "..string.lower(CDTL3.currentFilter["default"]).." cooldown settings"
+								return "This will clear the saved settings of quest items"
 							end,
 						confirm = true,
 						order = 104,
@@ -864,7 +1244,7 @@ function CDTL3:GetFilterOptions()
 								local cleanTable = {}
 						
 								for k, v in pairs(CDTL3.db.profile.tables["items"]) do
-									local _, _, _, _, _, classID, subclassID = GetItemInfoInstant(v["itemID"])
+									local _, _, _, _, _, classID, subclassID = CDTL3.Compat.GetItemInfoInstant(v["itemID"])
 									
 									if classID == 12 then
 									else
@@ -1021,7 +1401,7 @@ function CDTL3:GetFilterOptions()
 								
 								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
-										if spell.data["baseCD"] / 1000 > val then
+										if spell.data["baseCD"] > val then	-- baseCD is already in seconds
 											CDTL3:SendToHolding(spell)
 											CDTL3:SendToBarHolding(spell)
 										else
@@ -1083,11 +1463,19 @@ function CDTL3:GetFilterOptions()
 							end,
 						width = "half",
 						func = function(info)
+								-- Move live cooldowns of this type too. (This used to compare seconds
+								-- against a frame number and disable every cooldown over 3s.) Only
+								-- icons still counting down are re-parented, keeping their remaining
+								-- time; finished ones just get the new lane for next time.
 								local default = CDTL3.currentFilter["default"]
+								local target = CDTL3.db.profile.global[string.lower(default)]["defaultLane"]
 								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
-										if spell.data["baseCD"] > CDTL3.db.profile.global[string.lower(default)]["defaultLane"] then
-											spell.data["enabled"] = false
+										spell.data["lane"] = target
+										local remaining = spell.data["currentCD"]
+										if remaining and remaining > 0 then
+											CDTL3:SendToLane(spell)
+											spell.data["currentCD"] = remaining
 										end
 									end
 								end
@@ -1141,11 +1529,19 @@ function CDTL3:GetFilterOptions()
 							end,
 						width = "half",
 						func = function(info)
+								-- Move live cooldowns of this type too. (This used to compare seconds
+								-- against a frame number and disable every cooldown over 3s.) Only
+								-- icons still counting down are re-parented, keeping their remaining
+								-- time; finished ones just get the new barFrame for next time.
 								local default = CDTL3.currentFilter["default"]
+								local target = CDTL3.db.profile.global[string.lower(default)]["defaultBar"]
 								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
-										if spell.data["baseCD"] > CDTL3.db.profile.global[string.lower(default)]["defaultBar"] then
-											spell.data["enabled"] = false
+										spell.data["barFrame"] = target
+										local remaining = spell.data["currentCD"]
+										if remaining and remaining > 0 then
+											CDTL3:SendToBarFrame(spell)
+											spell.data["currentCD"] = remaining
 										end
 									end
 								end
@@ -1201,12 +1597,14 @@ function CDTL3:GetFilterOptions()
 							end,
 						width = "half",
 						func = function(info)
+								-- Update live cooldowns of this type too. (This used to compare seconds
+								-- against a frame number and disable every cooldown over 3s.) Icons
+								-- only reach a Ready frame when they finish, so just record it.
 								local default = CDTL3.currentFilter["default"]
+								local target = CDTL3.db.profile.global[string.lower(default)]["defaultReady"]
 								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
-										if spell.data["baseCD"] > CDTL3.db.profile.global[string.lower(default)]["defaultReady"] then
-											spell.data["enabled"] = false
-										end
+										spell.data["readyFrame"] = target
 									end
 								end
 								
@@ -1239,7 +1637,6 @@ function CDTL3:GetLaneOptions()
 		type = "group",
 		childGroups  = "tab",
 		args = {
-			--global = private.GetGlobalSet("lane"),
 			lane1 = private.GetLaneSet(1),
 			lane2 = private.GetLaneSet(2),
 			lane3 = private.GetLaneSet(3),
@@ -1277,118 +1674,6 @@ function CDTL3:GetBarFrameOptions()
 	}
 	
 	return options	
-end
-
-private.GetGlobalSet = function(t)
-	local options = {
-		name = "Global",
-		type = "group",
-		order = 100,
-		args = {
-			spacer100 = {
-				name = function(info)
-							return "Global "..t.." options\n\n"
-						end,
-				type = "description",
-				fontSize = "large",
-				order = 100,
-			},
-			spacer101 = {
-				name = "*WARNING*Making changes here will overide existing settings",
-				type = "description",
-				order = 101,
-			},
-			fgTexture = {
-				name = "Foreground Texture",
-				desc = "Selects the texture",
-				order = 501,
-				type = "select",
-				width = 0.7,
-				dialogControl = 'LSM30_Statusbar',
-				values = AceGUIWidgetLSMlists.statusbar,
-				get = function(info, index)
-						return "None"
-					end,
-				set = function(info, val)
-						CDTL3.db.profile.lanes["lane1"]["fgTexture"] = val
-						CDTL3.db.profile.lanes["lane2"]["fgTexture"] = val
-						CDTL3.db.profile.lanes["lane3"]["fgTexture"] = val
-						CDTL3:RefreshLane(1)
-						CDTL3:RefreshLane(2)
-						CDTL3:RefreshLane(3)
-					end,
-			},
-			fgTextureColor = {
-				name = "Color",
-				desc = "Sets the texture color",
-				order = 502,
-				type = "color",
-				width = 0.4,
-				hasAlpha = true,
-				get = function(info)
-						return CDTL3.db.profile.lanes["global"]["fgTextureColor"]
-					end,
-				set = function(info, red, green, blue, alpha)
-						--lane["fgTextureColor"] = { r = red, g = green, b = blue, a = alpha }
-						local color = { r = red, g = green, b = blue, a = alpha }
-						
-						CDTL3.db.profile.lanes["global"]["fgTextureColor"] = color
-						CDTL3.db.profile.lanes["lane1"]["fgTextureColor"] = color
-						CDTL3.db.profile.lanes["lane2"]["fgTextureColor"] = color
-						CDTL3.db.profile.lanes["lane3"]["fgTextureColor"] = color
-						CDTL3:RefreshLane(1)
-						CDTL3:RefreshLane(2)
-						CDTL3:RefreshLane(3)
-					end,
-			},
-			fgClassColor = {
-				name = "Class Color",
-				desc = "Set the texture color to your class color",
-				order = 503,
-				type = "toggle",
-				width = 0.5,
-				get = function(info)
-						return false
-					end,
-				set = function(info, val)
-						--lane["fgClassColor"] = val
-						CDTL3.db.profile.lanes["lane1"]["fgClassColor"] = val
-						CDTL3.db.profile.lanes["lane2"]["fgClassColor"] = val
-						CDTL3.db.profile.lanes["lane3"]["fgClassColor"] = val
-						CDTL3:RefreshLane(1)
-						CDTL3:RefreshLane(2)
-						CDTL3:RefreshLane(3)
-					end,
-			},
-			spacer600 = {
-				name = "",
-				type = "description",
-				order = 600,
-			},
-			bgTexture = {
-				name = "Background Texture",
-				desc = "Sets the background texture",
-				order = 601,
-				type = "select",
-				width = 0.7,
-				dialogControl = 'LSM30_Statusbar',
-				values = AceGUIWidgetLSMlists.statusbar,
-				get = function(info, index)
-						return "None"
-					end,
-				set = function(info, val)
-						CDTL3.db.profile.lanes["lane1"]["bgTexture"] = val
-						CDTL3.db.profile.lanes["lane2"]["bgTexture"] = val
-						CDTL3.db.profile.lanes["lane3"]["bgTexture"] = val
-						CDTL3:RefreshLane(1)
-						CDTL3:RefreshLane(2)
-						CDTL3:RefreshLane(3)
-					end,
-			},
-		},
-	}
-
-	return options
 end
 
 private.GetBarFrameSet = function(i)
@@ -1572,7 +1857,7 @@ private.GetBarFrameSet = function(i)
 								return true
 							end,
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return frame["transition"]["texture"]
 							end,
@@ -1792,7 +2077,7 @@ private.GetBarFrameSet = function(i)
 						order = 301,
 						type = "select",
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return frame["bgTexture"]
 							end,
@@ -1823,71 +2108,6 @@ private.GetBarFrameSet = function(i)
 						name = "\n\n",
 						type = "description",
 						order = 400,
-					},
-					border = {
-						name = "                    Border Texture",
-						desc = "Selects the border texture",
-						order = 401,
-						type = "select",
-						dialogControl = 'LSM30_Border',
-						values = AceGUIWidgetLSMlists.border,
-						get = function(info) return frame["border"]["style"] end,
-						set = function(info, val)
-								frame["border"]["style"] = val
-								CDTL3:RefreshBarFrame(i)
-							end,
-					},
-					borderColor = {
-						name = "Color",
-						desc = "Selects the border color",
-						order = 402,
-						type = "color",
-						hasAlpha = true,
-						get = function(info)
-								local r = frame["border"]["color"]["r"]
-								local g = frame["border"]["color"]["g"]
-								local b = frame["border"]["color"]["b"]
-								local a = frame["border"]["color"]["a"]
-								
-								return r, g, b, a
-							end,
-						set = function(info, red, green, blue, alpha)
-								frame["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL3:RefreshBarFrame(i)
-							end,
-					},
-					spacer410 = {
-						name = "",
-						type = "description",
-						order = 410,
-					},
-					borderSize = {
-						name = "Size",
-						desc = "Sets the size of the border",
-						order = 411,
-						type = "range",
-						softMin = 1,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return frame["border"]["size"] end,
-						set = function(info, val)
-								frame["border"]["size"] = val
-								CDTL3:RefreshBarFrame(i)
-							end,
-					},
-					borderPadding = {
-						name = "Padding",
-						desc = "Sets the size of the border",
-						order = 412,
-						type = "range",
-						softMin = 0,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return frame["border"]["padding"] end,
-						set = function(info, val)
-								frame["border"]["padding"] = val
-								CDTL3:RefreshBarFrame(i)
-							end,
 					},
 				}
 			},
@@ -1942,7 +2162,7 @@ private.GetBarFrameSet = function(i)
 						type = "select",
 						width = 0.7,
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return frame["bar"]["fgTexture"]
 							end,
@@ -1968,7 +2188,8 @@ private.GetBarFrameSet = function(i)
 						get = function(info)
 								local c = frame["bar"]["fgTextureColor"] or { r=0.77647, g=0.11765, b=0.28235, a=1 }
 								if frame["bar"]["fgClassColor"] then
-									c = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
+									-- before the character is known (first seconds after login) keep the stored colour
+									c = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]] or c
 								end
 
 								local r = c["r"]
@@ -2008,7 +2229,7 @@ private.GetBarFrameSet = function(i)
 						type = "select",
 						width = 0.7,
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return frame["bar"]["bgTexture"]
 							end,
@@ -2034,7 +2255,8 @@ private.GetBarFrameSet = function(i)
 						get = function(info)
 								local c = frame["bar"]["bgTextureColor"]
 								if frame["bar"]["bgClassColor"] then
-									c = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
+									-- before the character is known (first seconds after login) keep the stored colour
+									c = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]] or c
 								end
 						
 								local r = c["r"]
@@ -2064,10 +2286,11 @@ private.GetBarFrameSet = function(i)
 					},
 					fgSchoolColor = {
 						name = "Spell School Color",
-						desc = "Color each bar by its spell's school (fire, frost, etc)",
+						desc = "Color each bar by its spell's school (fire, frost, etc). Schools are learned from the combat log as you cast; set the colors under Colors.",
 						order = 108,
 						type = "toggle",
 						width = 0.7,
+						hidden = private.NoCombatLog,
 						get = function(info)
 								return frame["bar"]["fgSchoolColor"]
 							end,
@@ -2277,76 +2500,16 @@ private.GetBarFrameSet = function(i)
 						type = "description",
 						order = 400,
 					},
-					border = {
-						name = "                    Border Texture",
-						desc = "Selects the border texture",
-						order = 401,
-						type = "select",
-						dialogControl = 'LSM30_Border',
-						values = AceGUIWidgetLSMlists.border,
-						get = function(info) return frame["bar"]["border"]["style"] end,
-						set = function(info, val)
-								frame["bar"]["border"]["style"] = val
-								CDTL3:RefreshAllBars()
-							end,
-					},
-					borderColor = {
-						name = "Color",
-						desc = "Selects the border color",
-						order = 402,
-						type = "color",
-						hasAlpha = true,
-						get = function(info)
-								local r = frame["bar"]["border"]["color"]["r"]
-								local g = frame["bar"]["border"]["color"]["g"]
-								local b = frame["bar"]["border"]["color"]["b"]
-								local a = frame["bar"]["border"]["color"]["a"]
-								
-								return r, g, b, a
-							end,
-						set = function(info, red, green, blue, alpha)
-								frame["bar"]["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL3:RefreshAllBars()
-							end,
-					},
-					spacer410 = {
-						name = "",
-						type = "description",
-						order = 410,
-					},
-					borderSize = {
-						name = "Size",
-						desc = "Sets the size of the border",
-						order = 411,
-						type = "range",
-						softMin = 1,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return frame["bar"]["border"]["size"] end,
-						set = function(info, val)
-								frame["bar"]["border"]["size"] = val
-								CDTL3:RefreshAllBars()
-							end,
-					},
-					borderPadding = {
-						name = "Padding",
-						desc = "Sets the size of the border",
-						order = 411,
-						type = "range",
-						softMin = 0,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return frame["bar"]["border"]["padding"] end,
-						set = function(info, val)
-								frame["bar"]["border"]["padding"] = val
-								CDTL3:RefreshAllBars()
-							end,
-					},
 				}
 			},
 		}
 	}
 	
+	private.AddBorderArgs(options.args.appearance.args, 400, function() return frame["border"] end, function() CDTL3:RefreshBarFrame(i) end)
+	private.AddBorderArgs(options.args.bars.args, 400, function() return frame["bar"]["border"] end, function() CDTL3:RefreshAllBars() end)
+
+	private.AddCopyArgs(options.args.general.args, "barFrames", i, "Bar Frame")
+
 	return options
 end
 
@@ -2372,7 +2535,13 @@ private.GetFilterSet = function(t, o)
 			end,
 		args = {
 			spacer100 = {
-				name = "\n\nSelect something to edit its settings\n",
+				name = function(info)
+						if t == "offensives" and private.NoCombatLog() then
+							return "\n\n|cffffd100Offensive debuffs are detected from the combat log, which this client doesn't give to addons, so nothing new will appear here.|r\n\nSelect something to edit its settings\n"
+						end
+
+						return "\n\nSelect something to edit its settings\n"
+					end,
 				type = "description",
 				order = 100,
 			},
@@ -2532,20 +2701,12 @@ private.GetFilterSet = function(t, o)
 								CDTL3.custom["type"] = "customs"
 
 								CDTL3.custom["bCD"] = 60000
-								CDTL3.custom["usedBy"] = { CDTL3.player["guid"] }
 								CDTL3.custom["setCustomCD"] = false
-								
-								local link, _ = CDTL3:GetSpellLink(val)
-								CDTL3.custom["link"] = link
+								CDTL3.custom["link"] = CDTL3:GetSpellLink(val)
 
-								local cDefaults = CDTL3.db.profile.global["customs"]
-								CDTL3.custom["enabled"] = cDefaults["showByDefault"]
-								CDTL3.custom["highlight"] = false
-								CDTL3.custom["pinned"] = false
+								-- a custom the user is adding by hand is never ignored
+								CDTL3:ApplyEntryDefaults(CDTL3.custom, "customs")
 								CDTL3.custom["ignored"] = false
-								CDTL3.custom["lane"] = cDefaults["defaultLane"]
-								CDTL3.custom["barFrame"] = cDefaults["defaultBar"]
-								CDTL3.custom["readyFrame"] = cDefaults["defaultReady"]
 
 								CDTL3.customIsValid = true
 							else
@@ -2719,7 +2880,7 @@ private.GetFilterSet = function(t, o)
 									return 134400
 								end
 							else
-								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
+								local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, t == "items")
 							
 								if s then
 									return s["icon"]
@@ -2863,7 +3024,9 @@ private.GetFilterSet = function(t, o)
 
 						return "999"
 					end,
+				validate = private.ValidateSeconds,
 				set = function(info, val)
+						val = tonumber(val)
 						if t == "customs" then
 							if CDTL3.currentFilter[t] == "<< Add New >>" then
 								CDTL3.custom["bCD"] = val * 1000
@@ -2905,6 +3068,9 @@ private.GetFilterSet = function(t, o)
 										s["setCustomCD"] = false
 										return true
 									end
+								else
+									-- nothing real selected (e.g. "<< Select >>")
+									return true
 								end
 							end
 						end
@@ -2919,6 +3085,9 @@ private.GetFilterSet = function(t, o)
 							end
 							
 							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
+							if not s then
+								return ""
+							end
 
 							if s["customCDTime"] ~= nil then
 								return tostring(s["customCDTime"] / 1000)
@@ -2929,7 +3098,9 @@ private.GetFilterSet = function(t, o)
 
 						return ""
 					end,
-				set = function(info, val)				
+				validate = private.ValidateSeconds,
+				set = function(info, val)
+						val = tonumber(val)
 						CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "customCDTime", val * 1000)
 
 						local e = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
@@ -2945,11 +3116,12 @@ private.GetFilterSet = function(t, o)
 				desc = "Allows you to set a custom time for the cooldown.  This can be used for if a talent changes a cooldown time and the mod cannot detect it.",
 				order = 305,
 				hidden = function(info)
-						if t == "customs" then
+						if t == "customs" or CDTL3.currentFilterHidden[t] then
 							return true
 						end
 
-						return CDTL3.currentFilterHidden[t]
+						-- nothing real selected (e.g. "<< Select >>")
+						return not CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, t == "items")
 					end,
 				type = "toggle",
 				get = function(info, index)
@@ -2960,7 +3132,7 @@ private.GetFilterSet = function(t, o)
 							end
 							local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
 
-							return s["setCustomCD"]
+							return s and s["setCustomCD"] or false
 						end
 
 						return false
@@ -3045,12 +3217,11 @@ private.GetFilterSet = function(t, o)
 								s = CDTL3.currentFilter[t]
 							end
 							
+							-- items are selected by item name in this tab
 							local index = nil
 							for k, spell in pairs(CDTL3.db.profile.tables[t]) do
-								--[[if spell["itemName"] == s then
-									index = k
-								end]]--
-								if spell["name"] == s then
+								local n = (t == "items") and spell["itemName"] or spell["name"]
+								if n == s then
 									index = k
 								end
 							end
@@ -3058,9 +3229,16 @@ private.GetFilterSet = function(t, o)
 							if index then
 								table.remove(CDTL3.db.profile.tables[t], index)
 
-								CDTL3.currentFilter[t] = "<< Add New >>"
-								CDTL3.customIsValid = false
-								CDTL3.currentFilterHidden[t] = false
+								-- back to this tab's own placeholder: the custom editor for
+								-- Custom, otherwise "nothing selected" with the details hidden
+								if t == "customs" then
+									CDTL3.currentFilter[t] = "<< Add New >>"
+									CDTL3.customIsValid = false
+									CDTL3.currentFilterHidden[t] = false
+								else
+									CDTL3.currentFilter[t] = "<< Select >>"
+									CDTL3.currentFilterHidden[t] = true
+								end
 							end
 						end
 					end,
@@ -3092,7 +3270,9 @@ private.GetFilterSet = function(t, o)
 						return false
 					end,
 				func = function(info)
-						local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["customs"], "customs", false)
+						-- duplicate check by the new custom's own name + trigger (the selection
+						-- is always "<< Add New >>" here, so checking it never found anything)
+						local s = CDTL3:GetCustomSpellSettings(CDTL3.custom["name"], CDTL3.custom["triggerType"])
 
 						if not s then
 							local name = CDTL3.custom["name"]			
@@ -3231,7 +3411,7 @@ private.GetFilterSet = function(t, o)
 			},
 			pinned = {
 				name = "Pinned",
-				desc = "Tick to keep an icon in the ready frame until the cooldownis used again",
+				desc = "Tick to keep an icon in the ready frame until the cooldown is used again",
 				order = 503,
 				type = "toggle",
 				width = "half",
@@ -3516,11 +3696,12 @@ private.GetFilterSet = function(t, o)
 						else
 							CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "readyFrame", tonumber(val))
 						
+							-- Just record it: the cooldown goes to its Ready frame when it finishes.
+							-- (SendToReady here pulled a still-running icon off its lane and
+							-- played the ready sound immediately.)
 							local s = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
 							if s then
 								s.data["readyFrame"] = val
-								
-								CDTL3:SendToReady(s)
 							end
 						end
 						
@@ -3529,12 +3710,12 @@ private.GetFilterSet = function(t, o)
 		},
 	}
 
+	private.AddEntryColorArgs(options.args, t)
+
 	return options
 end
 
 private.GetCustomSet = function(t, o)
-	local cSubOrder = 1
-	local dSubOrder = 1
 
 	local options = {
 		name = "Custom",
@@ -3660,7 +3841,7 @@ private.GetCustomSet = function(t, o)
 								if CDTL3.currentFilter["detected"] == "<< Select Detected >>" then
 									n = "Select a detected spell"
 								else
-									local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["detected"], "detected", specialCase)
+									local s = CDTL3:GetSpellSettings(CDTL3.currentFilter["detected"], "detected", false)
 									if s then
 										n = "  "..s["name"]
 									else
@@ -3716,24 +3897,11 @@ private.GetCustomSet = function(t, o)
 									if existingData then
 										--CDTL3:Print("CUSTOM_ALREADY_EXISTS: "..CDTL3.currentFilter["detected"])
 									else
-										local c = CDTL3:TableCopy(s)
-
+										local c = CDTL3:ApplyEntryDefaults(CDTL3:TableCopy(s), "customs")
 										c["bCD"] = 60000
-										c["usedBy"] = { CDTL3.player["guid"] }
-
 										c["type"] = "customs"
 										c["triggerType"] = "spell"
-
-										c["lane"] = CDTL3.db.profile.global["customs"]["defaultLane"]
-										c["barFrame"] = CDTL3.db.profile.global["customs"]["defaultBar"]
-										c["readyFrame"] = CDTL3.db.profile.global["customs"]["defaultReady"]
-										c["enabled"] = CDTL3.db.profile.global["customs"]["showByDefault"]
-
-										if c["bCD"] / 1000 > 3 and c["bCD"] / 1000 <= CDTL3.db.profile.global["customs"]["ignoreThreshold"] then
-											c["ignored"] = false
-										else
-											c["ignored"] = true
-										end
+										c["ignored"] = CDTL3:IgnoredByDefault("customs", c["bCD"])
 										
 										table.insert(CDTL3.db.profile.tables["customs"], c)
 										CDTL3.currentFilter["customs"] = c["name"]
@@ -4422,18 +4590,7 @@ private.GetLaneSet = function(i)
 						desc = "",
 						order = 603,
 						type = "select",
-						values = {
-								["NONE"] = "None",
-								["GCD"] = "GCD",
-								["HEALTH"] = "Health",
-								["CLASS_POWER"] = "Class Power",
-								["COMBO_POINTS"] = "Combo Points",
-								["MANA_TICK"] = "Mana Tick",
-								["ENERGY_TICK"] = "Energy Tick",
-								["MH_SWING"] = "MH Swing",
-								["OH_SWING"] = "OH Swing",
-								["RANGE_SWING"] = "Ranged Auto-attack",
-							},
+						values = private.TrackingValues,
 						get = function(info, index)
 								return lane["tracking"]["primaryTracking"]
 							end,
@@ -4464,18 +4621,7 @@ private.GetLaneSet = function(i)
 						desc = "",
 						order = 611,
 						type = "select",
-						values = {
-								["NONE"] = "None",
-								["GCD"] = "GCD",
-								["HEALTH"] = "Health",
-								["CLASS_POWER"] = "Class Power",
-								["COMBO_POINTS"] = "Combo Points",
-								["MANA_TICK"] = "Mana Tick",
-								["ENERGY_TICK"] = "Energy Tick",
-								["MH_SWING"] = "MH Swing",
-								["OH_SWING"] = "OH Swing",
-								["RANGE_SWING"] = "Ranged Auto-attack",
-							},
+						values = private.TrackingValues,
 						get = function(info, index)
 								return lane["tracking"]["secondaryTracking"]
 							end,
@@ -4567,7 +4713,7 @@ private.GetLaneSet = function(i)
 							return true
 						end,
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return lane["tracking"]["stTexture"]
 							end,
@@ -4717,7 +4863,7 @@ private.GetLaneSet = function(i)
 						type = "select",
 						width = 0.7,
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return lane["fgTexture"]
 							end,
@@ -4739,7 +4885,8 @@ private.GetLaneSet = function(i)
 						get = function(info)
 								local c = lane["fgTextureColor"] or { r=0.77647, g=0.11765, b=0.28235, a=1 }
 								if lane["fgClassColor"] then
-									c = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
+									-- before the character is known (first seconds after login) keep the stored colour
+									c = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]] or c
 								end
 
 								local r = c["r"]
@@ -4779,7 +4926,7 @@ private.GetLaneSet = function(i)
 						type = "select",
 						width = 0.7,
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return lane["bgTexture"]
 							end,
@@ -4801,7 +4948,8 @@ private.GetLaneSet = function(i)
 						get = function(info)
 								local c = lane["bgTextureColor"]
 								if lane["bgClassColor"] then
-									c = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
+									-- before the character is known (first seconds after login) keep the stored colour
+									c = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]] or c
 								end
 						
 								local r = c["r"]
@@ -4854,71 +5002,6 @@ private.GetLaneSet = function(i)
 						type = "description",
 						order = 702,
 					},
-					border = {
-						name = "                    Border Texture",
-						desc = "Selects the border texture",
-						order = 703,
-						type = "select",
-						dialogControl = 'LSM30_Border',
-						values = AceGUIWidgetLSMlists.border,
-						get = function(info) return lane["border"]["style"] end,
-						set = function(info, val)
-								lane["border"]["style"] = val
-								CDTL3:RefreshLane(i)
-							end,
-					},
-					borderColor = {
-						name = "Color",
-						desc = "Selects the border color",
-						order = 704,
-						type = "color",
-						hasAlpha = true,
-						get = function(info)
-								local r = lane["border"]["color"]["r"]
-								local g = lane["border"]["color"]["g"]
-								local b = lane["border"]["color"]["b"]
-								local a = lane["border"]["color"]["a"]
-								
-								return r, g, b, a
-							end,
-						set = function(info, red, green, blue, alpha)
-								lane["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL3:RefreshLane(i)
-							end,
-					},
-					spacer710 = {
-						name = "",
-						type = "description",
-						order = 710,
-					},
-					borderSize = {
-						name = "Size",
-						desc = "Sets the size of the border",
-						order = 711,
-						type = "range",
-						softMin = 1,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return lane["border"]["size"] end,
-						set = function(info, val)
-								lane["border"]["size"] = val
-								CDTL3:RefreshLane(i)
-							end,
-					},
-					borderPadding = {
-						name = "Padding",
-						desc = "Sets the size of the border",
-						order = 711,
-						type = "range",
-						softMin = 0,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return lane["border"]["padding"] end,
-						set = function(info, val)
-								lane["border"]["padding"] = val
-								CDTL3:RefreshLane(i)
-							end,
-					},
 				},
 			},
 			icons = {
@@ -4928,7 +5011,7 @@ private.GetLaneSet = function(i)
 				args = {
 					size = {
 						name = "Size",
-						desc = "Sets the size of icons in lane 1",
+						desc = "Sets the size of icons in lane "..i,
 						order = 101,
 						type = "range",
 						softMin = 1,
@@ -5078,71 +5161,6 @@ private.GetLaneSet = function(i)
 						type = "description",
 						order = 300,
 					},
-					border = {
-						name = "                    Border Texture",
-						desc = "Selects the border texture",
-						order = 301,
-						type = "select",
-						dialogControl = 'LSM30_Border',
-						values = AceGUIWidgetLSMlists.border,
-						get = function(info) return lane["icons"]["border"]["style"] end,
-						set = function(info, val)
-								lane["icons"]["border"]["style"] = val
-								CDTL3:RefreshAllIcons()
-							end,
-					},
-					borderColor = {
-						name = "Color",
-						desc = "Selects the border color",
-						order = 302,
-						type = "color",
-						hasAlpha = true,
-						get = function(info)
-								local r = lane["icons"]["border"]["color"]["r"]
-								local g = lane["icons"]["border"]["color"]["g"]
-								local b = lane["icons"]["border"]["color"]["b"]
-								local a = lane["icons"]["border"]["color"]["a"]
-								
-								return r, g, b, a
-							end,
-						set = function(info, red, green, blue, alpha)
-								lane["icons"]["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL3:RefreshAllIcons()
-							end,
-					},
-					spacer310 = {
-						name = "",
-						type = "description",
-						order = 310,
-					},
-					borderSize = {
-						name = "Size",
-						desc = "Sets the size of the border",
-						order = 311,
-						type = "range",
-						softMin = 1,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return lane["icons"]["border"]["size"] end,
-						set = function(info, val)
-								lane["icons"]["border"]["size"] = val
-								CDTL3:RefreshAllIcons()
-							end,
-					},
-					borderPadding = {
-						name = "Padding",
-						desc = "Sets the size of the border",
-						order = 311,
-						type = "range",
-						softMin = 0,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return lane["icons"]["border"]["padding"] end,
-						set = function(info, val)
-								lane["icons"]["border"]["padding"] = val
-								CDTL3:RefreshAllIcons()
-							end,
-					},
 					spacer400 = {
 						name = "\n\n",
 						type = "description",
@@ -5270,7 +5288,7 @@ private.GetLaneSet = function(i)
 					},
 					hlBorderPadding = {
 						name = "Padding",
-						desc = "Sets the size of the border",
+						desc = "Sets the space between the border and the frame",
 						order = 511,
 						hidden = function(info)
 								if	lane["icons"]["highlight"]["style"] == "BORDER" or
@@ -5619,6 +5637,11 @@ private.GetLaneSet = function(i)
 		}
 	}
 	
+	private.AddBorderArgs(options.args.appearance.args, 700, function() return lane["border"] end, function() CDTL3:RefreshLane(i) end, 703)
+	private.AddBorderArgs(options.args.icons.args, 300, function() return lane["icons"]["border"] end, function() CDTL3:RefreshAllIcons() end)
+
+	private.AddCopyArgs(options.args.general.args, "lanes", i, "Lane")
+
 	return options
 end
 
@@ -5924,7 +5947,7 @@ private.GetReadySet = function(i)
 						order = 301,
 						type = "select",
 						dialogControl = 'LSM30_Statusbar',
-						values = AceGUIWidgetLSMlists.statusbar,
+						values = function() return CDTL3:GetBarTextureList() end,
 						get = function(info, index)
 								return ready["bgTexture"]
 							end,
@@ -5955,71 +5978,6 @@ private.GetReadySet = function(i)
 						name = "\n\n",
 						type = "description",
 						order = 400,
-					},
-					border = {
-						name = "                    Border Texture",
-						desc = "Selects the border texture",
-						order = 401,
-						type = "select",
-						dialogControl = 'LSM30_Border',
-						values = AceGUIWidgetLSMlists.border,
-						get = function(info) return ready["border"]["style"] end,
-						set = function(info, val)
-								ready["border"]["style"] = val
-								CDTL3:RefreshReady(i)
-							end,
-					},
-					borderColor = {
-						name = "Color",
-						desc = "Selects the border color",
-						order = 402,
-						type = "color",
-						hasAlpha = true,
-						get = function(info)
-								local r = ready["border"]["color"]["r"]
-								local g = ready["border"]["color"]["g"]
-								local b = ready["border"]["color"]["b"]
-								local a = ready["border"]["color"]["a"]
-								
-								return r, g, b, a
-							end,
-						set = function(info, red, green, blue, alpha)
-								ready["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL3:RefreshReady(i)
-							end,
-					},
-					spacer410 = {
-						name = "",
-						type = "description",
-						order = 410,
-					},
-					borderSize = {
-						name = "Size",
-						desc = "Sets the size of the border",
-						order = 411,
-						type = "range",
-						softMin = 1,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return ready["border"]["size"] end,
-						set = function(info, val)
-								ready["border"]["size"] = val
-								CDTL3:RefreshReady(i)
-							end,
-					},
-					borderPadding = {
-						name = "Padding",
-						desc = "Sets the size of the border",
-						order = 412,
-						type = "range",
-						softMin = 0,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return ready["border"]["padding"] end,
-						set = function(info, val)
-								ready["border"]["padding"] = val
-								CDTL3:RefreshReady(i)
-							end,
 					},
 				}
 			},
@@ -6160,71 +6118,6 @@ private.GetReadySet = function(i)
 						type = "description",
 						order = 300,
 					},
-					border = {
-						name = "                    Border Texture",
-						desc = "Selects the border texture",
-						order = 301,
-						type = "select",
-						dialogControl = 'LSM30_Border',
-						values = AceGUIWidgetLSMlists.border,
-						get = function(info) return ready["icons"]["border"]["style"] end,
-						set = function(info, val)
-								ready["icons"]["border"]["style"] = val
-								CDTL3:RefreshAllIcons()
-							end,
-					},
-					borderColor = {
-						name = "Color",
-						desc = "Selects the border color",
-						order = 302,
-						type = "color",
-						hasAlpha = true,
-						get = function(info)
-								local r = ready["icons"]["border"]["color"]["r"]
-								local g = ready["icons"]["border"]["color"]["g"]
-								local b = ready["icons"]["border"]["color"]["b"]
-								local a = ready["icons"]["border"]["color"]["a"]
-								
-								return r, g, b, a
-							end,
-						set = function(info, red, green, blue, alpha)
-								ready["icons"]["border"]["color"] = { r = red, g = green, b = blue, a = alpha }							
-								CDTL3:RefreshAllIcons()
-							end,
-					},
-					spacer310 = {
-						name = "",
-						type = "description",
-						order = 310,
-					},
-					borderSize = {
-						name = "Size",
-						desc = "Sets the size of the border",
-						order = 311,
-						type = "range",
-						softMin = 1,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return ready["icons"]["border"]["size"] end,
-						set = function(info, val)
-								ready["icons"]["border"]["size"] = val
-								CDTL3:RefreshAllIcons()
-							end,
-					},
-					borderPadding = {
-						name = "Padding",
-						desc = "Sets the size of the border",
-						order = 311,
-						type = "range",
-						softMin = 0,
-						softMax = 40,
-						bigStep = 1,
-						get = function(info) return ready["icons"]["border"]["padding"] end,
-						set = function(info, val)
-								ready["icons"]["border"]["padding"] = val
-								CDTL3:RefreshAllIcons()
-							end,
-					},
 					spacer400 = {
 						name = "\n\n",
 						type = "description",
@@ -6254,6 +6147,11 @@ private.GetReadySet = function(i)
 		}
 	}
 	
+	private.AddBorderArgs(options.args.appearance.args, 400, function() return ready["border"] end, function() CDTL3:RefreshReady(i) end)
+	private.AddBorderArgs(options.args.icons.args, 300, function() return ready["icons"]["border"] end, function() CDTL3:RefreshAllIcons() end)
+
+	private.AddCopyArgs(options.args.general.args, "ready", i, "Ready Frame")
+
 	return options
 end
 
@@ -6281,13 +6179,10 @@ private.GetTextText = function(s, o, i, r, d)
 		set = function(info, val)
 				s["text"] = val
 				
-				if CDTL3:ScanForDynamicTags(val) then
-					s["dtags"] = true
-				end
-				
-				if CDTL3:ScanForTimeTags(val) then
-					s["ttags"] = true
-				end
+				-- recompute both flags: they used to only ever switch on, so an edited
+				-- text kept being redrawn from a tag family it no longer contains
+				s["dtags"] = CDTL3:ScanForDynamicTags(val)
+				s["ttags"] = CDTL3:ScanForTimeTags(val)
 				
 				if r == "LANE" then
 					CDTL3:RefreshLane(i)
@@ -6333,7 +6228,7 @@ end
 private.GetTextEdit = function(s, o, i, r)
 	local options = {
 		name = "Edit",
-		desc = "Show this text",
+		desc = "Edit this text",
 		order = o + 3,
 		type = "toggle",
 		width = 0.5,

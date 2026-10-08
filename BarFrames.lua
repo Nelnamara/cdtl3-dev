@@ -4,8 +4,6 @@
 ]]--
 
 local private = {}
-private.updatePollRate = 2
-private.autohidePollRate = 5
 
 function CDTL3:CreateBarFrames()
 	local frame1Enabled = CDTL3.db.profile.barFrames["frame1"]["enabled"]
@@ -73,7 +71,7 @@ function CDTL3:RefreshBarFrame(i)
 	f.mf:SetSize(s["width"], s["height"])
 	
 	-- MOVE FRAME BACKGROUND
-	f.mf.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["bgTexture"]))
+	CDTL3:SetBarTexture(f.mf.bg, s["bgTexture"])
 	f.mf.bg:SetAllPoints(true)
 	f.mf.bg:SetVertexColor(
 		s["bgTextureColor"]["r"],
@@ -84,13 +82,14 @@ function CDTL3:RefreshBarFrame(i)
 	
 	-- BORDER
 	if s["border"]["style"] ~= "None" then
-		if not f.bd then
+		if not f.mf.bd then
 			f.mf.bd = CreateFrame("Frame", f:GetName().."_BD", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 			f.mf.bd:SetParent(f)
 		end
 	
 		CDTL3:SetBorder(f.mf.bd, s["border"])
 		f.mf.bd:SetFrameLevel(f.mf:GetFrameLevel() + 1)
+		f.mf.bd:Show()
 	else
 		if f.mf.bd then
 			f.mf.bd:Hide()
@@ -98,25 +97,30 @@ function CDTL3:RefreshBarFrame(i)
 	end
 	
 	-- ANIMATION
-	f.animateIn = f:CreateAnimationGroup()
-	f.animateIn:SetLooping("NONE")
-	f.animateIn:SetToFinalAlpha(true)
-	local fadeIn = f.animateIn:CreateAnimation("Alpha")
-	fadeIn:SetFromAlpha(0)
-	fadeIn:SetToAlpha(1)
-	fadeIn:SetDuration(0.3)
-	fadeIn:SetSmoothing("OUT")
-	fadeIn:SetOrder(1)
+	-- Fade animations are created once per frame; only their alpha targets change on
+	-- refresh (recreating them on every refresh leaked a pair of groups each time).
+	if not f.animateIn then
+		f.animateIn = f:CreateAnimationGroup()
+		f.animateIn:SetLooping("NONE")
+		f.animateIn:SetToFinalAlpha(true)
+		f.animateIn.fade = f.animateIn:CreateAnimation("Alpha")
+		f.animateIn.fade:SetDuration(0.3)
+		f.animateIn.fade:SetSmoothing("OUT")
+		f.animateIn.fade:SetOrder(1)
+		
+		f.animateOut = f:CreateAnimationGroup()
+		f.animateOut:SetLooping("NONE")
+		f.animateOut:SetToFinalAlpha(true)
+		f.animateOut.fade = f.animateOut:CreateAnimation("Alpha")
+		f.animateOut.fade:SetDuration(0.3)
+		f.animateOut.fade:SetSmoothing("OUT")
+		f.animateOut.fade:SetOrder(1)
+	end
 	
-	f.animateOut = f:CreateAnimationGroup()
-	f.animateOut:SetLooping("NONE")
-	f.animateOut:SetToFinalAlpha(true)
-	local fadeOut = f.animateOut:CreateAnimation("Alpha")
-	fadeOut:SetFromAlpha(1)
-	fadeOut:SetToAlpha(0)
-	fadeOut:SetDuration(0.3)
-	fadeOut:SetSmoothing("OUT")
-	fadeOut:SetOrder(1)
+	f.animateIn.fade:SetFromAlpha(0)
+	f.animateIn.fade:SetToAlpha(1)
+	f.animateOut.fade:SetFromAlpha(1)
+	f.animateOut.fade:SetToAlpha(0)
 	
 	-- DEBUG/UNLOCK
 	f.db:ClearAllPoints()

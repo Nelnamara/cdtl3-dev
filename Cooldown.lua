@@ -4,8 +4,6 @@
 ]]--
 
 local private = {}
-private.updatePollRate = 2
-private.autohidePollRate = 5
 private.dynamicTextPollRate = 10
 private.timeTextPollRate = 2
 
@@ -56,6 +54,11 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 	if cdData["school"] then
 		f.data["school"] = cdData["school"]
 	end
+
+	if cdData["customColor"] then
+		f.data["customColor"] = cdData["customColor"]
+		f.data["color"] = cdData["color"]
+	end
 	
 	if cdData["runeIndex"] then
 		f.data["runeIndex"] = cdData["runeIndex"]
@@ -85,8 +88,8 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 			item:ContinueOnItemLoad(function()
 				f.data["itemIcon"] = item:GetItemIcon()
 				
-				CDTL3:SetSpellData(f.data["name"], cdType, "icon", f.data["icon"])
-				CDTL3:SetSpellData(f.data["name"], cdType, "itemIcon", f.data["itemIcon"])
+				CDTL3:SetItemData(f.data["itemID"], "icon", f.data["icon"])
+				CDTL3:SetItemData(f.data["itemID"], "itemIcon", f.data["itemIcon"])
 			end)
 		end
 	end
@@ -263,7 +266,7 @@ function CDTL3:RefreshBar(cd)
 	-- FOREGROUND
 	f.bar:SetMinMaxValues(0, 1)
 	f.bar:SetValue(0.5)
-	f.bar:SetStatusBarTexture(CDTL3.LSM:Fetch("statusbar", s["bar"]["fgTexture"]))
+	CDTL3:SetBarTexture(f.bar, s["bar"]["fgTexture"])
 	f.bar:GetStatusBarTexture():SetHorizTile(false)
 	f.bar:GetStatusBarTexture():SetVertTile(false)
 	--[[f.bar:SetStatusBarColor(
@@ -283,7 +286,7 @@ function CDTL3:RefreshBar(cd)
 	)
 	
 	-- BACKGROUND
-	f.bar.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["bar"]["bgTexture"]))
+	CDTL3:SetBarTexture(f.bar.bg, s["bar"]["bgTexture"])
 	f.bar.bg:SetAllPoints(true)
 	--[[f.bar.bg:SetVertexColor(
 		s["bar"]["bgTextureColor"]["r"],
@@ -334,7 +337,7 @@ function CDTL3:RefreshBar(cd)
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
 			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -361,8 +364,8 @@ function CDTL3:RefreshBar(cd)
 				f.txt.text2 = f.txt:CreateFontString(nil, "ARTWORK")
 			end
 			
-			t = f.txt.text2
-			ts = s["bar"]["text2"]
+			local t = f.txt.text2
+			local ts = s["bar"]["text2"]
 			t:ClearAllPoints()
 			t:SetPoint(
 					ts["align"],
@@ -375,7 +378,7 @@ function CDTL3:RefreshBar(cd)
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
 			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -402,8 +405,8 @@ function CDTL3:RefreshBar(cd)
 				f.txt.text3 = f.txt:CreateFontString(nil, "ARTWORK")
 			end
 			
-			t = f.txt.text3
-			ts = s["bar"]["text3"]
+			local t = f.txt.text3
+			local ts = s["bar"]["text3"]
 			t:ClearAllPoints()
 			t:SetPoint(
 					ts["align"],
@@ -416,7 +419,7 @@ function CDTL3:RefreshBar(cd)
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
 			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -437,7 +440,8 @@ function CDTL3:RefreshBar(cd)
 				f.txt.text3:Hide()
 			end
 		end
-	else
+	elseif f.txt then
+		-- all texts off: f.txt only exists if one was enabled before
 		if f.txt.text1 then
 			f.txt.text1:Hide()
 		end
@@ -453,7 +457,7 @@ function CDTL3:RefreshBar(cd)
 	
 	-- TRANSITION
 	if s["transition"]["showTI"] then
-		if not f.bd then
+		if not f.bar.ti then
 			f.bar.ti = CreateFrame("Frame", f:GetName().."_TI", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 			f.bar.ti:SetParent(f.bar)
 			f.bar.ti.bg = f.bar.ti:CreateTexture(nil, "BACKGROUND")
@@ -461,7 +465,9 @@ function CDTL3:RefreshBar(cd)
 		
 		private.CalcTransitionIndicator(cd, s)
 		f.bar.ti:Show()
-		f.txt:SetFrameLevel(f.bar.ti:GetFrameLevel() + 1)
+		if f.txt then
+			f.txt:SetFrameLevel(f.bar.ti:GetFrameLevel() + 1)
+		end
 	else
 		if f.bar.ti then
 			f.bar.ti:Hide()
@@ -614,7 +620,7 @@ function CDTL3:RefreshIcon(cd)
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
 			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -641,8 +647,8 @@ function CDTL3:RefreshIcon(cd)
 				f.txt.text2 = f.txt:CreateFontString(nil, "ARTWORK")
 			end
 			
-			t = f.txt.text2
-			ts = s["icons"]["text2"]
+			local t = f.txt.text2
+			local ts = s["icons"]["text2"]
 			t:ClearAllPoints()
 			t:SetPoint(
 					ts["align"],
@@ -655,7 +661,7 @@ function CDTL3:RefreshIcon(cd)
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
 			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -682,8 +688,8 @@ function CDTL3:RefreshIcon(cd)
 				f.txt.text3 = f.txt:CreateFontString(nil, "ARTWORK")
 			end
 			
-			t = f.txt.text3
-			ts = s["icons"]["text3"]
+			local t = f.txt.text3
+			local ts = s["icons"]["text3"]
 			t:ClearAllPoints()
 			t:SetPoint(
 					ts["align"],
@@ -696,7 +702,7 @@ function CDTL3:RefreshIcon(cd)
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
 			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
 			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertTextTags(ts["text"], cd))
+			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
 			t:SetTextColor(
 					ts["color"]["r"],
 					ts["color"]["g"],
@@ -764,14 +770,17 @@ function CDTL3:RefreshIcon(cd)
 			f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
 			f.hl.tx:SetAllPoints(true)
 			f.hl.tx:SetColorTexture( 1, 1, 1, 0.5 )
-			f.hl:SetFrameLevel(f.hl:GetFrameLevel() + 1)
+			-- fixed offset above the icon (border is +1); incrementing climbed on every refresh
+			f.hl:SetFrameLevel(f:GetFrameLevel() + 2)
 
 			CDTL3:RemoveHighlights(f, s)
 			
 			local style = s["icons"]["highlight"]["style"]
-			if style == "GLOW" then
+			-- The action-button glow isn't available on every client (e.g. Forever):
+			-- fall back to the plain border highlight there.
+			if style == "GLOW" and ActionButton_ShowOverlayGlow then
 				ActionButton_ShowOverlayGlow(f)
-			elseif style == "BORDER" then
+			elseif style == "BORDER" or style == "GLOW" then
 				f.hl:SetBackdropBorderColor(
 					s["icons"]["highlight"]["border"]["color"]["r"],
 					s["icons"]["highlight"]["border"]["color"]["g"],
@@ -786,15 +795,18 @@ function CDTL3:RefreshIcon(cd)
 					s["icons"]["highlight"]["border"]["color"]["a"]
 				)
 				
-				f.hl.agBorderPulse = f.hl:CreateAnimationGroup()
-				f.hl.agBorderPulse:SetLooping("BOUNCE")
-				f.hl.agBorderPulse:SetToFinalAlpha(true)
-				
-				local borderPulse = f.hl.agBorderPulse:CreateAnimation("Alpha")
-				borderPulse:SetFromAlpha(0.2)
-				borderPulse:SetToAlpha(1)
-				borderPulse:SetDuration(0.5)
-				borderPulse:SetOrder(1)
+				-- created once and reused (a new group per refresh leaked)
+				if not f.hl.agBorderPulse then
+					f.hl.agBorderPulse = f.hl:CreateAnimationGroup()
+					f.hl.agBorderPulse:SetLooping("BOUNCE")
+					f.hl.agBorderPulse:SetToFinalAlpha(true)
+					
+					local borderPulse = f.hl.agBorderPulse:CreateAnimation("Alpha")
+					borderPulse:SetFromAlpha(0.2)
+					borderPulse:SetToAlpha(1)
+					borderPulse:SetDuration(0.5)
+					borderPulse:SetOrder(1)
+				end
 				
 				f.hl.agBorderPulse:Play()			
 			elseif style == "FLASH" then
@@ -803,15 +815,18 @@ function CDTL3:RefreshIcon(cd)
 				f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
 				f.hl.tx:SetColorTexture( 1, 1, 1, 1 )
 				
-				f.hl.agPulse = f.hl:CreateAnimationGroup()
-				f.hl.agPulse:SetLooping("BOUNCE")
-				f.hl.agPulse:SetToFinalAlpha(true)
-				
-				local borderPulse = f.hl.agPulse:CreateAnimation("Alpha")
-				borderPulse:SetFromAlpha(0.2)
-				borderPulse:SetToAlpha(1)
-				borderPulse:SetDuration(0.5)
-				borderPulse:SetOrder(1)
+				-- created once and reused (a new group per refresh leaked)
+				if not f.hl.agPulse then
+					f.hl.agPulse = f.hl:CreateAnimationGroup()
+					f.hl.agPulse:SetLooping("BOUNCE")
+					f.hl.agPulse:SetToFinalAlpha(true)
+					
+					local borderPulse = f.hl.agPulse:CreateAnimation("Alpha")
+					borderPulse:SetFromAlpha(0.2)
+					borderPulse:SetToAlpha(1)
+					borderPulse:SetDuration(0.5)
+					borderPulse:SetOrder(1)
+				end
 				
 				f.hl.agPulse:Play()
 			else
@@ -850,11 +865,13 @@ function CDTL3:RefreshIcon(cd)
 	end
 end
 
--- Resolves the configured foreground color for a bar (custom -> school -> class), shared by
--- RefreshBar and the dynamic-color restore in BarUpdate
+-- Resolves the foreground color for a bar: the entry's own color (Filters) -> school ->
+-- class -> the bar frame's color. Shared by RefreshBar and the dynamic-color restore.
 private.GetBarFGColor = function(s, d)
 	local fgColor = s["bar"]["fgTextureColor"] or { r = 0.77647, g = 0.11765, b = 0.28235, a = 1 }
-	if s["bar"]["fgSchoolColor"] then
+	if d and d["customColor"] and d["color"] then
+		fgColor = d["color"]
+	elseif s["bar"]["fgSchoolColor"] then
 		local schoolColor = CDTL3.db.profile.global["schoolColors"]["Other"]
 		if d and d["school"] then
 			schoolColor = CDTL3.db.profile.global["schoolColors"][d["school"]] or schoolColor
@@ -953,7 +970,7 @@ private.BarUpdate = function(f, elapsed)
 
 			private.UpdateBarDynamicColor(ba, s, d)
 
-			if ba:GetAlpha() ~= 0 then
+			if ba:GetAlpha() ~= 0 and ba.txt then
 				private.UpdateText(f, ba.txt.text1, s["bar"]["text1"], s["bar"]["text1"]["text"])
 				private.UpdateText(f, ba.txt.text2, s["bar"]["text2"], s["bar"]["text2"]["text"])
 				private.UpdateText(f, ba.txt.text3, s["bar"]["text3"], s["bar"]["text3"]["text"])
@@ -1120,7 +1137,8 @@ private.CalcTransitionIndicator = function(f, s)
 					--position = (ms["max"] / f.data["baseCD"]) * bWidth
 					position = f.data["baseCD"] > 0 and (ms["max"] / f.data["baseCD"]) * bWidth or bWidth
 				elseif style == "REGION" then
-					local percent = ms["max"] / f.data["baseCD"]
+					-- same zero guard as LINE: a not-yet-learned cooldown (baseCD 0) spans the bar
+					local percent = f.data["baseCD"] > 0 and ms["max"] / f.data["baseCD"] or 1
 					
 					local bWidth = s["width"] - width
 					if s["bar"]["iconEnabled"] then
@@ -1145,7 +1163,7 @@ private.CalcTransitionIndicator = function(f, s)
 			f.bar.bar.ti:ClearAllPoints()
 			f.bar.bar.ti:SetPoint("LEFT", position, 0)
 			f.bar.bar.ti:SetSize(width, s["height"])
-			f.bar.bar.ti.bg:SetTexture(CDTL3.LSM:Fetch("statusbar", s["transition"]["texture"]))
+			CDTL3:SetBarTexture(f.bar.bar.ti.bg, s["transition"]["texture"])
 			f.bar.bar.ti.bg:SetAllPoints(true)
 			f.bar.bar.ti.bg:SetVertexColor(
 				s["transition"]["textureColor"]["r"],
@@ -1179,39 +1197,43 @@ private.CooldownUpdate = function(f, elapsed)
 		-- SPELLS
 		if d["type"] == "spells" or d["type"] == "petspells" then
 			if d["oaf"] then
-				if CDTL3:AuraExists("player", d["name"]) or UnitChannelInfo("player") then
-					-- Placeholder
-				else
-					--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
-					local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
+				-- On-aura-fade spells (e.g. Stealth) hold their cooldown while the aura is up,
+				-- during a channel, or while the game reports the cooldown disabled. Checked on
+				-- the 50-frame poll and cached: the aura scan is too costly for every frame,
+				-- and the countdown re-syncs from the game on the same poll, so nothing drifts.
+				-- enabled is a boolean on retail-API clients and 0/1 on Classic.
+				if f.updateCount == 0 or f.updateCount % 50 == 0 or d["oafHeld"] == nil then
+					local auraUp = CDTL3:AuraExists("player", d["name"])
+					local channelOK, channeling = pcall(function()
+						return UnitChannelInfo("player") and true or false
+					end)
+					local _, _, enabled = CDTL3:GetSpellCooldown(d["id"])
+					d["oafHeld"] = (auraUp or (channelOK and channeling) or enabled == 0 or enabled == false) and true or false
+				end
+
+				if not d["oafHeld"] then
+					if d["currentCD"] >= 0 then
+						d["currentCD"] = d["currentCD"] - elapsed
 					
-					if enabled == 0 then
-						-- Placeholder
-
-					else
-						if d["currentCD"] >= 0 then
-							d["currentCD"] = d["currentCD"] - elapsed
-							
-							
-							if not d["overrideCD"] then
-								if f.updateCount == 0 or f.updateCount % 50 == 0 then
-									if d["setCustomCD"] then
-										if d["customCDTime"] then
-											d["baseCD"] = d["customCDTime"] / 1000
-										end
-									end
-
-
-									--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
-									local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
-									-- Manual override wins: the live Midnight duration is the talent-blind base
-									-- CD, so when a custom CD is set, drive the countdown from that instead.
-									if d["setCustomCD"] and d["customCDTime"] then
+					
+						if not d["overrideCD"] then
+							if f.updateCount == 0 or f.updateCount % 50 == 0 then
+								if d["setCustomCD"] then
+									if d["customCDTime"] then
 										d["baseCD"] = d["customCDTime"] / 1000
-										duration = d["baseCD"]
 									end
-									d["currentCD"] = start + duration - GetTime()
 								end
+
+
+								--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
+								local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
+								-- Manual override wins: the live Midnight duration is the talent-blind base
+								-- CD, so when a custom CD is set, drive the countdown from that instead.
+								if d["setCustomCD"] and d["customCDTime"] then
+									d["baseCD"] = d["customCDTime"] / 1000
+									duration = d["baseCD"]
+								end
+								d["currentCD"] = start + duration - GetTime()
 							end
 						end
 					end
@@ -1231,11 +1253,6 @@ private.CooldownUpdate = function(f, elapsed)
 							--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
 							--local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
 							--d["currentCD"] = start + duration - GetTime()
-
-							if enabled == 0 or enabled == false then
-								CDTL3:SetSpellData(d["name"], "spells", "oaf", true)
-								d["oaf"] = true
-							end
 
 							--if d["charges"] ~= 0 then
 								--local currentCharges, maxCharges, cooldownStart, cooldownDuration = CDTL3:GetSpellCharges(d["id"])
@@ -1275,31 +1292,34 @@ private.CooldownUpdate = function(f, elapsed)
 				if d["baseCD"] == 0 then
 					d["currentCD"] = 1000
 					
+					-- nil while the item cooldown is secret: decide nothing yet, retry next poll
+					local duration = nil
 					local tinker, slot = CDTL3:CheckEngTinkerCases(d["name"])
 					if tinker then
-						local _, spellID = GetItemSpell(d["itemID"])
+						local _, spellID = CDTL3.Compat.GetItemSpell(d["itemID"])
 						if spellID == d["id"] then
-							local start, duration, enabled = GetInventoryItemCooldown("player", slot)
-							
-							d["baseCD"] = duration
-							CDTL3:SetSpellData(d["name"], "items", "bCD", duration * 1000)
+							local _
+							_, duration = CDTL3:GetInventoryItemCooldown(slot)
 						end
 					else
-						local start, duration, enabled = C_Container.GetItemCooldown(d["itemID"])
-						
-						d["baseCD"] = duration
-						CDTL3:SetSpellData(d["name"], "items", "bCD", duration * 1000)
+						local _
+						_, duration = CDTL3:GetItemCooldown(d["itemID"])
 					end
 					
-					if d["baseCD"] > 3 and d["baseCD"] <= CDTL3.db.profile.global["items"]["ignoreThreshold"] then
-						d["ignored"] = false
-						CDTL3:SetSpellData(d["name"], "items", "ignored", false)
-					else
-						d["ignored"] = true
-						CDTL3:SetSpellData(d["name"], "items", "ignored", true)
+					if duration then
+						d["baseCD"] = duration
+						CDTL3:SetItemData(d["itemID"], "bCD", duration * 1000)
 						
-						CDTL3:SendToHolding(f)
-						CDTL3:SendToBarHolding(f)
+						if d["baseCD"] > 3 and d["baseCD"] <= CDTL3.db.profile.global["items"]["ignoreThreshold"] then
+							d["ignored"] = false
+							CDTL3:SetItemData(d["itemID"], "ignored", false)
+						else
+							d["ignored"] = true
+							CDTL3:SetItemData(d["itemID"], "ignored", true)
+							
+							CDTL3:SendToHolding(f)
+							CDTL3:SendToBarHolding(f)
+						end
 					end
 				end
 			end
@@ -1309,20 +1329,20 @@ private.CooldownUpdate = function(f, elapsed)
 				if f.updateCount % 50 == 0 then
 					local tinker, slot = CDTL3:CheckEngTinkerCases(d["name"])
 					if tinker then
-						local _, spellID = GetItemSpell(d["itemID"])
+						local _, spellID = CDTL3.Compat.GetItemSpell(d["itemID"])
 						if spellID == d["id"] then
 							--local start, duration, enabled = GetInventoryItemCooldown("player", slot)
 							--d["baseCD"] = duration
 							--d["currentCD"] = start + duration - GetTime()
 
-							local start, duration, enabled = GetInventoryItemCooldown("player", slot)
+							local start, duration, enabled = CDTL3:GetInventoryItemCooldown(slot)
 							if start and duration then
 								d["baseCD"] = duration
 								d["currentCD"] = start + duration - GetTime()
 							end
 						end
 					else
-						local start, duration, enabled = C_Container.GetItemCooldown(d["itemID"])
+						local start, duration, enabled = CDTL3:GetItemCooldown(d["itemID"])
 						if duration and start then
 							d["baseCD"] = duration
 							d["currentCD"] = start + duration - GetTime()
@@ -1334,10 +1354,17 @@ private.CooldownUpdate = function(f, elapsed)
 		-- AURAS
 		elseif d["type"] == "buffs" or d["type"] == "debuffs" then
 			if f.updateCount == 0 or f.updateCount % 50 == 0 then
-				local s = CDTL3:AuraExists("player", d["name"])
+				local s, unknown = CDTL3:AuraExists("player", d["name"])
 				if s then
 					d["currentCD"] = s["endTime"] - GetTime()
 					d["stacks"] = s["stacks"]
+				elseif unknown then
+					-- Auras are secret (combat, encounters, M+, PvP): keep counting down from
+					-- the last known expiry instead of dropping the icon. Re-read once
+					-- readable; PLAYER_REGEN_ENABLED also rescans for recasts made meanwhile.
+					if d["currentCD"] >= 0 then
+						d["currentCD"] = d["currentCD"] - elapsed
+					end
 				else
 					d["currentCD"] = -1
 				end
@@ -1359,24 +1386,24 @@ private.CooldownUpdate = function(f, elapsed)
 						
 						CDTL3:SetSpellData(d["name"], "offensives", "bCD", s["bCD"])
 						
+						-- the live cooldown's flag (d), not the throwaway aura table, decides visibility
 						if d["baseCD"] > 3 and d["baseCD"] <= CDTL3.db.profile.global["offensives"]["ignoreThreshold"] then
-							s["ignored"] = false
+							d["ignored"] = false
 							CDTL3:SetSpellData(d["name"], "offensives", "ignored", false)
 						else
-							s["ignored"] = true
+							d["ignored"] = true
 							CDTL3:SetSpellData(d["name"], "offensives", "ignored", true)
 							
 							CDTL3:SendToHolding(f)
 							CDTL3:SendToBarHolding(f)
 						end
-					else
-						
 					end
 				end
-			else
-				if d["currentCD"] >= 0 then
-					d["currentCD"] = d["currentCD"] - elapsed
-				end
+			end
+
+			-- count down every frame (the poll used to skip it once every 50 frames)
+			if d["currentCD"] >= 0 then
+				d["currentCD"] = d["currentCD"] - elapsed
 			end
 		
 		-- CUSTOMS
@@ -1516,11 +1543,12 @@ private.IconUpdate = function(f, elapsed)
 			end
 			
 			if CDTL3.db.profile.global["enableTooltip"] then	
-				if ic:IsMouseOver() then	
-					if d.link then	
-						GameTooltip_SetDefaultAnchor(GameTooltip, ic)	
+				if ic:IsMouseOver() then
+					-- build the tooltip once per hover, not every frame
+					if d.link and not (GameTooltip:IsOwned(ic) and GameTooltip:IsShown()) then
+						GameTooltip_SetDefaultAnchor(GameTooltip, ic)
 						GameTooltip:SetHyperlink(d.link)
-						GameTooltip:Show()	
+						GameTooltip:Show()
 					end	
 				else	
 					if GameTooltip:IsOwned(ic) then	
@@ -1552,11 +1580,12 @@ private.IconUpdate = function(f, elapsed)
 			end
 			
 			if CDTL3.db.profile.global["enableTooltip"] then	
-				if ic:IsMouseOver() then	
-					if d.link then	
-						GameTooltip_SetDefaultAnchor(GameTooltip, ic)	
-						GameTooltip:SetHyperlink(d.link)	
-						GameTooltip:Show()	
+				if ic:IsMouseOver() then
+					-- build the tooltip once per hover, not every frame
+					if d.link and not (GameTooltip:IsOwned(ic) and GameTooltip:IsShown()) then
+						GameTooltip_SetDefaultAnchor(GameTooltip, ic)
+						GameTooltip:SetHyperlink(d.link)
+						GameTooltip:Show()
 					end	
 				else	
 					if GameTooltip:IsOwned(ic) then	
@@ -1705,7 +1734,8 @@ function CDTL3:SendToLane(f)
 	
 	CDTL3:RefreshIcon(f)
 	
-	f.data["updateCount"] = 0
+	-- restart the poll counter so the next update re-syncs with the game immediately
+	f.updateCount = 0
 	f.data["currentCD"] = f.data["baseCD"]
 end
 
@@ -1840,22 +1870,25 @@ end
 
 private.UpdateText = function(f, tf, s, iString)
 	if s["enabled"] then
-		if s["dtags"] then
-			if f.updateCount % private.dynamicTextPollRate == 0 then
-				tf:SetText(CDTL3:ConvertTextDynamicTags(s["text"], f))
-			end
+		-- dynamic tags poll at their rate, time tags faster in the last 10s; whenever
+		-- either is due the whole text is converted (all tag families in one pass)
+		local due = false
+		if s["dtags"] and f.updateCount % private.dynamicTextPollRate == 0 then
+			due = true
 		end
 		
 		if s["ttags"] then
-			if f.data["currentCD"] <= 10 then
-				if f.updateCount % private.timeTextPollRate == 0 then
-					tf:SetText(CDTL3:ConvertTextTimeTags(s["text"], f))
-				end
-			else
-				if f.updateCount % (private.timeTextPollRate * 3) == 0 then
-					tf:SetText(CDTL3:ConvertTextTimeTags(s["text"], f))
-				end
+			local timeRate = private.timeTextPollRate
+			if f.data["currentCD"] > 10 then
+				timeRate = timeRate * 3
 			end
+			if f.updateCount % timeRate == 0 then
+				due = true
+			end
+		end
+		
+		if due then
+			tf:SetText(CDTL3:ConvertAllTextTags(s["text"], f))
 		end
 	end
 end
