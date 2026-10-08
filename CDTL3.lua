@@ -1222,6 +1222,9 @@ function CDTL3:ChatCommand(input)
 		CDTL3:ToggleDebug()
 	elseif input:trim() == "auras" then
 		CDTL3:DiagnoseAuras()
+	elseif input:trim():match("^secrettest") then
+		-- developer spike for docs/secret-timers-scope.md (SecretTest.lua)
+		CDTL3:SecretTest(input:trim():sub(11))
     end
 end
 
