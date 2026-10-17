@@ -63,6 +63,7 @@ Primary command is `/cdtl3` (or `/cooldowntimeline3`). The old `/cdtl2` / `/cool
 - **`/cdtl3 lanes`** / **`ready`** / **`bars`** / **`filters`** / **`profiles`** — Jump straight to that tab
 - **`/cdtl3 lock`** / **`/cdtl3 unlock`** — Toggle frame lock (enable/disable dragging)
 - **`/cdtl3 test`** — Toggle test mode (fills the frames with sample icons)
+- **`/cdtl3 minimap`** — Show/hide the minimap button (account-wide; also in the Global tab)
 - **`/cdtl3 debug`** — Toggle debug mode (debug frame + chat diagnostics)
 - **`/cdtl3 auras`** — Print every buff/debuff on you as CDTL3 sees it: readable or hidden by the game, saved or not, ignored, which lane, and whether it's assigned to your character. Use this first if a buff won't show up
 
@@ -114,6 +115,12 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 ---
 
 ## Changelog
+
+### v3.0.9
+
+**Minimap button**
+- **Can now be hidden** — Global tab → *Minimap button*, or `/cdtl3 minimap` (account-wide). For anyone decluttering the new Forever minimap
+- **Rides the rim of any minimap size** — the orbit radius was fixed for the old small minimap, leaving the button floating inside the larger Forever minimap; it now follows the minimap's live size and re-anchors when the minimap is resized or rescaled
 
 ### v3.0.8
 **New**

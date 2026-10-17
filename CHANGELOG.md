@@ -1,5 +1,11 @@
 # CooldownTimeline 3
 
+## v3.0.9
+
+**Minimap button**
+- **Can now be hidden** — Global tab → *Minimap button*, or `/cdtl3 minimap` (account-wide). For anyone decluttering the new Forever minimap
+- **Rides the rim of any minimap size** — the orbit radius was fixed for the old small minimap, leaving the button floating inside the larger Forever minimap; it now follows the minimap's live size and re-anchors when the minimap is resized or rescaled
+
 ## v3.0.8
 
 **New**

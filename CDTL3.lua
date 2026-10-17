@@ -56,7 +56,7 @@ CDTL3.Compat = {
 	end,
 }
 
-CDTL3.version = "3.0.8"
+CDTL3.version = "3.0.9"
 CDTL3.noticeVersion = "2.6"
 CDTL3.cdUID = 999
 -- where to report issues / make suggestions (first-run window, Changelog tab)
@@ -1061,9 +1061,17 @@ end
 -- Minimap button — left-click opens settings, right-click toggles frame lock, drag repositions.
 function CDTL3:BuildMinimapButton()
 	if self.minimapBtn then return end
-	local MM_RADIUS = 80
+	-- Orbit radius follows the minimap's LIVE size (the Forever minimap is larger than the old
+	-- one, and Edit Mode can rescale it): button center sits just past the rim so it rides the
+	-- border instead of floating inside the map.
 	local function offset(a)
-		return MM_RADIUS * math.cos(math.rad(a)), MM_RADIUS * math.sin(math.rad(a))
+		local radius = (Minimap:GetWidth() / 2) + 4
+		return radius * math.cos(math.rad(a)), radius * math.sin(math.rad(a))
+	end
+	local function place(btn)
+		local angle = (CDTL3.db.global and CDTL3.db.global.minimapAngle) or 225
+		btn:ClearAllPoints()
+		btn:SetPoint("CENTER", Minimap, "CENTER", offset(angle))
 	end
 
 	local btn = CreateFrame("Button", "CDTL3MinimapButton", Minimap)
@@ -1079,7 +1087,9 @@ function CDTL3:BuildMinimapButton()
 	icon:SetAllPoints()
 	icon:SetTexture("Interface\\AddOns\\CooldownTimeline3\\Media\\minimap.tga")
 
-	btn:SetPoint("CENTER", Minimap, "CENTER", offset((self.db.global and self.db.global.minimapAngle) or 225))
+	place(btn)
+	Minimap:HookScript("OnSizeChanged", function() place(btn) end)
+	btn:SetShown(not (self.db.global and self.db.global.minimapHide))
 
 	btn:SetScript("OnEnter", function(s)
 		GameTooltip:SetOwner(s, "ANCHOR_LEFT")
@@ -1106,8 +1116,7 @@ function CDTL3:BuildMinimapButton()
 			local sc = UIParent:GetEffectiveScale()
 			local angle = math.deg(math.atan2(py / sc - my, px / sc - mx))
 			CDTL3.db.global.minimapAngle = angle
-			s:ClearAllPoints()
-			s:SetPoint("CENTER", Minimap, "CENTER", offset(angle))
+			place(s)
 		end)
 	end)
 	btn:SetScript("OnDragStop", function(s)
@@ -1222,6 +1231,12 @@ function CDTL3:ChatCommand(input)
 		CDTL3:ToggleDebug()
 	elseif input:trim() == "auras" then
 		CDTL3:DiagnoseAuras()
+	elseif input:trim() == "minimap" then
+		CDTL3.db.global.minimapHide = not CDTL3.db.global.minimapHide
+		if CDTL3.minimapBtn then
+			CDTL3.minimapBtn:SetShown(not CDTL3.db.global.minimapHide)
+		end
+		CDTL3:Print("Minimap button " .. (CDTL3.db.global.minimapHide and "hidden" or "shown"))
     end
 end
 

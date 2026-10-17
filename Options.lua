@@ -341,6 +341,11 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."CDTL3 continues Cooldown Timeline for Retail (Midnight), Classic Era,\n"
 	changeLog = changeLog.."TBC Anniversary, MoP Classic and World of Warcraft: Forever,\n"
 	changeLog = changeLog.."based on the original by Vreenak and the v2 rewrite by cliffclive.\n\n"
+	changeLog = changeLog.."Changelog 3.0.9:\n\n"
+	changeLog = changeLog.."  - The minimap button can be hidden: Global tab -> Minimap button,\n"
+	changeLog = changeLog.."    or /cdtl3 minimap (account-wide)\n"
+	changeLog = changeLog.."  - The minimap button now rides the rim of any minimap size (it sat\n"
+	changeLog = changeLog.."    inside the larger WoW: Forever minimap) and follows resizes\n\n"
 	changeLog = changeLog.."Changelog 3.0.8:\n\n"
 	changeLog = changeLog.."  New:\n"
 	changeLog = changeLog.."  - Edit Mode: lanes, bar frames and ready frames can be moved and\n"
@@ -548,6 +553,22 @@ function CDTL3:GetMainOptions()
 									CDTL3:RefreshLane(i)
 									CDTL3:RefreshReady(i)
 									CDTL3:RefreshBarFrame(i)
+								end
+							end,
+					},
+					showMinimapButton = {
+						name = "Minimap button",
+						desc = "Show the CDTL3 button on the minimap (also: /cdtl3 minimap). Account-wide.",
+						order = 299,
+						type = "toggle",
+						width = "full",
+						get = function(info, index)
+								return not (CDTL3.db.global and CDTL3.db.global.minimapHide)
+							end,
+						set = function(info, val)
+								CDTL3.db.global.minimapHide = not val
+								if CDTL3.minimapBtn then
+									CDTL3.minimapBtn:SetShown(val)
 								end
 							end,
 					},
