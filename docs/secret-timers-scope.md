@@ -115,3 +115,44 @@ whitelist, and the UI should be honest about that.
 Research notes with file/line citations into Blizzard's generated API docs were produced
 for this scope (`Blizzard_APIDocumentationGenerated/*` in Gethe/wow-ui-source, `live` and
 `forever` branches).
+
+## Phase 1 scope (decided 2026-10-25)
+
+Everything here applies only when the client hides cooldowns (`C_Secrets.ShouldSpellCooldownBeSecret`) and the client has the duration APIs (Retail, Forever). Out of restricted content, and on Classic clients, the current code path is untouched.
+
+| Build | Item | How |
+|---|---|---|
+| **Test build 1** | Spell + pet cooldown icons keep moving on lanes | A transparent "rider" StatusBar per icon along the lane; the icon is anchored to its fill edge instead of a computed offset |
+| Test build 1 | All four lane modes | LINEAR_ABS: `SetMinMaxValues(0, max)` + `SetValue(dur:GetRemainingDuration())`. LINEAR: the same, with total = min(base CD, max) from CDTL3's own non-secret base CD. SPLIT / SPLIT_ABS: a curve per lane whose knots are the split points, sampled from `CalcSplitPosition` so it reproduces today's mapping exactly; fed through `EvaluateRemainingDuration` / `EvaluateRemainingPercent` |
+| Test build 1 | Bar-frame bars drain in combat | `SetTimerDuration(dur, Immediate, RemainingTime)` on the bar; needs no icon riding, so it works even if riding fails |
+| Test build 1 | Charges | `C_Spell.GetSpellChargeDuration` instead of the cooldown duration when the spell has charges |
+| Test build 1 | Ready on time | `SpellCooldownInfo.isActive` is never secret: icon goes to Ready when it turns false, not on the estimate |
+| Test build 1 | Diagnostics | `/cdtl3 secrettest` panel and report, plus a "combat timers" line in `/cdtl3 debug` |
+| Test build 2 | Countdown text in combat | Duration text binding on icon/bar texts whose template is a single time tag; mixed templates keep today's estimate |
+| Test build 2 | Swipe on icons | `Cooldown:SetCooldownFromDurationObject` |
+| Test build 2 | Exact whitelisted buffs | `C_Secrets.GetSpellAuraSecrecy(id) == NeverSecret` → `C_UnitAuras.GetPlayerAuraBySpellID` keeps working; check once per spell |
+| Test build 2 | Estimated other buffs, marked | Own-cast estimate with dimmed text so it's visibly an estimate |
+| Not doing | Item cooldowns | No duration API for items |
+| Not doing | Exact non-whitelisted buffs | Aura list, IDs and payload are secret; AuraContainer is display-only, linear-only and locked in combat |
+| Not doing | Number tags, stacking, sorting by time | Need maths/comparisons on hidden values |
+
+Decisions:
+- **Custom CD Time vs the game's duration in combat**: a spell with Custom CD Time set keeps today's estimate path (the user's override wins, as everywhere else); all others use the game's duration, which already carries talent reductions.
+- **hideTimeSurplus** (hide while remaining > lane max) can't be tested in combat; riding icons are pinned at the far end instead (the bar clamps). Revisit with a step curve driving alpha if test build 1 shows `SetAlpha` takes a curve result.
+- **Stacking**: icons in riding mode are skipped by GROUPED stacking (`Lanes.lua` `GetCenter()` comparisons) and by position saving; they may overlap until combat ends.
+- **Off switch**: Global tab → "Combat timers (experimental)" plus `/cdtl3 combattimers on|off`; on by default only in test builds.
+
+## Test build 1 plan
+
+Branch `secret-timers`. One build answers the spike questions and tries the real thing, so it needs one in-game session, not two.
+
+1. **New `SecretTimers.lua`** (loaded after Cooldown.lua, all TOCs, feature-detected): restriction tracking (`PLAYER_REGEN_*`, `ENCOUNTER_START/END`, `ADDON_RESTRICTION_STATE_CHANGED`), a per-spell duration cache refreshed on cast and `SPELL_UPDATE_COOLDOWN`, the rider bars, the per-lane curves, and enter/leave transitions (leaving restores normal positioning on the next frame, so there's no jump).
+2. **Hooks into existing code** (small, guarded): `private.IconUpdate` asks SecretTimers whether an icon is riding and skips its `SetPoint` if so; `private.BarUpdate` likewise for bars; Lanes.lua stacking and position-saving skip riding icons; Ready transition reads `isActive` while riding.
+3. **Harness tests** before the build: curve knots reproduce `CalcSplitPosition` for every split setting; riding switches on/off with the restriction state; no maths on (stubbed) secret values anywhere in the path.
+4. **In-game test (Retail first, then Forever)**, target dummy, one lane per mode:
+   - Out of combat: nothing changes from 3.0.10.
+   - In combat: icons slide, bars drain, charges recharge, Ready fires when the spell is actually ready, no Lua errors.
+   - Leaving combat: icons don't jump.
+   - A talent-reduced cooldown shows its real length in combat.
+   - `/cdtl3 secrettest report` and `/cdtl3 debug` output pasted back.
+5. **Go / no-go**: if icons don't ride (spike Q1), keep bars + Ready-on-time + charges and drop lane riding; if curve results don't feed `SetValue` (Q2), split lanes fall back to linear while restricted.
