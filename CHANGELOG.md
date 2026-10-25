@@ -1,5 +1,10 @@
 # CooldownTimeline 3
 
+## v3.0.10
+
+**Fixes**
+- **Nature's Swiftness (and other "cooldown starts when used" spells) now show their cooldown** — spells whose cooldown only begins once their effect is used up (Nature's Swiftness, Presence of Mind, Divine Favor, Combustion, Prowl, Feign Death and others) went straight to "ready" when cast and never showed the real cooldown once it started. The addon's special handling for these spells was only ever applied to Stealth and Shadowmeld; it now applies to every spell in its list, including ones you've already saved
+
 ## v3.0.9
 
 **Minimap button**
