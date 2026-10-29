@@ -21,7 +21,8 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 		rank = cdData["rank"],
 		desc = cdData["desc"],
 		icon = cdData["icon"],
-		oaf = cdData["oaf"],
+		-- entries saved before 3.0.9 never carried the flag; take it from the spell data
+		oaf = cdData["oaf"] or ((cdType == "spells" or cdType == "petspells") and CDTL3:IsAuraFadeSpell(cdData["id"], cdData["name"]) or nil),
 		stacks = 0,
 		
 		targetID = cdData["targetID"],

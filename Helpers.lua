@@ -33,6 +33,20 @@ function CDTL3:IgnoredByDefault(type, bCD)
 	return not (seconds > 3 and seconds <= CDTL3.db.profile.global[type]["ignoreThreshold"])
 end
 
+-- Spells whose cooldown only starts when their effect ends (Nature's Swiftness, Presence of
+-- Mind, Prowl, Feign Death, Divine Favor...): flagged `oaf` in Data.lua's spell lists. While
+-- the effect is up the game reports the cooldown as not started, so without the flag the icon
+-- goes straight to ready and nothing restarts it when the real cooldown begins. Looked up by
+-- spell ID, then by name (other ranks share the flag).
+function CDTL3:IsAuraFadeSpell(id, name)
+	if not CDTL3.spellData then
+		return nil
+	end
+
+	local known = (id and CDTL3:GetSpellData(id)) or (name and CDTL3:GetSpellData(0, name))
+	return known and known["oaf"] or nil
+end
+
 -- A new player or pet spell: charge recharge time when it has charges, else its base cooldown
 function CDTL3:NewSpellEntry(spellID, spellName, icon, type)
 	local _, maxCharges, _, cooldownDuration = CDTL3:GetSpellCharges(spellID)
@@ -54,6 +68,7 @@ function CDTL3:NewSpellEntry(spellID, spellName, icon, type)
 		s["charges"] = maxCharges
 	end
 
+	s["oaf"] = CDTL3:IsAuraFadeSpell(spellID, spellName)
 	s["link"] = CDTL3:GetSpellLink(spellID)
 	s["ignored"] = CDTL3:IgnoredByDefault(type, s["bCD"])
 
