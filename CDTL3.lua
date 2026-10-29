@@ -753,6 +753,7 @@ local defaults = {
 			enabledAlways = true,
 			enabledGroup = false,
 			enabledInstance = false,
+			hideOutOfCombat = false,
 
 			dynamicSpellDetection = false,
 			
@@ -2443,6 +2444,7 @@ end
 
 function CDTL3:PLAYER_REGEN_DISABLED()
 	CDTL3.combat = true
+	CDTL3:ApplyCombatVisibility()
 	
 	
 	if CDTL3_Ready_1 then
@@ -2460,6 +2462,7 @@ end
 
 function CDTL3:PLAYER_REGEN_ENABLED()
 	CDTL3.combat = false
+	CDTL3:ApplyCombatVisibility()
 
 	-- auras were secret during combat: pick up buffs gained or recast meanwhile
 	if CDTL3.retailAPI and CDTL3.enabled then
@@ -2755,6 +2758,8 @@ function CDTL3:TurnOn()
 		CDTL3:RegisterEvent("ITEM_LOCK_CHANGED")
 		CDTL3:RegisterEvent("PLAYER_REGEN_DISABLED")
 		CDTL3:RegisterEvent("PLAYER_REGEN_ENABLED")
+		-- seed the combat flag: a /reload DURING combat refires no REGEN event
+		CDTL3.combat = (UnitAffectingCombat and UnitAffectingCombat("player")) or false
 		CDTL3:RegisterUnitEvents("UNIT_POWER_FREQUENT", "player")
 		CDTL3:RegisterUnitEvents("UNIT_POWER_UPDATE", "player")
 

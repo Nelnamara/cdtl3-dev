@@ -190,9 +190,27 @@ function CDTL3:Autohide(f, s)
 	if s then
 		fAlpha = s["alpha"]
 	end
-	
+
 	--CDTL3:Print(fAlpha)
-	
+
+	-- Hide out of combat: every frame fades while you're out of combat, while detection keeps
+	-- running (a cooldown started on the last pull is still tracked and shown on the next one).
+	-- Unlock, Edit Mode (which unlocks the frames), debug and test mode all win over it.
+	local gl = CDTL3.db.profile.global
+	if gl["hideOutOfCombat"] and not CDTL3.combat and not CDTL3.testing
+			and not gl["unlockFrames"] and not gl["debugMode"] then
+		if f:GetAlpha() ~= 0 then
+			if f.animateOut then
+				if not f.animateOut:IsPlaying() then
+					f.animateOut:Play()
+				end
+			else
+				f:SetAlpha(0)
+			end
+		end
+		return
+	end
+
 	if CDTL3.db.profile.global["autohide"] and not CDTL3.db.profile.global["unlockFrames"] and not CDTL3.db.profile.global["debugMode"] then
 		if f.overrideAutohide then
 			--f:SetAlpha(1)
@@ -230,6 +248,25 @@ function CDTL3:Autohide(f, s)
 		if f:GetAlpha() ~= fAlpha then
 			--f:SetAlpha(1)
 			f:SetAlpha(fAlpha)
+		end
+	end
+end
+
+-- Re-apply visibility on combat edges so Hide-out-of-combat reacts instantly (frames must
+-- appear the moment a pull starts) instead of waiting for the next update poll. The refresh
+-- functions run every frame through CDTL3:Autohide, where the actual rule lives.
+function CDTL3:ApplyCombatVisibility()
+	if not CDTL3.db.profile.global["hideOutOfCombat"] then return end
+
+	for k in pairs(CDTL3.lanes) do
+		CDTL3:RefreshLane(k)
+	end
+	for k in pairs(CDTL3.barFrames) do
+		CDTL3:RefreshBarFrame(k)
+	end
+	for i = 1, 3 do
+		if _G["CDTL3_Ready_" .. i] then
+			CDTL3:RefreshReady(i)
 		end
 	end
 end

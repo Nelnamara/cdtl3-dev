@@ -537,6 +537,20 @@ function CDTL3:GetMainOptions()
 								CDTL3:ToggleFrameLock()
 							end,
 					},
+					hideOutOfCombat = {
+						name = "Hide out of combat",
+						desc = "Frames appear when you enter combat and fade when you leave it. Cooldown detection keeps running the whole time, so a cooldown started on the last pull is still tracked and shown on the next one. Unlock frames, Edit Mode and test mode always show the frames",
+						order = 200.5,
+						type = "toggle",
+						width = "full",
+						get = function(info, index)
+								return CDTL3.db.profile.global["hideOutOfCombat"]
+							end,
+						set = function(info, val)
+								CDTL3.db.profile.global["hideOutOfCombat"] = val
+								CDTL3:RefreshConfig()
+							end,
+					},
 					autohide = {
 						name = "Auto-hide Frames",
 						desc = "If selected frames will hide themselves when there is no active bar/icon in it",
