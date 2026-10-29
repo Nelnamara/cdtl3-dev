@@ -342,6 +342,8 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."TBC Anniversary, MoP Classic and World of Warcraft: Forever,\n"
 	changeLog = changeLog.."based on the original by Vreenak and the v2 rewrite by cliffclive.\n\n"
 	changeLog = changeLog.."Changelog 3.0.10:\n\n"
+	changeLog = changeLog.."  - New: Hide out of combat (Global tab) — frames fade out of combat\n"
+	changeLog = changeLog.."    and appear when a pull starts; detection keeps running throughout\n"
 	changeLog = changeLog.."  - Fixed Nature's Swiftness, Presence of Mind, Divine Favor, Prowl,\n"
 	changeLog = changeLog.."    Feign Death and other spells whose cooldown starts when their effect\n"
 	changeLog = changeLog.."    is used: they went straight to ready and never showed the cooldown\n\n"

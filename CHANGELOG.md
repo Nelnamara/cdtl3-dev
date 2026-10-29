@@ -2,6 +2,9 @@
 
 ## v3.0.10
 
+**New**
+- **Hide out of combat** — Global tab toggle: every lane, bar frame and ready frame fades while you're out of combat and appears the moment a pull starts. Cooldown detection keeps running the whole time, so a cooldown started on the last pull is still tracked and shown on the next one. Unlock frames, Edit Mode and test mode always show the frames
+
 **Fixes**
 - **Nature's Swiftness (and other "cooldown starts when used" spells) now show their cooldown** — spells whose cooldown only begins once their effect is used up (Nature's Swiftness, Presence of Mind, Divine Favor, Combustion, Prowl, Feign Death and others) went straight to "ready" when cast and never showed the real cooldown once it started. The addon's special handling for these spells was only ever applied to Stealth and Shadowmeld; it now applies to every spell in its list, including ones you've already saved
 
