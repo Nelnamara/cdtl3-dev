@@ -1238,6 +1238,33 @@ function CDTL3:ChatCommand(input)
 			CDTL3.minimapBtn:SetShown(not CDTL3.db.global.minimapHide)
 		end
 		CDTL3:Print("Minimap button " .. (CDTL3.db.global.minimapHide and "hidden" or "shown"))
+	elseif input:trim() == "oaf" then
+		-- Diagnostic for "cooldown starts when the effect is used" spells (Nature's Swiftness etc.):
+		-- prints every link of the chain so one paste shows which one is wrong on a live client.
+		CDTL3:Print("OAF CHECK v" .. CDTL3.version .. " | built-in data: " .. #CDTL3.spellData .. " spells | detection on: " .. tostring(CDTL3.enabled))
+		for _, s in pairs(CDTL3.db.profile.tables["spells"]) do
+			local ok, flag = pcall(CDTL3.IsAuraFadeSpell, CDTL3, s["id"], s["name"])
+			if s["oaf"] or (ok and flag) then
+				CDTL3:Print(string.format("  saved: %s (id %s) saved-oaf=%s data-oaf=%s ignored=%s",
+					tostring(s["name"]), tostring(s["id"]), tostring(s["oaf"]),
+					tostring(ok and flag), tostring(s["ignored"])))
+			end
+		end
+		local frames = 0
+		for _, cd in pairs(CDTL3.cooldowns) do
+			local d = cd.data
+			if d and (d["type"] == "spells" or d["type"] == "petspells") and d["oaf"] then
+				frames = frames + 1
+				local okS, start, duration, enabled = pcall(CDTL3.GetSpellCooldown, CDTL3, d["id"])
+				local okA, aura = pcall(CDTL3.AuraExists, CDTL3, "player", d["name"])
+				CDTL3:Print(string.format("  frame: %s held=%s curCD=%s game-cd=%s/%s enabled=%s aura=%s",
+					tostring(d["name"]), tostring(d["oafHeld"]),
+					tostring(d["currentCD"] and math.floor(d["currentCD"] + 0.5)),
+					tostring(okS and start), tostring(okS and duration), tostring(okS and enabled),
+					(okA and aura) and "UP" or "down"))
+			end
+		end
+		CDTL3:Print("  live oaf frames: " .. frames .. " | run once with the buff up and once after using it, paste both")
     end
 end
 
