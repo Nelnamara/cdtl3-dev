@@ -56,7 +56,7 @@ CDTL3.Compat = {
 	end,
 }
 
-CDTL3.version = "3.0.10"
+CDTL3.version = "3.0.11"
 CDTL3.noticeVersion = "2.6"
 CDTL3.cdUID = 999
 -- where to report issues / make suggestions (first-run window, Changelog tab)

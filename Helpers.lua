@@ -637,9 +637,9 @@ function CDTL3:GetCharacterData()
 				classPower = CDTL3:GetPlayerPower(engClass),
 			}
 			
-			if CDTL3.tocversion > 40000 then
-				CDTL3.spellData = CDTL3:GetAllSpellData(engClass, engRace)
-			end
+			-- every client: Data.lua's lists are Classic/TBC/Wrath-era content (Forever reads the
+			-- Classic ones), and the aura-fade flag and the Vanish/Shadowmeld cases look up here
+			CDTL3.spellData = CDTL3:GetAllSpellData(engClass, engRace)
 			
 			if CDTL3.db.profile.global["debugMode"] then
 				CDTL3:Print("PLAYER: "..CDTL3.player["name"].." - "..CDTL3.player["race"].." - "..CDTL3.player["class"].." - "..CDTL3.player["classPower"])

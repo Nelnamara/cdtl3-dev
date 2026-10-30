@@ -116,6 +116,13 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 
 ## Changelog
 
+### v3.0.11
+
+**Fixes**
+- **Nature's Swiftness and the other "cooldown starts when used" spells now work on Classic Era, TBC Anniversary and WoW: Forever** — the 3.0.10 fix finds these spells in the addon's built-in spell lists, but those lists were only ever loaded on Cataclysm-and-newer clients, which have no lists of their own. On Classic Era, TBC Anniversary and Forever the fix had nothing to read, so Nature's Swiftness still went straight to "ready". The lists now load on every client
+- **Shaman Nature's Swiftness** was missing from the Classic Era spell list, and Classic Era **Cold Blood** wasn't marked as starting its cooldown when used; both corrected, checked against the Classic Era game data
+- **New `/cdtl3 oaf`** — prints the built-in spell list, every saved "cooldown starts when used" spell and the live state of any such cooldown, for troubleshooting
+
 ### v3.0.10
 
 **New**
