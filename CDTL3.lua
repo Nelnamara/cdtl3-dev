@@ -23,6 +23,19 @@ CDTL3.isForever = (tocversion >= 16000 and tocversion < 17000)
 	or (WOW_PROJECT_MAINLINE ~= nil and WOW_PROJECT_ID == WOW_PROJECT_MAINLINE and tocversion < 110000)
 CDTL3.retailAPI = tocversion >= 110000 or CDTL3.isForever
 
+-- The combat log is closed to addons on retail 12.x and Forever. Settle that at load so the
+-- options that need it are hidden even while TurnOn hasn't run (it only runs when detection
+-- is on); on the other clients TurnOn records whether the event could be registered.
+if CDTL3.retailAPI then
+	CDTL3.combatLogRegistered = false
+end
+
+-- True where nothing fed only by the combat log can fire. Options.lua hides those options,
+-- Cooldown.lua ignores Spell School Color.
+function CDTL3:NoCombatLog()
+	return CDTL3.combatLogRegistered == false or not CombatLogGetCurrentEventInfo
+end
+
 -- Globals that no longer exist on Forever (or on retail from 12.1.5): GetItemSpell and
 -- GetItemInfoInstant were removed in 12.1.5 (C_Item since 10.2.6); IsSpellKnown and
 -- IsSpellKnownOrOverridesKnown survive only in Blizzard's deprecation fallbacks since 11.2.
@@ -56,7 +69,7 @@ CDTL3.Compat = {
 	end,
 }
 
-CDTL3.version = "3.0.11"
+CDTL3.version = "3.0.12"
 CDTL3.noticeVersion = "2.6"
 CDTL3.cdUID = 999
 -- where to report issues / make suggestions (first-run window, Changelog tab)
@@ -1104,7 +1117,7 @@ function CDTL3:BuildMinimapButton()
 
 	btn:SetScript("OnClick", function(_, button)
 		if button == "RightButton" then
-			CDTL3:ChatCommand("lock")
+			CDTL3:ToggleFrameLock()
 		else
 			CDTL3:ChatCommand("")
 		end
@@ -1179,10 +1192,11 @@ function CDTL3:OnEnable()
 			CDTL3:UNIT_AURA("UNIT_AURA", "player")
 		end
 
-		if CDTL3.player["class"] == "DEATHKNIGHT" then
-			self:RegisterEvent("RUNE_POWER_UPDATE")
-		end
-		
+		-- Rune timers need a GetRuneCooldown-based rework before RUNE_POWER_UPDATE is registered again.
+		--if CDTL3.player["class"] == "DEATHKNIGHT" then
+			--self:RegisterEvent("RUNE_POWER_UPDATE")
+		--end
+
 		CDTL3:RefreshLane(1)
 		CDTL3:RefreshLane(2)
 		CDTL3:RefreshLane(3)
@@ -2222,6 +2236,11 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 		if isKnown or isKnownOrOverridesKnown then
 			local s = CDTL3:GetSpellSettings(spellName, "spells")
 			if s then
+				-- the poll reads the cooldown by the saved entry's id, which can be another rank's
+				if s["id"] then
+					CDTL3.spellCastTimes[s["id"]] = CDTL3.spellCastTimes[spellID]
+				end
+
 				if not s["ignored"] then
 					local ef = CDTL3:GetExistingCooldown(s["name"], "spells")
 					if ef then
@@ -2371,6 +2390,11 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 			end
 		end
 	elseif unitTarget == "pet" then
+		-- Same secret-cooldown fallback as the player's casts: without a cast time
+		-- GetSpellCooldown restarts the countdown from "now" on every poll.
+		if not CDTL3.spellCastTimes then CDTL3.spellCastTimes = {} end
+		CDTL3.spellCastTimes[spellID] = GetTime()
+
 		local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
 		
 		local isKnown = CDTL3.Compat.IsSpellKnown(spellID, true)
@@ -2383,6 +2407,11 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 		if isKnown or isKnownOrOverridesKnown then
 			local s = CDTL3:GetSpellSettings(spellName, "petspells")
 			if s then
+				-- the poll reads the cooldown by the saved entry's id, which can be another rank's
+				if s["id"] then
+					CDTL3.spellCastTimes[s["id"]] = CDTL3.spellCastTimes[spellID]
+				end
+
 				if not s["ignored"] then
 					local ef = CDTL3:GetExistingCooldown(s["name"], "petspells")
 					if ef then
@@ -2598,9 +2627,9 @@ function CDTL3:UNIT_POWER_UPDATE(...)
 end
 
 function CDTL3:RUNE_POWER_UPDATE(...)
-	local runeIndex, added = ...
-	--local _, runeIndex, added = ...
-	
+	-- (event, runeIndex, added): added is true once the rune is usable again, false while it cools
+	local _, runeIndex, added = ...
+
 	if CDTL3.db.profile.global["debugMode"] then
 		CDTL3:Print("RUNES UPDATE: "..tostring(runeIndex).." - "..tostring(added))
 	end
@@ -2775,10 +2804,12 @@ function CDTL3:TurnOn()
 			CDTL3:Print("ENABLING DETECTION")
 		end
 	
-		-- The combat log is closed to addons on WoW: Forever. Only register it where
-		-- its accessor exists, and never let a refusal abort the rest of TurnOn.
+		-- The combat log is closed to addons on retail 12.x and WoW: Forever (retail still has
+		-- CombatLogGetCurrentEventInfo as a deprecated stub, so the function alone proves
+		-- nothing). Only register it on the other clients, where its accessor exists, and never
+		-- let a refusal abort the rest of TurnOn.
 		CDTL3.combatLogRegistered = false
-		if CombatLogGetCurrentEventInfo then
+		if not CDTL3.retailAPI and CombatLogGetCurrentEventInfo then
 			CDTL3.combatLogRegistered = pcall(CDTL3.RegisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
 		end
 		CDTL3:RegisterUnitEvents("UNIT_SPELLCAST_SUCCEEDED", "player", "pet")

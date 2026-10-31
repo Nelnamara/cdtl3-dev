@@ -10,3 +10,7 @@ Thumbs.db
 
 # WoW saved variables / local overrides
 *.lua.bak
+
+# tools/spell-list-check: npm install and downloaded wago.tools tables
+tools/spell-list-check/node_modules/
+tools/spell-list-check/cache/

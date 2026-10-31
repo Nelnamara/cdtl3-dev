@@ -37,14 +37,15 @@ end
 -- Mind, Prowl, Feign Death, Divine Favor...): flagged `oaf` in Data.lua's spell lists. While
 -- the effect is up the game reports the cooldown as not started, so without the flag the icon
 -- goes straight to ready and nothing restarts it when the real cooldown begins. Looked up by
--- spell ID, then by name (other ranks share the flag).
+-- spell ID, then by name (other ranks share the flag). The second value is true when the
+-- spell data lists the spell at all, so its flag (true or false) can win over a saved one.
 function CDTL3:IsAuraFadeSpell(id, name)
 	if not CDTL3.spellData then
-		return nil
+		return nil, false
 	end
 
 	local known = (id and CDTL3:GetSpellData(id)) or (name and CDTL3:GetSpellData(0, name))
-	return known and known["oaf"] or nil
+	return known and known["oaf"] or nil, known ~= nil
 end
 
 -- A new player or pet spell: charge recharge time when it has charges, else its base cooldown
@@ -309,7 +310,8 @@ function CDTL3:CheckEdgeCases(spellName)
 					end
 				end
 			end
-		else
+		elseif CDTL3.tocversion < 40000 then
+			-- built for the Classic lists; MoP/retail list Stealth since 3.0.12 but keep the old behaviour
 			s = CDTL3:GetSpellData(0, "Stealth")
 			if s then
 				CDTL3:ApplyEntryDefaults(s, "spells")
@@ -1145,6 +1147,12 @@ private.IsMine = function(data)
 	end
 
 	return false
+end
+
+-- The same test for the Filters bulk controls (Options.lua), which change only the entries
+-- the Filters lists show: this character's
+function CDTL3:IsMyEntry(data)
+	return private.IsMine(data)
 end
 
 function CDTL3:LoadFilterList(type, specialCase)

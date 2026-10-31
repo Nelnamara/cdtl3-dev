@@ -6,13 +6,25 @@
 local private = {}
 private.dynamicTextPollRate = 10
 private.timeTextPollRate = 2
+-- seconds after an item's use in which a readable 0 cooldown read means "no cooldown"
+private.itemNoCooldownWindow = 2
 
 function CDTL3:CreateCooldown(UID, cdType, cdData)
 	local fName = "CDTL3_CD_"..UID
 	local f = CreateFrame("Frame", fName, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	
 	f.updateCount = 0
-	
+
+	-- the spell data's flag wins whenever it lists the spell (a flag saved by an older build
+	-- can be stale, e.g. Forever's Elemental Mastery); otherwise keep the saved one
+	local oaf = cdData["oaf"]
+	if cdType == "spells" or cdType == "petspells" then
+		local dataOaf, dataKnows = CDTL3:IsAuraFadeSpell(cdData["id"], cdData["name"])
+		if dataKnows then
+			oaf = dataOaf
+		end
+	end
+
 	f.data = {
 		uid = UID,
 		id = cdData["id"],
@@ -21,8 +33,7 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 		rank = cdData["rank"],
 		desc = cdData["desc"],
 		icon = cdData["icon"],
-		-- entries saved before 3.0.9 never carried the flag; take it from the spell data
-		oaf = cdData["oaf"] or ((cdType == "spells" or cdType == "petspells") and CDTL3:IsAuraFadeSpell(cdData["id"], cdData["name"]) or nil),
+		oaf = oaf or nil,
 		stacks = 0,
 		
 		targetID = cdData["targetID"],
@@ -866,13 +877,18 @@ function CDTL3:RefreshIcon(cd)
 	end
 end
 
+-- Spell schools only come from the combat log. Where it isn't available (CDTL3:NoCombatLog,
+-- which Options.lua also uses to hide the Spell School Color toggle there) the saved setting
+-- is ignored, so a profile imported from another client can't paint every bar "Other" with
+-- no visible way to turn it off. The setting itself is left as saved.
+
 -- Resolves the foreground color for a bar: the entry's own color (Filters) -> school ->
 -- class -> the bar frame's color. Shared by RefreshBar and the dynamic-color restore.
 private.GetBarFGColor = function(s, d)
 	local fgColor = s["bar"]["fgTextureColor"] or { r = 0.77647, g = 0.11765, b = 0.28235, a = 1 }
 	if d and d["customColor"] and d["color"] then
 		fgColor = d["color"]
-	elseif s["bar"]["fgSchoolColor"] then
+	elseif s["bar"]["fgSchoolColor"] and not CDTL3:NoCombatLog() then
 		local schoolColor = CDTL3.db.profile.global["schoolColors"]["Other"]
 		if d and d["school"] then
 			schoolColor = CDTL3.db.profile.global["schoolColors"][d["school"]] or schoolColor
@@ -1209,7 +1225,22 @@ private.CooldownUpdate = function(f, elapsed)
 						return UnitChannelInfo("player") and true or false
 					end)
 					local _, _, enabled = CDTL3:GetSpellCooldown(d["id"])
-					d["oafHeld"] = (auraUp or (channelOK and channeling) or enabled == 0 or enabled == false) and true or false
+					-- the game's own hold: the effect is up, or the cooldown is reported not started
+					local gameHeld = (auraUp or enabled == 0 or enabled == false) and true or false
+
+					-- The cooldown really starts when the game's hold ends, not at the cast. Record
+					-- that as the spell's start for GetSpellCooldown's secret-value fallback
+					-- (Helpers.lua), which counts from the cast time it finds here: a Stealth
+					-- opener after 20s of stealth showed Ready with 10s left. Readable timing still
+					-- wins, since the fallback only runs while it's secret. A channel alone doesn't
+					-- count, so channelling mid-cooldown doesn't restart it.
+					if d["oafGameHeld"] and not gameHeld then
+						if not CDTL3.spellCastTimes then CDTL3.spellCastTimes = {} end
+						CDTL3.spellCastTimes[d["id"]] = GetTime()
+					end
+
+					d["oafGameHeld"] = gameHeld
+					d["oafHeld"] = (gameHeld or (channelOK and channeling)) and true or false
 				end
 
 				if not d["oafHeld"] then
@@ -1290,7 +1321,11 @@ private.CooldownUpdate = function(f, elapsed)
 		-- ITEMS
 		elseif d["type"] == "items" then
 			if f.updateCount % 50 == 0 then
-				if d["baseCD"] == 0 then
+				-- An item saved without a cooldown yet (bCD 0) learns it, and whether it's
+				-- ignored, while it's counting down: from any positive, readable read, and from
+				-- a readable 0 only right after its use (see below). nil (secret) teaches
+				-- nothing. A ready item waits for its next use.
+				if d["baseCD"] == 0 and d["currentCD"] >= 0 then
 					d["currentCD"] = 1000
 					
 					-- nil while the item cooldown is secret: decide nothing yet, retry next poll
@@ -1307,7 +1342,15 @@ private.CooldownUpdate = function(f, elapsed)
 						_, duration = CDTL3:GetItemCooldown(d["itemID"])
 					end
 					
-					if duration then
+					-- A 0 read means "no cooldown" (food, drink: saved as ignored) only when it's
+					-- taken within a moment of the use, which the use handler records as the
+					-- cast time: a real cooldown would already show. A later 0, e.g. the first
+					-- readable read after a cooldown that stayed secret until it ran out (WoW:
+					-- Forever, in combat), teaches nothing: it used to hide the item for good.
+					local usedAt = CDTL3.spellCastTimes and CDTL3.spellCastTimes[d["id"]]
+					local justUsed = usedAt and GetTime() - usedAt <= private.itemNoCooldownWindow
+
+					if duration and (duration > 0 or justUsed) then
 						d["baseCD"] = duration
 						CDTL3:SetItemData(d["itemID"], "bCD", duration * 1000)
 						
@@ -1338,14 +1381,19 @@ private.CooldownUpdate = function(f, elapsed)
 
 							local start, duration, enabled = CDTL3:GetInventoryItemCooldown(slot)
 							if start and duration then
-								d["baseCD"] = duration
+								-- a 0 read means ready: it ends the countdown but doesn't unlearn the cooldown
+								if duration > 0 then
+									d["baseCD"] = duration
+								end
 								d["currentCD"] = start + duration - GetTime()
 							end
 						end
 					else
 						local start, duration, enabled = CDTL3:GetItemCooldown(d["itemID"])
 						if duration and start then
-							d["baseCD"] = duration
+							if duration > 0 then
+								d["baseCD"] = duration
+							end
 							d["currentCD"] = start + duration - GetTime()
 						end
 					end
@@ -1738,6 +1786,19 @@ function CDTL3:SendToLane(f)
 	-- restart the poll counter so the next update re-syncs with the game immediately
 	f.updateCount = 0
 	f.data["currentCD"] = f.data["baseCD"]
+end
+
+-- Move a cooldown to its (newly set) lane without restarting it. SendToLane restarts the
+-- countdown, which is right for a cast but not for a settings change: on a finished icon it
+-- restarted custom timers at full length, played a ready sound per icon, and made a ready
+-- item read 0 and unlearn its cooldown. An icon still counting down moves and keeps its
+-- remaining time; a finished one stays put and uses the new lane from its next use.
+function CDTL3:MoveToLane(f)
+	local remaining = f.data["currentCD"]
+	if remaining and remaining > 0 then
+		CDTL3:SendToLane(f)
+		f.data["currentCD"] = remaining
+	end
 end
 
 function CDTL3:SendToReady(f)
