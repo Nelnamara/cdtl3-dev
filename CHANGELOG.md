@@ -1,5 +1,23 @@
 # CooldownTimeline 3
 
+## v3.0.12
+
+**WoW: Forever launch**
+- **Forever gets its own spell data** — Forever reads the Classic Era spell list, but its spells differ. The list is now corrected from Forever's own game data: spells and ranks Forever doesn't have are dropped, renamed spells use their Forever names, and cooldowns match Forever (Lay on Hands is 20 minutes). Forever's new **Swift Judgement** now starts its cooldown when used, and **Elemental Mastery**, which no longer does on Forever, is treated as a normal cooldown
+- **Pet abilities and ranked spells count down in combat** (Forever and Retail) — while the game hides cooldown timings, pet abilities, and spells cast at a higher rank than the one CDTL3 first saw, kept resetting to just under their full cooldown. Their casts are now timed properly
+- **"Cooldown starts when used" spells count from when the effect ends** (Forever and Retail, while timings are hidden) — a Stealth opener or a held Nature's Swiftness no longer shows ready early
+
+**Fixes**
+- **MoP Classic and Retail: "cooldown starts when used" spells work** — Nature's Swiftness, Presence of Mind, Stealth, Prowl, Feign Death, Misdirection, Tricks of the Trade and the rest went straight to "ready" because these clients had no spell list. They now have one, checked against each client's game data
+- **Retail: no longer listed as out of date** — the retail TOC now declares 12.1.5
+- **Items are no longer hidden by mistake** — an item could be saved as Ignored when its cooldown stayed hidden from addons until it ran out (Forever, Retail), or after a ready item was moved to another lane or the Ignore Threshold slider was dragged. If an item vanished that way, untick *Ignored* on it under Filters
+- **Moving cooldowns keeps their timers** — the Ignore Threshold slider and the Filters lane picker no longer restart running timers or set off a burst of ready sounds
+- **Filters bulk controls change only this character's entries** — the Ignore Threshold slider, *Set All*, *Clear Settings* and *Clear Quest Items* also changed other characters' entries, which the list doesn't show. Clearing an entry another character also uses now only removes it for you
+- **Retail: options that need the combat log are hidden** — Blizzard closed the combat log to addons in 12.0, so enemy debuffs, melee swing timers and spell-school colors are hidden as on Forever
+- **Spell School Color no longer greys out bars where the combat log is closed** — a profile imported with it on painted every bar grey with no visible way to turn it off
+- **Minimap button: right-click toggles lock and unlock** — it could only lock
+- **Spell list upkeep** — Classic Era Season of Discovery rune cooldowns corrected and a spell ID that doesn't exist removed; the Wrath Death Knight list no longer loads on MoP Classic and Retail, where its IDs and names are wrong
+
 ## v3.0.11
 
 **Fixes**

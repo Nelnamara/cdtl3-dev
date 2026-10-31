@@ -136,6 +136,10 @@ function CDTL3:GetAllSpellData(class, race)
 		end
 	end
 	
+	if CDTL3.isForever then
+		d = private.ForeverSpellData(d, class)
+	end
+	
 	return d
 end
 
@@ -268,58 +272,72 @@ private.GetRacialData = function()
 end
 
 -- CLASS
+-- MoP and retail list only the spells whose cooldown starts when their effect ends (oaf);
+-- every other spell takes its cooldown from the game when it is first cast.
 private.GetClassData = function(class)
 	--local _, _, _, tocversion = GetBuildInfo()
 	local d = {}
 	
 	-- Death Knight
 	if class == "DEATHKNIGHT" then		
-		-- MAIN SPELLS
-		table.insert(d, { id = 48707, name = "Anti-Magic Shell", rank = "", bCD = 45000 } )
-		table.insert(d, { id = 42650, name = "Army of the Dead", rank = "", bCD = 600000 } )
-		table.insert(d, { id = 48266, name = "Blood Presence", rank = "", bCD = 1000 } )
-		table.insert(d, { id = 45529, name = "Blood Tap", rank = "", bCD = 60000 } )
-		table.insert(d, { id = 56222, name = "Dark Command", rank = "", bCD = 8000 } )
-		table.insert(d, { id = 43265, name = "Death and Decay", rank = "1", bCD = 30000 } )
-		table.insert(d, { id = 49936, name = "Death and Decay", rank = "2", bCD = 30000 } )
-		table.insert(d, { id = 49937, name = "Death and Decay", rank = "3", bCD = 30000 } )
-		table.insert(d, { id = 49938, name = "Death and Decay", rank = "4", bCD = 30000 } )
-		table.insert(d, { id = 49576, name = "Death Grip", rank = "", bCD = 35000 } )
-		table.insert(d, { id = 48743, name = "Death Pact", rank = "", bCD = 120000 } )
-		table.insert(d, { id = 47568, name = "Empower Rune Weapon", rank = "", bCD = 300000 } )
-		table.insert(d, { id = 48263, name = "Frost Presence", rank = "", bCD = 1000 } )
-		table.insert(d, { id = 57330, name = "Horn of Winter", rank = "1", bCD = 20000 } )
-		table.insert(d, { id = 57623, name = "Horn of Winter", rank = "2", bCD = 20000 } )
-		table.insert(d, { id = 48792, name = "Icebound Fortitude", rank = "", bCD = 120000 } )
-		table.insert(d, { id = 47528, name = "Mind Freeze", rank = "", bCD = 10000 } )
-		table.insert(d, { id = 61999, name = "Raise Ally", rank = "", bCD = 600000 } )
-		table.insert(d, { id = 46584, name = "Raise Dead", rank = "", bCD = 180000, oaf = true } )
-		table.insert(d, { id = 47476, name = "Strangulate", rank = "", bCD = 120000 } )
-		table.insert(d, { id = 48265, name = "Unholy Presence", rank = "", bCD = 1000 } )
-		
-		-- TALENT SPELLS
-		table.insert(d, { id = 51052, name = "Anti-Magic Zone", rank = "1", bCD = 120000 } )
-		table.insert(d, { id = 49222, name = "Bone Shield", rank = "", bCD = 60000 } )
-		table.insert(d, { id = 49158, name = "Corpse Explosion", rank = "1", bCD = 5000 } )
-		table.insert(d, { id = 51325, name = "Corpse Explosion", rank = "2", bCD = 5000 } )
-		table.insert(d, { id = 51326, name = "Corpse Explosion", rank = "3", bCD = 5000 } )
-		table.insert(d, { id = 51327, name = "Corpse Explosion", rank = "4", bCD = 5000 } )
-		table.insert(d, { id = 51328, name = "Corpse Explosion", rank = "5", bCD = 5000 } )
-		table.insert(d, { id = 49028, name = "Dancing Rune Weapon", rank = "", bCD = 90000 } )
-		table.insert(d, { id = 49796, name = "Deathchill", rank = "", bCD = 120000 } )
-		table.insert(d, { id = 63560, name = "Ghoul Frenzy", rank = "", bCD = 10000 } )
-		table.insert(d, { id = 49184, name = "Howling Blast", rank = "1", bCD = 8000 } )
-		table.insert(d, { id = 51409, name = "Howling Blast", rank = "2", bCD = 8000 } )
-		table.insert(d, { id = 51410, name = "Howling Blast", rank = "3", bCD = 8000 } )
-		table.insert(d, { id = 51411, name = "Howling Blast", rank = "4", bCD = 8000 } )
-		table.insert(d, { id = 49203, name = "Hungering Cold", rank = "1", bCD = 60000 } )
-		table.insert(d, { id = 49039, name = "Lichborne", rank = "", bCD = 120000 } )
-		table.insert(d, { id = 49005, name = "Mark of Blood", rank = "", bCD = 180000 } )
-		table.insert(d, { id = 48982, name = "Rune Tap", rank = "", bCD = 60000 } )
-		table.insert(d, { id = 49206, name = "Summon Gargoyle", rank = "", bCD = 180000 } )
-		table.insert(d, { id = 51271, name = "Unbreakable Armor", rank = "", bCD = 60000 } )
-		table.insert(d, { id = 49016, name = "Unholy Frenzy", rank = "", bCD = 180000 } )
-		table.insert(d, { id = 55233, name = "Vampiric Blood", rank = "", bCD = 60000 } )
+		-- WOTLK: these are Wrath IDs; on MoP and retail many are gone or now other spells
+		if CDTL3.tocversion < 40000 then
+			-- MAIN SPELLS
+			table.insert(d, { id = 48707, name = "Anti-Magic Shell", rank = "", bCD = 45000 } )
+			table.insert(d, { id = 42650, name = "Army of the Dead", rank = "", bCD = 600000 } )
+			table.insert(d, { id = 48266, name = "Blood Presence", rank = "", bCD = 1000 } )
+			table.insert(d, { id = 45529, name = "Blood Tap", rank = "", bCD = 60000 } )
+			table.insert(d, { id = 56222, name = "Dark Command", rank = "", bCD = 8000 } )
+			table.insert(d, { id = 43265, name = "Death and Decay", rank = "1", bCD = 30000 } )
+			table.insert(d, { id = 49936, name = "Death and Decay", rank = "2", bCD = 30000 } )
+			table.insert(d, { id = 49937, name = "Death and Decay", rank = "3", bCD = 30000 } )
+			table.insert(d, { id = 49938, name = "Death and Decay", rank = "4", bCD = 30000 } )
+			table.insert(d, { id = 49576, name = "Death Grip", rank = "", bCD = 35000 } )
+			table.insert(d, { id = 48743, name = "Death Pact", rank = "", bCD = 120000 } )
+			table.insert(d, { id = 47568, name = "Empower Rune Weapon", rank = "", bCD = 300000 } )
+			table.insert(d, { id = 48263, name = "Frost Presence", rank = "", bCD = 1000 } )
+			table.insert(d, { id = 57330, name = "Horn of Winter", rank = "1", bCD = 20000 } )
+			table.insert(d, { id = 57623, name = "Horn of Winter", rank = "2", bCD = 20000 } )
+			table.insert(d, { id = 48792, name = "Icebound Fortitude", rank = "", bCD = 120000 } )
+			table.insert(d, { id = 47528, name = "Mind Freeze", rank = "", bCD = 10000 } )
+			table.insert(d, { id = 61999, name = "Raise Ally", rank = "", bCD = 600000 } )
+			table.insert(d, { id = 46584, name = "Raise Dead", rank = "", bCD = 180000, oaf = true } )
+			table.insert(d, { id = 47476, name = "Strangulate", rank = "", bCD = 120000 } )
+			table.insert(d, { id = 48265, name = "Unholy Presence", rank = "", bCD = 1000 } )
+			
+			-- TALENT SPELLS
+			table.insert(d, { id = 51052, name = "Anti-Magic Zone", rank = "1", bCD = 120000 } )
+			table.insert(d, { id = 49222, name = "Bone Shield", rank = "", bCD = 60000 } )
+			table.insert(d, { id = 49158, name = "Corpse Explosion", rank = "1", bCD = 5000 } )
+			table.insert(d, { id = 51325, name = "Corpse Explosion", rank = "2", bCD = 5000 } )
+			table.insert(d, { id = 51326, name = "Corpse Explosion", rank = "3", bCD = 5000 } )
+			table.insert(d, { id = 51327, name = "Corpse Explosion", rank = "4", bCD = 5000 } )
+			table.insert(d, { id = 51328, name = "Corpse Explosion", rank = "5", bCD = 5000 } )
+			table.insert(d, { id = 49028, name = "Dancing Rune Weapon", rank = "", bCD = 90000 } )
+			table.insert(d, { id = 49796, name = "Deathchill", rank = "", bCD = 120000 } )
+			table.insert(d, { id = 63560, name = "Ghoul Frenzy", rank = "", bCD = 10000 } )
+			table.insert(d, { id = 49184, name = "Howling Blast", rank = "1", bCD = 8000 } )
+			table.insert(d, { id = 51409, name = "Howling Blast", rank = "2", bCD = 8000 } )
+			table.insert(d, { id = 51410, name = "Howling Blast", rank = "3", bCD = 8000 } )
+			table.insert(d, { id = 51411, name = "Howling Blast", rank = "4", bCD = 8000 } )
+			table.insert(d, { id = 49203, name = "Hungering Cold", rank = "1", bCD = 60000 } )
+			table.insert(d, { id = 49039, name = "Lichborne", rank = "", bCD = 120000 } )
+			table.insert(d, { id = 49005, name = "Mark of Blood", rank = "", bCD = 180000 } )
+			table.insert(d, { id = 48982, name = "Rune Tap", rank = "", bCD = 60000 } )
+			table.insert(d, { id = 49206, name = "Summon Gargoyle", rank = "", bCD = 180000 } )
+			table.insert(d, { id = 51271, name = "Unbreakable Armor", rank = "", bCD = 60000 } )
+			table.insert(d, { id = 49016, name = "Unholy Frenzy", rank = "", bCD = 180000 } )
+			table.insert(d, { id = 55233, name = "Vampiric Blood", rank = "", bCD = 60000 } )
+		end
+	end
+	
+	-- Demon Hunter
+	if class == "DEMONHUNTER" then
+		-- RETAIL
+		if CDTL3.tocversion >= 60000 then
+			table.insert(d, { id = 188501, name = "Spectral Sight", rank = "", bCD = 30000, oaf = true } )
+			table.insert(d, { id = 1251417, name = "Spectral Sight", rank = "", bCD = 30000, oaf = true } )
+		end
 	end
 	
 	-- Druid
@@ -381,7 +399,7 @@ private.GetClassData = function(class)
 			-- RUNES
 			table.insert(d, { id = 407995, name = "Mangle", rank = "", bCD = 6000 } )
 			table.insert(d, { id = 410176, name = "Skull Bash", rank = "", bCD = 10000 } )
-			table.insert(d, { id = 417157, name = "Starsurge", rank = "", bCD = 10000 } )
+			table.insert(d, { id = 417157, name = "Starsurge", rank = "", bCD = 6000 } )
 			table.insert(d, { id = 417045, name = "Tiger's Fury", rank = "", bCD = 30000 } )
 			table.insert(d, { id = 408120, name = "Wild Growth", rank = "", bCD = 6000 } )
 
@@ -537,6 +555,27 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 53248, name = "Wild Growth", rank = "2", bCD = 6000 } )
 			table.insert(d, { id = 53249, name = "Wild Growth", rank = "3", bCD = 6000 } )
 			table.insert(d, { id = 53251, name = "Wild Growth", rank = "4", bCD = 6000 } )
+			
+		-- MOP
+		elseif CDTL3.tocversion < 60000 then
+			table.insert(d, { id = 132158, name = "Nature's Swiftness", rank = "", bCD = 60000, oaf = true } )
+			table.insert(d, { id = 5215, name = "Prowl", rank = "", bCD = 10000, oaf = true } )
+			table.insert(d, { id = 102547, name = "Prowl", rank = "", bCD = 10000, oaf = true } )
+			
+		-- RETAIL
+		else
+			table.insert(d, { id = 132158, name = "Nature's Swiftness", rank = "", bCD = 60000, oaf = true } )
+			table.insert(d, { id = 5215, name = "Prowl", rank = "", bCD = 6000, oaf = true } )
+			table.insert(d, { id = 102547, name = "Prowl", rank = "", bCD = 6000, oaf = true } )
+		end
+	end
+	
+	-- Evoker
+	if class == "EVOKER" then
+		-- RETAIL
+		if CDTL3.tocversion >= 60000 then
+			table.insert(d, { id = 370537, name = "Stasis", rank = "", bCD = 90000, oaf = true } )
+			table.insert(d, { id = 370553, name = "Tip the Scales", rank = "", bCD = 120000, oaf = true } )
 		end
 	end
 	
@@ -603,8 +642,6 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 1510, name = "Volley", rank = "1", bCD = 60000 } )
 			table.insert(d, { id = 14294, name = "Volley", rank = "2", bCD = 60000 } )
 			table.insert(d, { id = 14295, name = "Volley", rank = "3", bCD = 60000 } )
-
-			table.insert(d, { id = 425777, name = "Trap Launcher: Explosive Trap", rank = "1", bCD = 30000 } )
 		
 			-- TALENTS
 			table.insert(d, { id = 19434, name = "Aimed Shot", rank = "1", bCD = 6000 } )
@@ -640,20 +677,20 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 409528, name = "Immolation Trap", rank = "4", bCD = 15000 } )
 			table.insert(d, { id = 409530, name = "Immolation Trap", rank = "5", bCD = 15000 } )
 			table.insert(d, { id = 409379, name = "Kill Command", rank = "", bCD = 60000 } )
-			table.insert(d, { id = 415335, name = "Raptor Strike", rank = "1", bCD = 3000 } )
-			table.insert(d, { id = 415336, name = "Raptor Strike", rank = "2", bCD = 3000 } )
-			table.insert(d, { id = 415337, name = "Raptor Strike", rank = "3", bCD = 3000 } )
-			table.insert(d, { id = 415338, name = "Raptor Strike", rank = "4", bCD = 3000 } )
-			table.insert(d, { id = 415340, name = "Raptor Strike", rank = "5", bCD = 3000 } )
-			table.insert(d, { id = 415341, name = "Raptor Strike", rank = "6", bCD = 3000 } )
-			table.insert(d, { id = 415342, name = "Raptor Strike", rank = "7", bCD = 3000 } )
-			table.insert(d, { id = 415343, name = "Raptor Strike", rank = "8", bCD = 3000 } )
-			table.insert(d, { id = 409748, name = "Raptor Strike", rank = "3", bCD = 6000 } )
-			table.insert(d, { id = 409750, name = "Raptor Strike", rank = "4", bCD = 6000 } )
-			table.insert(d, { id = 409751, name = "Raptor Strike", rank = "5", bCD = 6000 } )
-			table.insert(d, { id = 409752, name = "Raptor Strike", rank = "6", bCD = 6000 } )
-			table.insert(d, { id = 409754, name = "Raptor Strike", rank = "7", bCD = 6000 } )
-			table.insert(d, { id = 409755, name = "Raptor Strike", rank = "8", bCD = 6000 } )
+			table.insert(d, { id = 415335, name = "Raptor Strike", rank = "1", bCD = 6000 } )
+			table.insert(d, { id = 415336, name = "Raptor Strike", rank = "2", bCD = 6000 } )
+			table.insert(d, { id = 415337, name = "Raptor Strike", rank = "3", bCD = 6000 } )
+			table.insert(d, { id = 415338, name = "Raptor Strike", rank = "4", bCD = 6000 } )
+			table.insert(d, { id = 415340, name = "Raptor Strike", rank = "5", bCD = 6000 } )
+			table.insert(d, { id = 415341, name = "Raptor Strike", rank = "6", bCD = 6000 } )
+			table.insert(d, { id = 415342, name = "Raptor Strike", rank = "7", bCD = 6000 } )
+			table.insert(d, { id = 415343, name = "Raptor Strike", rank = "8", bCD = 6000 } )
+			table.insert(d, { id = 409748, name = "Raptor Strike", rank = "3", bCD = 0 } )
+			table.insert(d, { id = 409750, name = "Raptor Strike", rank = "4", bCD = 0 } )
+			table.insert(d, { id = 409751, name = "Raptor Strike", rank = "5", bCD = 0 } )
+			table.insert(d, { id = 409752, name = "Raptor Strike", rank = "6", bCD = 0 } )
+			table.insert(d, { id = 409754, name = "Raptor Strike", rank = "7", bCD = 0 } )
+			table.insert(d, { id = 409755, name = "Raptor Strike", rank = "8", bCD = 0 } )
 			
 		-- TBC
 		elseif CDTL3.tocversion < 30000 then
@@ -899,6 +936,18 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 27068, name = "Wyvern Sting", rank = "4", bCD = 60000 } )
 			table.insert(d, { id = 49011, name = "Wyvern Sting", rank = "5", bCD = 60000 } )
 			table.insert(d, { id = 49012, name = "Wyvern Sting", rank = "6", bCD = 60000 } )
+			
+		-- MOP
+		elseif CDTL3.tocversion < 60000 then
+			table.insert(d, { id = 5384, name = "Feign Death", rank = "", bCD = 30000, oaf = true } )
+			table.insert(d, { id = 34477, name = "Misdirection", rank = "", bCD = 30000, oaf = true } )
+			
+		-- RETAIL
+		else
+			table.insert(d, { id = 199483, name = "Camouflage", rank = "", bCD = 60000, oaf = true } )
+			table.insert(d, { id = 5384, name = "Feign Death", rank = "", bCD = 30000, oaf = true } )
+			table.insert(d, { id = 34477, name = "Misdirection", rank = "", bCD = 30000, oaf = true } )
+			table.insert(d, { id = 209997, name = "Play Dead", rank = "", bCD = 30000, oaf = true } )
 		end
 	end
 	
@@ -962,8 +1011,8 @@ private.GetClassData = function(class)
 			-- RUNES
 			table.insert(d, { id = 425124, name = "Arcane Surge", rank = "", bCD = 120000 } )
 			table.insert(d, { id = 425121, name = "Icy Veins", rank = "", bCD = 180000 } )
-			table.insert(d, { id = 401556, name = "Living Flame", rank = "", bCD = 60000 } )
-			table.insert(d, { id = 412510, name = "Mass Regeneration", rank = "", bCD = 6000 } )
+			table.insert(d, { id = 401556, name = "Living Flame", rank = "", bCD = 30000 } )
+			table.insert(d, { id = 412510, name = "Mass Regeneration", rank = "", bCD = 12000 } )
 			table.insert(d, { id = 401462, name = "Rewind Time", rank = "", bCD = 30000 } )
 
 		-- TBC
@@ -1144,6 +1193,22 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 12472, name = "Icy Veins", rank = "", bCD = 180000 } )
 			table.insert(d, { id = 12043, name = "Presence of Mind", rank = "", bCD = 120000, oaf = true } )
 			table.insert(d, { id = 31687, name = "Summon Water Elemental", rank = "", bCD = 180000 } )
+			
+		-- MOP
+		elseif CDTL3.tocversion < 60000 then
+			table.insert(d, { id = 12043, name = "Presence of Mind", rank = "", bCD = 90000, oaf = true } )
+			
+		-- RETAIL
+		else
+			table.insert(d, { id = 205025, name = "Presence of Mind", rank = "", bCD = 45000, oaf = true } )
+		end
+	end
+	
+	-- Monk
+	if class == "MONK" then
+		-- MOP
+		if CDTL3.tocversion < 60000 then
+			table.insert(d, { id = 116680, name = "Thunder Focus Tea", rank = "", bCD = 45000, oaf = true } )
 		end
 	end
 	
@@ -1200,7 +1265,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 20066, name = "Repentance", rank = "", bCD = 60000 } )
 			
 			-- RUNES
-			table.insert(d, { id = 407669, name = "Avenger's Shield", rank = "", bCD = 30000 } )
+			table.insert(d, { id = 407669, name = "Avenger's Shield", rank = "", bCD = 15000 } )
 			table.insert(d, { id = 407676, name = "Crusader Strike", rank = "", bCD = 6000 } )
 			table.insert(d, { id = 407804, name = "Divine Sacrifice", rank = "", bCD = 120000 } )
 			table.insert(d, { id = 407778, name = "Divine Storm", rank = "", bCD = 10000 } )
@@ -1212,7 +1277,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 415073, name = "Exorcism", rank = "6", bCD = 15000 } )
 			table.insert(d, { id = 407631, name = "Hand of Reckoning", rank = "", bCD = 10000 } )
 			table.insert(d, { id = 425600, name = "Horn of Lordaeron", rank = "", bCD = 20000 } )
-			table.insert(d, { id = 425609, name = "Rebuke", rank = "", bCD = 10000 } )
+			table.insert(d, { id = 425609, name = "Rebuke", rank = "", bCD = 15000 } )
 
 		-- TBC
 		elseif CDTL3.tocversion < 30000 then
@@ -1369,6 +1434,10 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 48824, name = "Holy Shock", rank = "6", bCD = 6000 } )
 			table.insert(d, { id = 48825, name = "Holy Shock", rank = "7", bCD = 6000 } )
 			table.insert(d, { id = 20066, name = "Repentance", rank = "", bCD = 60000 } )
+			
+		-- RETAIL (MoP has none)
+		elseif CDTL3.tocversion >= 60000 then
+			table.insert(d, { id = 215652, name = "Shield of Virtue", rank = "", bCD = 45000, oaf = true } )
 		end
 	end
 	
@@ -1640,6 +1709,10 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 64044, name = "Psychic Horror", rank = "", bCD = 120000 } )
 			table.insert(d, { id = 15473, name = "Shadowform", rank = "", bCD = 1500, oaf = true } )
 			table.insert(d, { id = 15487, name = "Silence", rank = "", bCD = 45000 } )
+			
+		-- MOP
+		elseif CDTL3.tocversion < 60000 then
+			table.insert(d, { id = 89485, name = "Inner Focus", rank = "", bCD = 45000, oaf = true } )
 		end
 	end
 	
@@ -1688,11 +1761,11 @@ private.GetClassData = function(class)
 			
 			-- RUNES
 			table.insert(d, { id = 400009, name = "Between the Eyes", rank = "", bCD = 20000 } )
-			table.insert(d, { id = 424919, name = "Main Gauche", rank = "", bCD = 20000 } )
+			table.insert(d, { id = 424919, name = "Main Gauche", rank = "", bCD = 15000 } )
 			table.insert(d, { id = 398196, name = "Quick Draw", rank = "", bCD = 10000 } )
 
 			table.insert(d, { id = 425012, name = "Poisoned Knife", rank = "", bCD = 6000 } )
-			table.insert(d, { id = 438040, name = "Redirect", rank = "", bCD = 60000 } )
+			table.insert(d, { id = 438040, name = "Redirect", rank = "", bCD = 10000 } )
 
 		-- TBC
 		elseif CDTL3.tocversion < 30000 then
@@ -1783,6 +1856,16 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 14251, name = "Riposte", rank = "", bCD = 6000 } )
 			table.insert(d, { id = 51713, name = "Shadow Dance", rank = "", bCD = 60000 } )
 			table.insert(d, { id = 36554, name = "Shadowstep", rank = "", bCD = 30000 } )
+			
+		-- MOP
+		elseif CDTL3.tocversion < 60000 then
+			table.insert(d, { id = 1784, name = "Stealth", rank = "", bCD = 6000, oaf = true } )
+			table.insert(d, { id = 57934, name = "Tricks of the Trade", rank = "", bCD = 30000, oaf = true } )
+			
+		-- RETAIL
+		else
+			table.insert(d, { id = 1784, name = "Stealth", rank = "", bCD = 2000, oaf = true } )
+			table.insert(d, { id = 57934, name = "Tricks of the Trade", rank = "", bCD = 30000, oaf = true } )
 		end
 	end
 	
@@ -1832,7 +1915,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 16188, name = "Nature's Swiftness", rank = "", bCD = 180000, oaf = true } )
 
 			-- RUNES
-			table.insert(d, { id = 409324, name = "Ancestral Guidance", rank = "", bCD = 120000 } )
+			table.insert(d, { id = 409324, name = "Ancestral Guidance", rank = "", bCD = 60000 } )
 			table.insert(d, { id = 415236, name = "Healing Rain", rank = "", bCD = 10000 } )
 			table.insert(d, { id = 408490, name = "Lava Burst", rank = "", bCD = 8000 } )
 			table.insert(d, { id = 408507, name = "Lava Lash", rank = "", bCD = 6000 } )
@@ -1989,6 +2072,15 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 59158, name = "Thunderstorm", rank = "3", bCD = 45000 } )
 			table.insert(d, { id = 59159, name = "Thunderstorm", rank = "4", bCD = 45000 } )
 			table.insert(d, { id = 55198, name = "Tidal Force", rank = "", bCD = 180000 } )
+			
+		-- MOP
+		elseif CDTL3.tocversion < 60000 then
+			table.insert(d, { id = 16188, name = "Ancestral Swiftness", rank = "", bCD = 90000, oaf = true } )
+			
+		-- RETAIL
+		else
+			table.insert(d, { id = 443454, name = "Ancestral Swiftness", rank = "", bCD = 30000, oaf = true } )
+			table.insert(d, { id = 378081, name = "Nature's Swiftness", rank = "", bCD = 60000, oaf = true } )
 		end
 	end
 	
@@ -2051,7 +2143,7 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 403852, name = "Shadow Cleave", rank = "10", bCD = 6000 } )
 
 			table.insert(d, { id = 437169, name = "Portal of Summoning", rank = "", bCD = 120000 } )
-			table.insert(d, { id = 426320, name = "Shadowflame", rank = "", bCD = 15000 } )
+			table.insert(d, { id = 426320, name = "Shadowflame", rank = "", bCD = 0 } )
 
 		-- TBC
 		elseif CDTL3.tocversion < 30000 then
@@ -2159,6 +2251,10 @@ private.GetClassData = function(class)
 			table.insert(d, { id = 30414, name = "Shadowfury", rank = "3", bCD = 20000 } )
 			table.insert(d, { id = 47846, name = "Shadowfury", rank = "4", bCD = 20000 } )
 			table.insert(d, { id = 47847, name = "Shadowfury", rank = "5", bCD = 20000 } )
+			
+		-- RETAIL (MoP has none)
+		elseif CDTL3.tocversion >= 60000 then
+			table.insert(d, { id = 328774, name = "Amplify Curse", rank = "", bCD = 60000, oaf = true } )
 		end
 	end
 	
@@ -2732,6 +2828,16 @@ private.GetPetData = function(class)
 			table.insert(d, { id = 35346, name = "Warp", rank = "", bCD = 15000 } )
 			table.insert(d, { id = 4167, name = "Web", rank = "1", bCD = 40000 } )
 			table.insert(d, { id = 53508, name = "Wolverine Bite", rank = "", bCD = 10000 } )
+			
+		-- MOP
+		elseif CDTL3.tocversion < 60000 then
+			table.insert(d, { id = 24450, name = "Prowl", rank = "", bCD = 10000, oaf = true } )
+			table.insert(d, { id = 90328, name = "Spirit Walk", rank = "", bCD = 10000, oaf = true } )
+			
+		-- RETAIL
+		else
+			table.insert(d, { id = 24450, name = "Prowl", rank = "", bCD = 10000, oaf = true } )
+			table.insert(d, { id = 90328, name = "Spirit Walk", rank = "", bCD = 10000, oaf = true } )
 		end
 	end
 	
@@ -2876,6 +2982,170 @@ private.GetPetData = function(class)
 	end
 	
 	return d
+end
+
+-- WOW: FOREVER
+-- Forever's interface number is 16xxx, so it loads the Classic lists above, but its spells
+-- are not Era's: some ranks and Season of Discovery spells are gone, a few are renamed and
+-- many cooldowns differ. These are the differences between the Classic lists and Forever's
+-- game data (wago.tools, build 1.60.1.70707); tools/spell-list-check re-checks them.
+-- DROP = the spell does not exist on Forever; otherwise the fields replace the Classic
+-- entry's, and oaf = false clears the flag.
+local DROP = "drop"
+private.foreverChanges = {
+	-- Racials
+	[26296] = DROP,	-- Berserking
+	[26297] = DROP,	-- Berserking
+	[20589] = { bCD = 120000 },	-- Escape Artist
+	[20549] = { bCD = 90000 },	-- War Stomp
+	-- Druid
+	[16857] = DROP,	-- Faerie Fire (Feral) (1)
+	[17390] = DROP,	-- Faerie Fire (Feral) (2)
+	[17391] = DROP,	-- Faerie Fire (Feral) (3)
+	[17392] = DROP,	-- Faerie Fire (Feral) (4)
+	[16979] = { name = "Feral Charge (Bear)" },	-- Feral Charge
+	[22895] = DROP,	-- Frenzied Regeneration (2)
+	[22896] = DROP,	-- Frenzied Regeneration (3)
+	[6795] = { bCD = 8000 },	-- Growl
+	[16914] = { bCD = 0 },	-- Hurricane (4)
+	[17401] = { bCD = 0 },	-- Hurricane (5)
+	[17402] = { bCD = 0 },	-- Hurricane (6)
+	[407995] = { name = "Primal Bite" },	-- Mangle
+	[5217] = { bCD = 30000 },	-- Tiger's Fury (1)
+	[6793] = DROP,	-- Tiger's Fury (2)
+	[9845] = DROP,	-- Tiger's Fury (3)
+	[9846] = DROP,	-- Tiger's Fury (4)
+	[417045] = { bCD = 0 },	-- Tiger's Fury
+	-- Hunter
+	[409552] = DROP,	-- Explosive Shot
+	[13813] = { bCD = 30000 },	-- Explosive Trap (1)
+	[14316] = { bCD = 30000 },	-- Explosive Trap (2)
+	[14317] = { bCD = 30000 },	-- Explosive Trap (3)
+	[409532] = DROP,	-- Explosive Trap (1)
+	[409534] = DROP,	-- Explosive Trap (2)
+	[409535] = DROP,	-- Explosive Trap (3)
+	[1499] = { bCD = 30000 },	-- Freezing Trap (1)
+	[14310] = { bCD = 30000 },	-- Freezing Trap (2)
+	[14311] = { bCD = 30000 },	-- Freezing Trap (3)
+	[409510] = DROP,	-- Freezing Trap (1)
+	[409512] = DROP,	-- Freezing Trap (2)
+	[409519] = DROP,	-- Freezing Trap (3)
+	[13809] = { bCD = 30000 },	-- Frost Trap
+	[409520] = DROP,	-- Frost Trap
+	[24597] = { bCD = 30000 },	-- Furious Howl (4)
+	[24603] = { bCD = 30000 },	-- Furious Howl (3)
+	[24604] = { bCD = 30000 },	-- Furious Howl (1)
+	[24605] = { bCD = 30000 },	-- Furious Howl (2)
+	[13795] = { bCD = 30000 },	-- Immolation Trap (1)
+	[14302] = { bCD = 30000 },	-- Immolation Trap (2)
+	[14303] = { bCD = 30000 },	-- Immolation Trap (3)
+	[14304] = { bCD = 30000 },	-- Immolation Trap (4)
+	[14305] = { bCD = 30000 },	-- Immolation Trap (5)
+	[409521] = DROP,	-- Immolation Trap (1)
+	[409524] = DROP,	-- Immolation Trap (2)
+	[409526] = DROP,	-- Immolation Trap (3)
+	[409528] = DROP,	-- Immolation Trap (4)
+	[409530] = DROP,	-- Immolation Trap (5)
+	[2643] = { bCD = 6000 },	-- Multi-Shot (1)
+	[14288] = DROP,	-- Multi-Shot (2)
+	[14289] = DROP,	-- Multi-Shot (3)
+	[14290] = DROP,	-- Multi-Shot (4)
+	[25294] = DROP,	-- Multi-Shot (5)
+	[1510] = { bCD = 0 },	-- Volley (1)
+	[14294] = { bCD = 0 },	-- Volley (2)
+	[14295] = { bCD = 0 },	-- Volley (3)
+	[19386] = DROP,	-- Wyvern Sting (1)
+	[24132] = DROP,	-- Wyvern Sting (2)
+	[24133] = DROP,	-- Wyvern Sting (3)
+	-- Paladin
+	[407669] = DROP,	-- Avenger's Shield
+	[407676] = DROP,	-- Crusader Strike
+	[407631] = DROP,	-- Hand of Reckoning
+	[20473] = { bCD = 10000 },	-- Holy Shock (1)
+	[20929] = { bCD = 10000 },	-- Holy Shock (2)
+	[20930] = { bCD = 10000 },	-- Holy Shock (3)
+	[633] = { bCD = 1200000 },	-- Lay on Hands (1)
+	[2800] = { bCD = 1200000 },	-- Lay on Hands (2)
+	[10310] = { bCD = 1200000 },	-- Lay on Hands (3)
+	-- Priest
+	[2944] = { bCD = 24000 },	-- Devouring Plague (1)
+	[19276] = { bCD = 24000 },	-- Devouring Plague (2)
+	[19277] = { bCD = 24000 },	-- Devouring Plague (3)
+	[19278] = { bCD = 24000 },	-- Devouring Plague (4)
+	[19279] = { bCD = 24000 },	-- Devouring Plague (5)
+	[19280] = { bCD = 24000 },	-- Devouring Plague (6)
+	[19289] = DROP,	-- Elune's Grace (2)
+	[19291] = DROP,	-- Elune's Grace (3)
+	[19292] = DROP,	-- Elune's Grace (4)
+	[19293] = DROP,	-- Elune's Grace (5)
+	[6346] = { bCD = 180000 },	-- Fear Ward
+	[15286] = { bCD = 30000 },	-- Vampiric Embrace
+	-- Shaman
+	[16166] = { oaf = false },	-- Elemental Mastery
+	[1535] = DROP,	-- Fire Nova Totem (1)
+	[8498] = DROP,	-- Fire Nova Totem (2)
+	[8499] = DROP,	-- Fire Nova Totem (3)
+	[11314] = DROP,	-- Fire Nova Totem (4)
+	[11315] = DROP,	-- Fire Nova Totem (5)
+	[408490] = { bCD = 10000 },	-- Lava Burst
+	[425336] = { name = "Rage of the Farseer", bCD = 180000 },	-- Shamanistic Rage
+	[437009] = { bCD = 60000 },	-- Totemic Projection
+	-- Warlock
+	[603] = { name = "Bane of Doom" },	-- Curse of Doom
+	[18708] = { bCD = 300000 },	-- Fel Domination
+	[403501] = { bCD = 15000 },	-- Haunt
+	[437169] = { bCD = 3600000 },	-- Portal of Summoning
+	-- Warrior
+	[403338] = DROP,	-- Intervene
+	[12975] = { bCD = 180000 },	-- Last Stand
+	[20230] = { bCD = 900000 },	-- Retaliation
+	[871] = { bCD = 900000 },	-- Shield Wall
+	[355] = { bCD = 8000 },	-- Taunt
+	[6343] = { bCD = 6000 },	-- Thunder Clap (1)
+	[8198] = { bCD = 6000 },	-- Thunder Clap (2)
+	[8204] = { bCD = 6000 },	-- Thunder Clap (3)
+	[8205] = { bCD = 6000 },	-- Thunder Clap (4)
+	[11580] = { bCD = 6000 },	-- Thunder Clap (5)
+	[11581] = { bCD = 6000 },	-- Thunder Clap (6)
+	[402927] = { bCD = 30000 },	-- Victory Rush
+}
+
+-- Spells only Forever has
+private.GetForeverData = function(class)
+	local d = {}
+	
+	if class == "PALADIN" then
+		table.insert(d, { id = 1310994, name = "Swift Judgement", rank = "", bCD = 60000, oaf = true } )
+	end
+	
+	return d
+end
+
+-- The Classic list d with Forever's changes applied, plus Forever's own spells
+private.ForeverSpellData = function(d, class)
+	local out = {}
+	
+	for _, spell in ipairs(d) do
+		local change = private.foreverChanges[spell["id"]]
+		if change ~= DROP then
+			if change then
+				for k, v in pairs(change) do
+					if v == false then
+						spell[k] = nil
+					else
+						spell[k] = v
+					end
+				end
+			end
+			table.insert(out, spell)
+		end
+	end
+	
+	for _, spell in ipairs(private.GetForeverData(class)) do
+		table.insert(out, spell)
+	end
+	
+	return out
 end
 
 -- The String for the custom text tag description

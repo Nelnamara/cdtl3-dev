@@ -1,0 +1,13 @@
+{
+	"name": "cdtl3-spell-list-check",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Checks Data.lua's built-in spell lists against each client's game data from wago.tools",
+	"main": "check.js",
+	"scripts": {
+		"check": "node check.js"
+	},
+	"dependencies": {
+		"fengari": "^0.1.4"
+	}
+}

@@ -45,7 +45,7 @@ Install via the CurseForge or Wago app, or extract the release zip into your cli
 | Classic Era | `World of Warcraft\_classic_era_\Interface\AddOns\` |
 | TBC Anniversary | `World of Warcraft\_anniversary_\Interface\AddOns\` |
 | MoP Classic | `World of Warcraft\_classic_\Interface\AddOns\` |
-| World of Warcraft: Forever (beta) | `World of Warcraft\_classic_beta_\Interface\AddOns\` |
+| World of Warcraft: Forever | `World of Warcraft\_forever_\Interface\AddOns\` |
 
 A GitHub source zip unpacks as `cdtl3-dev-<branch>` and won't show up in the AddOns list until the folder is renamed to `CooldownTimeline3`. New addons are only picked up on a full client restart, not `/reload`. On first run the frames appear unlocked in the center — drag them into place, then `/cdtl3 lock`.
 
@@ -66,6 +66,7 @@ Primary command is `/cdtl3` (or `/cooldowntimeline3`). The old `/cdtl2` / `/cool
 - **`/cdtl3 minimap`** — Show/hide the minimap button (account-wide; also in the Global tab)
 - **`/cdtl3 debug`** — Toggle debug mode (debug frame + chat diagnostics)
 - **`/cdtl3 auras`** — Print every buff/debuff on you as CDTL3 sees it: readable or hidden by the game, saved or not, ignored, which lane, and whether it's assigned to your character. Use this first if a buff won't show up
+- **`/cdtl3 oaf`** — Print the built-in spell list size, every saved "cooldown starts when used" spell (Nature's Swiftness, Presence of Mind, Stealth…) and the live state of those cooldowns. Use this if one of them goes straight to ready
 
 ### Settings Window
 
@@ -88,10 +89,10 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 |---|---|---|---|
 | Spell & item cooldowns | ✓ | ✓ | ✓ |
 | Your buffs / debuffs | ✓ | ✓ | ✓ |
-| Debuffs you put on enemies | depends on combat log access | ✓ | ✗ (no combat log for addons) |
-| Melee swing timers | depends on combat log access | ✓ | ✗ (no combat log for addons) |
+| Debuffs you put on enemies | ✗ (no combat log for addons) | ✓ | ✗ (no combat log for addons) |
+| Melee swing timers | ✗ (no combat log for addons) | ✓ | ✗ (no combat log for addons) |
 | Ranged auto-attack timer | ✓ | ✓ | ✓ |
-| Spell school bar colors | depends on combat log access | ✓ | ✗ (no combat log for addons) |
+| Spell school bar colors | ✗ (no combat log for addons) | ✓ | ✗ (no combat log for addons) |
 | Lane health / power tracking | ✓ | ✓ | ✓ |
 | Edit Mode | ✓ | TBC Anniversary / MoP Classic ✓, Classic Era ✗ (use `/cdtl3 unlock`) | ✓ |
 | Modern Blizzard bar textures | ✓ | where the client has them | ✓ |
@@ -104,7 +105,7 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 
 ## Known Issues
 
-- **Forever:** debuffs on enemies, melee swing timers and spell-school colors need the combat log, which Forever closes to addons
+- **Midnight / Forever:** debuffs on enemies, melee swing timers and spell-school colors need the combat log, which both close to addons
 - **Edit Mode positions** are per Edit Mode layout; a layout you've never placed a frame in uses the frame's last position
 - **Midnight / Forever:** buffs gained or recast in combat appear (or update) only after combat ends; the GCD tracker and cooldowns of spells with no cooldown of their own are estimated while timings are hidden
 - **Midnight:** the game reports a spell's *base* cooldown, not the talent-reduced one — use **Custom CD Time** on the spell (Filters) to enter the real value
@@ -115,6 +116,24 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 ---
 
 ## Changelog
+
+### v3.0.12
+
+**WoW: Forever launch**
+- **Forever gets its own spell data** — Forever reads the Classic Era spell list, but its spells differ. The list is now corrected from Forever's own game data: spells and ranks Forever doesn't have are dropped, renamed spells use their Forever names, and cooldowns match Forever (Lay on Hands is 20 minutes). Forever's new **Swift Judgement** now starts its cooldown when used, and **Elemental Mastery**, which no longer does on Forever, is treated as a normal cooldown
+- **Pet abilities and ranked spells count down in combat** (Forever and Retail) — while the game hides cooldown timings, pet abilities, and spells cast at a higher rank than the one CDTL3 first saw, kept resetting to just under their full cooldown. Their casts are now timed properly
+- **"Cooldown starts when used" spells count from when the effect ends** (Forever and Retail, while timings are hidden) — a Stealth opener or a held Nature's Swiftness no longer shows ready early
+
+**Fixes**
+- **MoP Classic and Retail: "cooldown starts when used" spells work** — Nature's Swiftness, Presence of Mind, Stealth, Prowl, Feign Death, Misdirection, Tricks of the Trade and the rest went straight to "ready" because these clients had no spell list. They now have one, checked against each client's game data
+- **Retail: no longer listed as out of date** — the retail TOC now declares 12.1.5
+- **Items are no longer hidden by mistake** — an item could be saved as Ignored when its cooldown stayed hidden from addons until it ran out (Forever, Retail), or after a ready item was moved to another lane or the Ignore Threshold slider was dragged. If an item vanished that way, untick *Ignored* on it under Filters
+- **Moving cooldowns keeps their timers** — the Ignore Threshold slider and the Filters lane picker no longer restart running timers or set off a burst of ready sounds
+- **Filters bulk controls change only this character's entries** — the Ignore Threshold slider, *Set All*, *Clear Settings* and *Clear Quest Items* also changed other characters' entries, which the list doesn't show. Clearing an entry another character also uses now only removes it for you
+- **Retail: options that need the combat log are hidden** — Blizzard closed the combat log to addons in 12.0, so enemy debuffs, melee swing timers and spell-school colors are hidden as on Forever
+- **Spell School Color no longer greys out bars where the combat log is closed** — a profile imported with it on painted every bar grey with no visible way to turn it off
+- **Minimap button: right-click toggles lock and unlock** — it could only lock
+- **Spell list upkeep** — Classic Era Season of Discovery rune cooldowns corrected and a spell ID that doesn't exist removed; the Wrath Death Knight list no longer loads on MoP Classic and Retail, where its IDs and names are wrong
 
 ### v3.0.11
 
