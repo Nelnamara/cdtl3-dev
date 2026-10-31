@@ -1,0 +1,44 @@
+{
+	"clients": [
+		{
+			"key": "era",
+			"name": "Classic Era",
+			"interface": 11509,
+			"build": "1.15.9.70576",
+			"classes": ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"],
+			"extraTables": ["TalentTab"]
+		},
+		{
+			"key": "forever",
+			"name": "WoW: Forever",
+			"interface": 16001,
+			"build": "1.60.1.70707",
+			"classes": ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"],
+			"extraTables": ["TalentTab"]
+		},
+		{
+			"key": "tbc",
+			"name": "TBC Anniversary",
+			"interface": 20506,
+			"build": "2.5.6.70577",
+			"classes": ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"],
+			"extraTables": ["TalentTab"]
+		},
+		{
+			"key": "mop",
+			"name": "MoP Classic",
+			"interface": 50504,
+			"build": "5.5.4.70631",
+			"classes": ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID", "DEATHKNIGHT", "MONK"],
+			"extraTables": ["TalentTab", "SpecializationSpells", "ChrSpecialization"]
+		},
+		{
+			"key": "retail",
+			"name": "Retail",
+			"interface": 120105,
+			"build": "12.1.5.70575",
+			"classes": ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID", "DEATHKNIGHT", "MONK", "DEMONHUNTER", "EVOKER"],
+			"extraTables": ["SpecializationSpells", "ChrSpecialization", "TraitDefinition", "PvpTalent"]
+		}
+	]
+}

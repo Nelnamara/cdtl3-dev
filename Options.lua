@@ -16,10 +16,33 @@ private.ValidateSeconds = function(info, val)
 	return "Enter a time in seconds, e.g. 30 or 1.5"
 end
 
--- The combat log is closed to addons on WoW: Forever (CDTL3.lua TurnOn records whether
--- COMBAT_LOG_EVENT_UNFILTERED could be registered). Anything fed only by it never fires there.
+-- The combat log is closed to addons on retail 12.x and WoW: Forever (CDTL3:NoCombatLog in
+-- CDTL3.lua). Anything fed only by it never fires there.
 private.NoCombatLog = function()
-	return CDTL3.combatLogRegistered == false or not CombatLogGetCurrentEventInfo
+	return CDTL3:NoCombatLog()
+end
+
+-- Clear Settings / Clear Quest Items act for this character only: an entry other characters
+-- also use just loses this character from usedBy; one only this character uses goes.
+-- Returns true when the entry stays saved.
+private.KeepAfterClear = function(entry)
+	if not CDTL3:IsMyEntry(entry) then
+		return true
+	end
+
+	local others = {}
+	for _, guid in pairs(entry["usedBy"]) do
+		if guid ~= CDTL3.player["guid"] then
+			table.insert(others, guid)
+		end
+	end
+
+	if #others > 0 then
+		entry["usedBy"] = others
+		return true
+	end
+
+	return false
 end
 
 -- Border texture, colour, size and padding controls, added to args: texture and colour at
@@ -341,6 +364,23 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."CDTL3 continues Cooldown Timeline for Retail (Midnight), Classic Era,\n"
 	changeLog = changeLog.."TBC Anniversary, MoP Classic and World of Warcraft: Forever,\n"
 	changeLog = changeLog.."based on the original by Vreenak and the v2 rewrite by cliffclive.\n\n"
+	changeLog = changeLog.."Changelog 3.0.12:\n\n"
+	changeLog = changeLog.."  - Forever: spell data corrected from Forever's own game data (spells\n"
+	changeLog = changeLog.."    and ranks it doesn't have removed, renamed spells, changed cooldowns);\n"
+	changeLog = changeLog.."    Swift Judgement now starts its cooldown when used, Elemental Mastery no\n"
+	changeLog = changeLog.."    longer does\n"
+	changeLog = changeLog.."  - MoP Classic and Retail: spells whose cooldown starts when their effect\n"
+	changeLog = changeLog.."    is used no longer go straight to ready\n"
+	changeLog = changeLog.."  - Forever and Retail: pet abilities and spells cast at a higher rank\n"
+	changeLog = changeLog.."    count down properly in combat, and Stealth-style cooldowns count\n"
+	changeLog = changeLog.."    from when the effect ends\n"
+	changeLog = changeLog.."  - Retail: no longer shows as out of date on 12.1.5; options that need\n"
+	changeLog = changeLog.."    the combat log are hidden, as on Forever\n"
+	changeLog = changeLog.."  - Items are no longer hidden by mistake, and moving a cooldown to\n"
+	changeLog = changeLog.."    another lane no longer restarts it\n"
+	changeLog = changeLog.."  - Filters bulk controls change only this character's entries\n"
+	changeLog = changeLog.."  - Spell School Color no longer greys out bars where the combat log is\n"
+	changeLog = changeLog.."    closed; the minimap button's right-click now toggles lock\n\n"
 	changeLog = changeLog.."Changelog 3.0.11:\n\n"
 	changeLog = changeLog.."  - Fixed Nature's Swiftness and the other spells whose cooldown starts\n"
 	changeLog = changeLog.."    when their effect is used on Classic Era, TBC Anniversary and Forever:\n"
@@ -1254,7 +1294,7 @@ function CDTL3:GetFilterOptions()
 					clearAll = {
 						name = "Clear Settings",
 						desc = function(info)
-								return "This will clear all "..string.lower(CDTL3.currentFilter["default"]).." cooldown settings"
+								return "This will clear this character's "..string.lower(CDTL3.currentFilter["default"]).." cooldown settings"
 							end,
 						confirm = true,
 						order = 103,
@@ -1265,8 +1305,21 @@ function CDTL3:GetFilterOptions()
 						func = function(info)
 								local default = CDTL3.currentFilter["default"]
 								
-								for k, v in pairs(CDTL3.db.profile.tables[string.lower(default)]) do
-									CDTL3.db.profile.tables[string.lower(default)][k]=nil
+								-- only this character's entries (the ones Filters lists); other
+								-- characters on a shared profile keep theirs, shared ones included.
+								-- Rebuilt in place so the saved list stays a list with no holes.
+								local list = CDTL3.db.profile.tables[string.lower(default)]
+								local kept = {}
+								for _, v in pairs(list) do
+									if private.KeepAfterClear(v) then
+										table.insert(kept, v)
+									end
+								end
+								for k in pairs(list) do
+									list[k] = nil
+								end
+								for i, v in ipairs(kept) do
+									list[i] = v
 								end
 								
 								CDTL3.currentFilter[string.lower(default)] = "<< Select >>"
@@ -1276,7 +1329,7 @@ function CDTL3:GetFilterOptions()
 					clearQuestItems = {
 						name = "Clear Quest Items",
 						desc = function(info)
-								return "This will clear the saved settings of quest items"
+								return "This will clear this character's saved settings of quest items"
 							end,
 						confirm = true,
 						order = 104,
@@ -1294,8 +1347,7 @@ function CDTL3:GetFilterOptions()
 								for k, v in pairs(CDTL3.db.profile.tables["items"]) do
 									local _, _, _, _, _, classID, subclassID = CDTL3.Compat.GetItemInfoInstant(v["itemID"])
 									
-									if classID == 12 then
-									else
+									if classID ~= 12 or private.KeepAfterClear(v) then
 										table.insert(cleanTable, v)
 									end
 								end
@@ -1453,17 +1505,21 @@ function CDTL3:GetFilterOptions()
 											CDTL3:SendToHolding(spell)
 											CDTL3:SendToBarHolding(spell)
 										else
-											CDTL3:SendToLane(spell)
+											-- a move, not a restart (see MoveToLane, Cooldown.lua)
+											CDTL3:MoveToLane(spell)
 											CDTL3:SendToBarFrame(spell)
 										end
 									end
 								end
 								
+								-- only this character's entries (the ones Filters lists)
 								for _, spell in pairs(CDTL3.db.profile.tables[string.lower(default)]) do
-									if spell["bCD"] / 1000 > 3 and spell["bCD"] / 1000 <= val then
-										spell["ignored"] = false
-									else
-										spell["ignored"] = true
+									if CDTL3:IsMyEntry(spell) then
+										if spell["bCD"] / 1000 > 3 and spell["bCD"] / 1000 <= val then
+											spell["ignored"] = false
+										else
+											spell["ignored"] = true
+										end
 									end
 								end
 								
@@ -1502,7 +1558,7 @@ function CDTL3:GetFilterOptions()
 					setDefaultLane = {
 						name = "Set All",
 						desc = function(info)
-								return "This will override current settings, and set all "..string.lower(CDTL3.currentFilter["default"]).." cooldowns to the default value"
+								return "This will override current settings, and set all of this character's "..string.lower(CDTL3.currentFilter["default"]).." cooldowns to the default value"
 							end,
 						confirm = true,
 						order = 302,
@@ -1520,16 +1576,15 @@ function CDTL3:GetFilterOptions()
 								for _, spell in pairs(CDTL3.cooldowns) do
 									if spell.data["type"] == string.lower(default) then
 										spell.data["lane"] = target
-										local remaining = spell.data["currentCD"]
-										if remaining and remaining > 0 then
-											CDTL3:SendToLane(spell)
-											spell.data["currentCD"] = remaining
-										end
+										CDTL3:MoveToLane(spell)
 									end
 								end
 								
+								-- only this character's entries (the ones Filters lists)
 								for _, spell in pairs(CDTL3.db.profile.tables[string.lower(default)]) do
-									spell["lane"] = CDTL3.db.profile.global[string.lower(default)]["defaultLane"]
+									if CDTL3:IsMyEntry(spell) then
+										spell["lane"] = CDTL3.db.profile.global[string.lower(default)]["defaultLane"]
+									end
 								end
 								
 								CDTL3:RefreshAllIcons()
@@ -1567,7 +1622,7 @@ function CDTL3:GetFilterOptions()
 					setDefaultBar = {
 						name = "Set All",
 						desc = function(info)
-								return "This will override current settings, and set all "..string.lower(CDTL3.currentFilter["default"]).." cooldowns to the default value"
+								return "This will override current settings, and set all of this character's "..string.lower(CDTL3.currentFilter["default"]).." cooldowns to the default value"
 							end,
 						confirm = true,
 						order = 312,
@@ -1594,8 +1649,11 @@ function CDTL3:GetFilterOptions()
 									end
 								end
 								
+								-- only this character's entries (the ones Filters lists)
 								for _, spell in pairs(CDTL3.db.profile.tables[string.lower(default)]) do
-									spell["barFrame"] = CDTL3.db.profile.global[string.lower(default)]["defaultBar"]
+									if CDTL3:IsMyEntry(spell) then
+										spell["barFrame"] = CDTL3.db.profile.global[string.lower(default)]["defaultBar"]
+									end
 								end
 								
 								CDTL3:RefreshAllBars()
@@ -1636,7 +1694,7 @@ function CDTL3:GetFilterOptions()
 					setDefaultReady = {
 						name = "Set All",
 						desc = function(info)
-								return "This will override current settings, and set all "..string.lower(CDTL3.currentFilter["default"]).." cooldowns to the default value"
+								return "This will override current settings, and set all of this character's "..string.lower(CDTL3.currentFilter["default"]).." cooldowns to the default value"
 							end,
 						confirm = true,
 						order = 322,
@@ -1656,8 +1714,11 @@ function CDTL3:GetFilterOptions()
 									end
 								end
 								
+								-- only this character's entries (the ones Filters lists)
 								for _, spell in pairs(CDTL3.db.profile.tables[string.lower(default)]) do
-									spell["readyFrame"] = CDTL3.db.profile.global[string.lower(default)]["defaultReady"]
+									if CDTL3:IsMyEntry(spell) then
+										spell["readyFrame"] = CDTL3.db.profile.global[string.lower(default)]["defaultReady"]
+									end
 								end
 								
 								CDTL3:RefreshAllIcons()
@@ -2227,7 +2288,9 @@ private.GetBarFrameSet = function(i)
 						width = 0.4,
 						hasAlpha = true,
 						disabled  = function(info)
-								if frame["bar"]["fgClassColor"] or frame["bar"]["fgSchoolColor"] then
+								-- Spell School Color is ignored without a combat log (Cooldown.lua
+								-- GetBarFGColor), so it doesn't grey this out there
+								if frame["bar"]["fgClassColor"] or (frame["bar"]["fgSchoolColor"] and not private.NoCombatLog()) then
 									return true
 								end
 								
@@ -3630,7 +3693,8 @@ private.GetFilterSet = function(t, o)
 							if s then
 								s.data["lane"] = val
 								
-								CDTL3:SendToLane(s)
+								-- a move, not a restart (see MoveToLane, Cooldown.lua)
+								CDTL3:MoveToLane(s)
 							end
 						end
 						
