@@ -1680,7 +1680,7 @@ private.GetClassData = function(class)
 			-- TALENTS
 			table.insert(d, { id = 13750, name = "Adrenaline Rush", rank = "", bCD = 300000 } )
 			table.insert(d, { id = 13877, name = "Blade Flurry", rank = "", bCD = 120000 } )
-			table.insert(d, { id = 14177, name = "Cold Blood", rank = "", bCD = 180000 } )
+			table.insert(d, { id = 14177, name = "Cold Blood", rank = "", bCD = 180000, oaf = true } )
 			table.insert(d, { id = 14278, name = "Ghostly Strike", rank = "", bCD = 20000 } )
 			table.insert(d, { id = 14183, name = "Premeditation", rank = "", bCD = 120000 } )
 			table.insert(d, { id = 14185, name = "Preparation", rank = "", bCD = 600000 } )
@@ -1829,7 +1829,8 @@ private.GetClassData = function(class)
 			
 			-- TALENTS
 			table.insert(d, { id = 16166, name = "Elemental Mastery", rank = "", bCD = 180000, oaf = true } )
-			
+			table.insert(d, { id = 16188, name = "Nature's Swiftness", rank = "", bCD = 180000, oaf = true } )
+
 			-- RUNES
 			table.insert(d, { id = 409324, name = "Ancestral Guidance", rank = "", bCD = 120000 } )
 			table.insert(d, { id = 415236, name = "Healing Rain", rank = "", bCD = 10000 } )
