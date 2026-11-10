@@ -3,6 +3,7 @@ package-as: CooldownTimeline3
 ignore:
   - .pkgmeta
   - .gitignore
+  - .gitattributes
   - .github
   - README.md
   - docs
