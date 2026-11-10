@@ -1,0 +1,136 @@
+Probe run 1: WoW: Forever 1.60.1.70862, level 14 Druid, caster form, outdoor mob, about 13 s in combat.
+Test spell Nature's Grasp; buff Thorns (cached before the pull). Nothing was in the Cooldown Manager's Tracked Bars.
+Pasted by the owner from /cdtl3 probe report on 2026-11-09. Player observations: not yet given.
+
+CDTL3 probe report
+A read-only test of how WoW: Forever and Retail let addons show hidden (secret) timers. It changes no settings, leaves CDTL3's own timers alone and never moves or changes Blizzard's frames: it reads values, draws its own test bars on a small panel, and copies the values Blizzard's Tracked Bars are given.
+CDTL3 3.0.13 | recording ON | started 2026-11-09 18:33 | samples: ooc 35, combat 6 | combat entered 1 time(s), about 13 s in combat
+How to read: ooc = out of combat, combat = in combat. OK / FAILED = whether a call raised a Lua error (counted per call, first error kept). SECRET = the game hid that value from addons; the probe never compares or prints a hidden value. "x5" = seen 5 times. Panel rows A-F, S1 and S2 are explained in their sections.
+
+== 0. Client
+  GetBuildInfo: 1.60.1, build 70862, Nov  6 2026, interface 16001
+  CDTL3.isForever true | CDTL3.retailAPI true | WOW_PROJECT_ID 18
+  Class: Druid (DRUID) | spec: Druid (1484)
+  C_Secrets flags (true = values are being hidden), sampled every 2 s:
+    HasSecretRestrictions: ooc true x35 | combat true x6
+    ShouldCooldownsBeSecret: ooc false x35 | combat true x6
+    ShouldAurasBeSecret: ooc false x35 | combat true x6
+
+== 1. Riding (panel rows A-D)
+  1 GetSpellCooldownDuration (every frame): OK | ooc 2511 ok, 0 failed | combat 974 ok, 0 failed
+  1A SetMinMaxValues: OK | ooc 1 ok, 0 failed | combat 0 ok, 0 failed
+  1A SetValue(GetRemainingDuration): OK | ooc 2511 ok, 0 failed | combat 974 ok, 0 failed
+  1B SetTimerDuration: OK | ooc 26 ok, 0 failed | combat 18 ok, 0 failed
+  1C curve setup: OK | ooc 1 ok, 0 failed | combat 0 ok, 0 failed
+  1C SetValue(EvaluateRemainingDuration): OK | ooc 2511 ok, 0 failed | combat 974 ok, 0 failed
+  1C curve result (kind and Lua type): ooc readable number x21 | combat SECRET number x6
+  1D CreateDurationTextBinding: OK | ooc 1 ok, 0 failed | combat 0 ok, 0 failed
+  1D binding SetDuration: OK | ooc 26 ok, 0 failed | combat 18 ok, 0 failed
+  Icon positions, sampled every 2 s while the panel was open:
+    A GetCenter x: ooc SECRET x16, readable x5 | combat SECRET x6
+    A GetPoint x offset: ooc SECRET x16, readable x5 | combat SECRET x6
+    B GetCenter x: ooc SECRET x16, readable x5 | combat SECRET x6
+    B GetPoint x offset: ooc SECRET x16, readable x5 | combat SECRET x6
+    C GetCenter x: ooc SECRET x16, readable x5 | combat SECRET x6
+    C GetPoint x offset: ooc SECRET x16, readable x5 | combat SECRET x6
+
+== 2. Spell timer object (C_Spell.GetSpellCooldownDuration)
+  Test spell: Nature's Grasp (spell 16689), base cooldown 60.0 s (GetSpellBaseCooldown); chosen with /cdtl3 probe spell.
+  The test spell was changed at +26.7 s; sections 1, 2 and 7 count from then.
+  2 GetSpellCooldownDuration (every 2 s): OK | ooc 21 ok, 0 failed | combat 6 ok, 0 failed
+  2 timer object returned: ooc object x21 | combat object x6
+  2 HasSecretValues: ooc false x21 | combat true x6
+  2 ShouldSpellCooldownBeSecret: ooc false x21 | combat true x6
+  2 GetSpellCooldownSecrecy: ooc ContextuallySecret x21 | combat ContextuallySecret x6
+  2 isActive / isOnGCD readable (used to spot the cast): ooc yes x26 | combat yes x18
+  SPELL_UPDATE_COOLDOWN events: ooc 4, combat 12 | casts seen: ooc 0, combat 1
+  2 GetSpellCooldownDuration (rows B, D): OK | ooc 26 ok, 0 failed | combat 18 ok, 0 failed
+  2 refetch on SPELL_UPDATE_COOLDOWN: ooc object x4 | combat object x12
+  2 fetch at cast: OK | ooc 0 ok, 0 failed | combat 1 ok, 0 failed
+  2 fetch 2 s after cast: OK | ooc 0 ok, 0 failed | combat 1 ok, 0 failed
+  2 object from the cast vs object 2 s later (same object = live by definition): ooc - | combat different objects x1
+  2 S1 SetValue(cast object): OK | ooc 1743 ok, 0 failed | combat 813 ok, 0 failed
+  2 S2 SetValue(2 s later object): OK | ooc 1743 ok, 0 failed | combat 662 ok, 0 failed
+  Readings (latest per phase):
+    at the cast:
+      combat: timer object start SECRET, total SECRET | GetSpellCooldown start SECRET, duration SECRET | base 60.0 s | total vs base: can't compare (hidden or missing)
+    2 s after the cast:
+      combat: timer object start SECRET, total SECRET | GetSpellCooldown start SECRET, duration SECRET | base 60.0 s | total vs base: can't compare (hidden or missing)
+    while on cooldown (latest):
+      ooc: timer object start 140025.9, total 60.0 | GetSpellCooldown start 140025.9, duration 60.0 | base 60.0 s | object total = base
+      combat: timer object start SECRET, total SECRET | GetSpellCooldown start SECRET, duration SECRET | base 60.0 s | total vs base: can't compare (hidden or missing)
+
+== 3. Charges (C_Spell.GetSpellChargeDuration)
+  no charge spell: none of the test spell, CDTL3's saved spells for this character or the Cooldown Manager's charge spells is known with more than one charge.
+
+== 4. Buffs by cached aura instance ID (C_UnitAuras.GetAuraDuration)
+  Cache: taken at +0.0 s out of combat, 1 buff(s), 0 skipped as secret.
+  UNIT_AURA events (player): ooc 1, combat 2; each one in combat samples every cached ID, as does the 2 s timer.
+  #1 Thorns (spell 467, instance 33, duration 600.0 s) - shown on row E
+    GetAuraDuration: FAILED | ooc 35 ok, 0 failed | combat 0 ok, 8 failed
+      first error in combat: GetAuraDuration(): Auras cannot be accessed when secret while tainted by 'CooldownTimeline3'
+    timer object: ooc object x35 | combat -
+    HasSecretValues: ooc false x35 | combat -
+    GetAuraDataByAuraInstanceID: FAILED | ooc 35 ok, 0 failed | combat 0 ok, 8 failed
+      first error in combat: GetAuraDataByAuraInstanceID(): Auras cannot be accessed when secret while tainted by 'CooldownTimeline3'
+    aura data (which fields are secret): ooc data, nothing secret x35 | combat -
+    C_Secrets.GetSpellAuraSecrecy: ooc ContextuallySecret x35 | combat ContextuallySecret x8
+    C_Secrets.ShouldUnitAuraInstanceBeSecret: ooc false x35 | combat true x8
+  Row E:
+    GetAuraDuration (on UNIT_AURA): FAILED | ooc 2 ok, 0 failed | combat 0 ok, 2 failed
+      first error in combat: GetAuraDuration(): Auras cannot be accessed when secret while tainted by 'CooldownTimeline3'
+    SetTimerDuration: OK | ooc 2 ok, 0 failed | combat 0 ok, 0 failed
+
+== 5. Cooldown Manager (C_CooldownViewer; static data)
+  IsCooldownViewerAvailable: true, failure reason: ""
+  CVar cooldownViewerEnabled: 1
+  Cooldowns per category, learned / including unlearned:
+    0 Essential: 2 / 10
+    1 Utility: 4 / 17
+    2 TrackedBuff: 11 / 39
+    3 TrackedBar: 0 / 0
+    4 GroupBuff: 0 / 0
+    5 SpecAgnosticEssential: 3 / 3
+    6 SpecAgnosticTracked: 0 / 0
+    7 EquipSlotEssential: 0 / 2
+    8 EquipSlotTracked: 0 / 0
+  Essential (learned): Moonfire 8924, Maul 6807
+  Utility (learned): Growl 6795, Nature's Grasp 16689, Skysight 1259686, Walk on Air 1259416
+  TrackedBuff (learned): Moonfire, Entangling Roots, Nature's Grasp, Growl, Mark of the Wild, Thorns,
+    Rejuvenation, Regrowth, Druid Forms, Skysight, Walk on Air
+  TrackedBar (learned): none
+  Viewer frames:
+    EssentialCooldownViewer: exists, shown true, visible true, item frames 2 (2 with a cooldown)
+    UtilityCooldownViewer: exists, shown true, visible true, item frames 2 (1 with a cooldown)
+    BuffIconCooldownViewer: exists, shown true, visible true, item frames 2 (2 with a cooldown)
+    BuffBarCooldownViewer: exists, shown true, visible true, item frames 2 (0 with a cooldown)
+
+== 6. Mirror of the Cooldown Manager's Tracked Bars (row F)
+  BuffBarCooldownViewer: exists | OnAcquireItemFrame hooked: true | bars hooked: 2
+  6 hook OnAcquireItemFrame: OK | ooc 1 ok, 0 failed | combat 0 ok, 0 failed
+  6 GetItemFrames: OK | ooc 1 ok, 0 failed | combat 0 ok, 0 failed
+  6 hook bar SetMinMaxValues: OK | ooc 2 ok, 0 failed | combat 0 ok, 0 failed
+  6 hook bar SetValue: OK | ooc 2 ok, 0 failed | combat 0 ok, 0 failed
+  Row F copies: nothing yet (no Tracked Bar seen)
+  6F SetMinMaxValues (copy): NOT RUN
+  6F SetValue (copy): NOT RUN
+  Calls Blizzard made to the hooked bars, per cooldownID: none
+  ADDON_ACTION_BLOCKED: ooc 0, combat 0 | ADDON_ACTION_FORBIDDEN: ooc 0, combat 0 (any addon, while recording)
+
+== 7. Swipe (Cooldown:SetCooldownFromDurationObject on row D's own Cooldown frame)
+  7 SetCooldownFromDurationObject: OK | ooc 26 ok, 0 failed | combat 18 ok, 0 failed
+  Blocked / forbidden events naming SetCooldownFromDurationObject: 0
+
+== Probe internals
+  none failed; 13 other step(s) OK
+
+== Log
+  [ooc +0.0s] recording started
+  [ooc +0.0s] buffs cached: 1
+  [ooc +26.7s] test spell changed to Nature's Grasp
+  [combat +36.8s] combat started
+  [combat +38.9s] test spell cast seen
+  [ooc +49.9s] combat ended
+
+(The long "Tests:" / "Look for:" explanations and the full linked-spell lists are trimmed here;
+the numbers above are as pasted.)

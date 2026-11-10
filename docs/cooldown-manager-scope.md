@@ -1,6 +1,6 @@
 # Scope: the Cooldown Manager and exact timers in combat
 
-Status: **scoped 2026-11-09; probe build next.** Builds on `secret-timers-scope.md` (2026-10-07)
+Status: **scoped 2026-11-09; probe run 1 done on Forever (see Probe results at the end).** Builds on `secret-timers-scope.md` (2026-10-07)
 and its Phase 1 plan (2026-10-25, branch `secret-timers`), neither of which was run in game.
 Sources: Blizzard's UI source and generated API docs (Gethe/wow-ui-source `live` = Retail 12.1.5
 build 70783, `forever` = 1.60.1 build 70862) and the code of addons that already use the
@@ -83,3 +83,26 @@ A read-only `/cdtl3 probe` that changes no settings or tracking and prints a rep
 Each row above becomes go or no-go. Rows 1–3 passing means October's Phase 1 (exact spell icons and
 bars in combat) can be built, in its own test build for the Mac. Buffs follow by whichever of rows
 4 or 6 passes. Nothing ships without its own test build and the owner's go.
+
+## Probe results
+
+**Run 1, 2026-11-09:** Forever 1.60.1.70862, level 14 Druid in caster form, outdoor mob, about 13 s
+in combat. Test spell Nature's Grasp (60 s), buff Thorns. Report:
+`docs/probe-results/2026-11-09-forever-druid.txt`. The owner's notes on what the panel showed are
+still to come.
+
+| Row | Result |
+|---|---|
+| 1 Riding | Every call OK in combat (974 frames, 0 errors). Whether the icons visibly moved is the owner's call. Icon positions read back as hidden in combat, and they **stay hidden after combat** (ooc: readable x5 before the pull, hidden x16 after), so Phase 1 can't read its own icon positions once a bar has been fed a hidden value. |
+| 2 Spell timer | **Go.** An object every time in combat; `isActive` / `isOnGCD` readable throughout. Talented length not provable here (nothing changes Nature's Grasp at 14; out of combat total = base 60 s). A new object comes back on each fetch, so re-fetch on `SPELL_UPDATE_COOLDOWN` (12 in combat, all objects). |
+| 3 Charges | Not testable on this character; Retail. |
+| 4 Cached aura IDs | **No-go.** `GetAuraDuration` and `GetAuraDataByAuraInstanceID` fail on every call in combat: "Auras cannot be accessed when secret while tainted". Addon code gets no buff timers in combat by any ID. |
+| 5 Cooldown Manager | Available and on. For this Druid: Essential 2, Utility 4, Tracked Buffs 11; **Tracked Bars 0 by default** (0 even counting unlearned). |
+| 6 Mirror | Not tested: nothing was in Tracked Bars, so Blizzard drew no bar. Forever's `CooldownViewerBuffBarItemMixin:RefreshCooldownInfo` drives the bar with `SetMinMaxValues(0, duration)` + `SetValue(remaining)` from OnUpdate while active, which is what the probe hooks. Re-run with a buff moved into Tracked Bars. No blocked / forbidden actions. |
+| 7 Swipe | **Go.** `SetCooldownFromDurationObject` OK in combat from addon code (18 calls), nothing blocked. |
+
+So far: exact spell cooldowns in combat look buildable (Phase 1), pending the owner's eyes on rows A–D.
+Buffs in combat can come only from copying the Cooldown Manager, and only for buffs the player has
+put in Tracked Bars; 3.0.13's recast estimate stays the fallback for everything else. If the bar
+copy fails or Tracked Bars prove too awkward, a second probe could hook the Tracked Buff icons'
+`CooldownFrame_Set` (BuffIcon items, `CooldownViewer.lua` around line 1425), which show by default.
