@@ -1537,18 +1537,19 @@ function CDTL3:GetFilterOptions()
 					},
 					ignoreThreshold = {
 						name = "Ignore Threshold",
-						desc = "Any cooldown/duration longer than this will be disabled by default\n",
+						desc = "Any cooldown/duration longer than this (in seconds, up to 7200) will be disabled by default\n",
 						order = 251,
 						type = "range",
-						softMin = 5,
-						softMax = 1800,
+						-- hard limits, so the slider can reach and show every value (defaults go to 3600)
+						min = 1,
+						max = 7200,
 						bigStep = 1,
 						hidden = function(info)
 								return CDTL3.currentFilterHidden["default"]
 							end,
 						get = function(info, index)
 								local default = CDTL3.currentFilter["default"]
-								return CDTL3.db.profile.global[string.lower(default)]["ignoreThreshold"]
+								return math.min(CDTL3.db.profile.global[string.lower(default)]["ignoreThreshold"] or 0, 7200)
 							end,
 						set = function(info, val)
 								local default = CDTL3.currentFilter["default"]
@@ -3681,8 +3682,21 @@ private.GetFilterSet = function(t, o)
 							local s = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
 							if s then
 								s.data["ignored"] = val
-							
+
 								CDTL3:RefreshIcon(s)
+							end
+
+							-- Unticked on a buff/debuff that is up right now: show it at once
+							if not val and (t == "buffs" or t == "debuffs") and CDTL3.db.profile.global[t]["enabled"] then
+								local saved = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t)
+								if saved and CDTL3:AuraExists("player", saved["name"]) then
+									if s then
+										CDTL3:SendToLane(s)
+										CDTL3:SendToBarFrame(s)
+									else
+										CDTL3:CreateCooldown(CDTL3:GetUID(), t, saved)
+									end
+								end
 							end
 						end
 					end,
@@ -4222,6 +4236,26 @@ private.GetLaneSet = function(i)
 								CDTL3:RefreshLane(i)
 							end,
 					},
+					longBuffs = {
+						name = "Long buffs scale",
+						desc = "Sets this lane to Split (Time) over 60 minutes. The last 30 seconds, 30 seconds to 2 minutes and 2 to 10 minutes each get a quarter of the lane; 10 to 60 minutes share the last quarter. Hide Long Timers is turned off for it.",
+						order = 201.5,
+						type = "execute",
+						func = function(info)
+								lane["mode"]["type"] = "SPLIT_ABS"
+								local sa = lane["mode"]["splitAbs"]
+								sa["max"] = 3600
+								sa["hideTimeSurplus"] = false
+								sa["count"] = 3
+								sa["s1v"] = 30
+								sa["s1p"] = 0.25
+								sa["s2v"] = 120
+								sa["s2p"] = 0.5
+								sa["s3v"] = 600
+								sa["s3p"] = 0.75
+								CDTL3:RefreshLane(i)
+							end,
+					},
 					timeFormat = {
 						name = "Time Format",
 						desc = "Select the format to display times",
@@ -4266,11 +4300,12 @@ private.GetLaneSet = function(i)
 					},
 					maxTime = {
 						name = "Max Time",
-						desc = "How many seconds the lane represents",
+						desc = "How many seconds the lane represents (up to 3600, an hour). Type a number in the box for an exact value.",
 						order = 301,
 						type = "range",
-						softMin = 10,
-						softMax = 180,
+						-- hard limits, so the slider can reach and show every value
+						min = 1,
+						max = 3600,
 						bigStep = 1,
 						get = function(info, index)
 								local mt = 0
@@ -4285,8 +4320,8 @@ private.GetLaneSet = function(i)
 								elseif mode == "SPLIT_ABS" then
 									mt = lane["mode"]["splitAbs"]["max"]
 								end
-								
-								return mt
+
+								return math.min(mt or 0, 3600)
 							end,
 						set = function(info, val)
 								local mode = lane["mode"]["type"]
@@ -4612,7 +4647,7 @@ private.GetLaneSet = function(i)
 					},
 					saSplit1Value = {
 						name = "Split 1 Value",
-						desc = "What percentage should splitAbs 1 occur",
+						desc = "How many seconds from the end split 1 sits at (up to 3600).",
 						order = 512,
 						type = "range",
 						hidden = function(info)
@@ -4622,7 +4657,7 @@ private.GetLaneSet = function(i)
 							return true
 						end,
 						min = 1,
-						max = 360,
+						max = 3600,
 						bigStep = 1,
 						get = function(info, index)
 								return lane["mode"]["splitAbs"]["s1v"]
@@ -4670,7 +4705,7 @@ private.GetLaneSet = function(i)
 					},
 					saSplit2Value = {
 						name = "Split 2 Value",
-						desc = "What percentage should splitAbs 2 occur",
+						desc = "How many seconds from the end split 2 sits at (up to 3600).",
 						order = 522,
 						type = "range",
 						hidden = function(info)
@@ -4682,7 +4717,7 @@ private.GetLaneSet = function(i)
 							return true
 						end,
 						min = 1,
-						max = 360,
+						max = 3600,
 						bigStep = 1,
 						get = function(info, index)
 								return lane["mode"]["splitAbs"]["s2v"]
@@ -4730,7 +4765,7 @@ private.GetLaneSet = function(i)
 					},
 					saSplit3Value = {
 						name = "Split 3 Value",
-						desc = "What percentage should splitAbs 3 occur",
+						desc = "How many seconds from the end split 3 sits at (up to 3600).",
 						order = 532,
 						type = "range",
 						hidden = function(info)
@@ -4741,7 +4776,7 @@ private.GetLaneSet = function(i)
 							end
 							return true
 						end,
-						max = 360,
+						max = 3600,
 						min = 1,
 						bigStep = 1,
 						get = function(info, index)

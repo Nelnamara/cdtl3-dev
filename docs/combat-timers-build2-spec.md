@@ -112,3 +112,21 @@ Lane B checks its work with the lint's parse of `Options.lua` and by re-reading 
 Files changed; test and lint results (Lane A: the count of RESULT lines, all clean or which aren't);
 anything you could not build as written and what you did instead; what the owner's in-game walk must
 check because it can't be proven here.
+
+## As built (2026-11-10)
+
+- **A1:** the text binding gets a numeric rule formatter (`C_StringUtil.CreateNumericRuleFormatter`) set
+  up for CDTL3's style ("1:33", "42", "4.3"). Its format-string syntax isn't documented, so three
+  spellings are tried on plain numbers and one is used only if its output is right; otherwise the seconds
+  formatter ("59s", "1m 33s"), otherwise the binding's default. Which one was picked: `private.textForm`.
+- **A1 limit:** a Tracked Bars buff's text in combat is still whole seconds (`SetFormattedText("%.0f")`,
+  e.g. "542"): `FormatNumber` takes a hidden value only from untainted code. On the walk sheet as a
+  Keep / Change call (Change = show the estimate's "9:02" instead).
+- **A2:** `CT:Estimated(f)` and `CT:DimText(f, tf)`; alpha 0.55. A dimmed text is put back to 1 when its
+  icon or bar leaves the lane or bar frame.
+- **A3:** as specced (`private.SplitKnots`, `private.Segments`). Unproven in game: an icon anchored
+  through a chain of fills, and to an empty fill.
+- **B1:** Max Time is `min = 1`, `max = 3600`; Split (Time) values `1..3600`. Also Ignore Threshold
+  (Filters › Defaults): `min = 1`, `max = 7200`, since its default is 3600 for several types and the
+  slider stopped at 1800. 35 other sliders (sizes, paddings, offsets) still have soft limits.
+- **B2, B3:** as specced.

@@ -1979,10 +1979,14 @@ private.ShowHide = function(f)
 end
 
 private.UpdateText = function(f, tf, s, iString)
-	-- a riding cooldown's [cd.time]-only text follows the game's timer (CombatTimers.lua)
+	-- combat timers (CombatTimers.lua): an estimated buff's text is dimmed, and a riding
+	-- cooldown's [cd.time]-only text follows the game's timer
 	local CT = CDTL3.CombatTimers
-	if CT and f.ct and f.ct.riding and CT:OwnsText(f, tf, s) then
-		return
+	if CT then
+		CT:DimText(f, tf)
+		if f.ct and f.ct.riding and CT:OwnsText(f, tf, s) then
+			return
+		end
 	end
 
 	if s["enabled"] then

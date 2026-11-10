@@ -87,7 +87,68 @@ if FULL then
 		BINDINGS[#BINDINGS + 1] = b
 		return b
 	end }
-	C_StringUtil = { CreateSecondsFormatter = function() return { SetMinInterval = function() end } end }
+	-- formatters: the seconds formatter records its settings; the rule formatter follows its
+	-- documented breakpoints (highest threshold at or below the value, step, div/mod components)
+	-- with printf-style specs, or "{}" specs when RULE_STYLE is "brace"; "broken" errors on use
+	Enum.SecondsFormatterAbbreviation = { None = 0, Truncate = 1, OneLetter = 2 }
+	Enum.SecondsFormatterInterval = { Seconds = 0, Minutes = 1, Hours = 2, Days = 3 }
+	Enum.SecondsFormatterIntervalWhitespace = { Preserve = 0, Strip = 1, StripIgnoreLocale = 2 }
+	Enum.NumericRuleFormatRounding = { Nearest = 0, Up = 1, Down = 2 }
+	RULE_STYLE, NO_RULE, NO_SECONDS = "printf", false, false
+	local function stepped(x, step, rounding)
+		if not step then return x end
+		local q = x / step
+		if rounding == 1 then q = math.ceil(q - 1e-9) elseif rounding == 2 then q = math.floor(q + 1e-9) else q = math.floor(q + 0.5) end
+		return q * step
+	end
+	local function spec(fmt)
+		if RULE_STYLE == "brace" then
+			if fmt:find("%", 1, true) then error("bad format") end
+			return (fmt:gsub("{:02}", "%%02d"):gsub("{:%.(%d)f}", "%%.%1f"):gsub("{}", "%%d"))
+		end
+		if fmt:find("{", 1, true) then error("bad format") end
+		return fmt
+	end
+	local function int(v) return math.floor(v + 0.5) end
+	C_StringUtil = {
+		CreateSecondsFormatter = function()
+			if NO_SECONDS then error("no seconds formatter") end
+			local o = { kind = "seconds" }
+			o.SetMinInterval = function(self, v) self.minInterval = v end
+			o.SetDefaultAbbreviation = function(self, v) if v == nil then error("bad enum") end self.abbreviation = v end
+			o.SetDesiredUnitCount = function(self, v) self.units = v end
+			o.SetStripIntervalWhitespace = function(self, v) if type(v) ~= "number" then error("bad enum") end self.strip = v end
+			o.FormatNumber = function(self, v) return string.format("%ds", int(v)) end
+			return o
+		end,
+		CreateNumericRuleFormatter = function()
+			if NO_RULE then error("no rule formatter") end
+			local o = { kind = "rule", rules = {} }
+			o.SetBreakpoints = function(self, list) if RULE_STYLE == "broken" then error("broken") end self.rules = list end
+			o.FormatNumber = function(self, n)
+				if IsS(n) then error("secret argument") end
+				local r = nil
+				for _, b in ipairs(self.rules) do if n >= b.threshold and (not r or b.threshold > r.threshold) then r = b end end
+				if not r then return "" end
+				local x = stepped(n, r.step, r.rounding)
+				local fmt = spec(r.format)
+				if not r.components then
+					if fmt:find("%%d") then x = int(x) end
+					return string.format(fmt, x)
+				end
+				local vals = {}
+				for i, c in ipairs(r.components) do
+					local v = x
+					if c.div then v = v / c.div end
+					if c.mod then v = v % c.mod end
+					v = stepped(v, c.step, c.rounding)
+					vals[i] = int(v)
+				end
+				return string.format(fmt, table.unpack(vals))
+			end
+			return o
+		end,
+	}
 	-- the Cooldown Manager with one Tracked Bars item mapped to the buff, one unmapped
 	local INFO = {
 		[201] = { cooldownID = 201, spellID = BUFF, linkedSpellIDs = { 6005 }, hasAura = true, selfAura = true, charges = false },
@@ -203,6 +264,142 @@ local sc = laneCopy("SPLIT_ABS", 2)
 check("curves are cached by settings", P.SplitCurve(sc, "abs") == P.SplitCurve(laneCopy("SPLIT_ABS", 2), "abs"))
 check("curve type set to linear", P.SplitCurve(sc, "abs").type == Enum.LuaCurveType.Linear)
 
+---------------------------------------------------------------- 1b. split segments (Tracked Bars buffs on Split (Time))
+print("[segments " .. FLAVOR .. "]")
+-- where the chain puts the icon: each segment's clamped fill times its share of the lane
+local function chainPosition(segs, n, v, geo)
+	local pos = 0
+	for k = 1, n do
+		local seg = segs[k]
+		local a, b = seg:GetMinMaxValues()
+		local size = geo.vertical and seg.__h or seg.__w
+		local frac = math.min(math.max((v - a) / (b - a), 0), 1)
+		pos = pos + frac * size
+	end
+	return pos / geo.len
+end
+for count = 1, 3 do
+	local s = laneCopy("SPLIT_ABS", count)
+	local geo = P.Geometry(s)
+	local cts = {}
+	local last = P.Segments(cts, CDTL3_Lane_1, s, geo)
+	local w, worstAt = 0, nil
+	for i = 0, 600 do
+		local v = 150 * i / 600
+		for _, seg in ipairs(cts.segs) do seg:SetValue(v) end
+		local d = math.abs(chainPosition(cts.segs, cts.segCount, v, geo) - CDTL3.CalcSplitPosition(v, 120, s))
+		if d > w then w, worstAt = d, v end
+	end
+	check("SPLIT_ABS count " .. count .. ": " .. (count + 1) .. " segments reproduce CalcSplitPosition (0-150 s, max 120)",
+		cts.segCount == count + 1 and last == cts.segs[count + 1] and w < 1e-9, string.format("max diff %.2g at %s", w, tostring(worstAt)))
+	local chained = true
+	local total = 0
+	for k, seg in ipairs(cts.segs) do
+		local pt = { seg:GetPoint(1) }
+		if k == 1 then
+			chained = chained and pt[1] == "LEFT" and pt[2] == CDTL3_Lane_1 and pt[3] == "LEFT"
+		else
+			chained = chained and pt[1] == "LEFT" and pt[2] == cts.segs[k - 1]:GetStatusBarTexture() and pt[3] == "RIGHT"
+		end
+		chained = chained and seg.__h == 1 and seg:IsShown() and seg:GetParent() == CDTL3_Lane_1
+		total = total + seg.__w
+	end
+	check("count " .. count .. ": segment 1 on the lane, each next one on the previous fill edge, lengths add up to the lane",
+		chained and math.abs(total - geo.len) < 1e-9)
+end
+-- at and around the knots exactly
+do
+	local s = laneCopy("SPLIT_ABS", 3)
+	local geo = P.Geometry(s)
+	local cts = {}
+	P.Segments(cts, CDTL3_Lane_1, s, geo)
+	local ok = true
+	for _, v in ipairs({ 0, 0.001, 9.999, 10, 10.001, 30, 60, 119.999, 120, 121, 3600 }) do
+		for _, seg in ipairs(cts.segs) do seg:SetValue(v) end
+		ok = ok and math.abs(chainPosition(cts.segs, cts.segCount, v, geo) - CDTL3.CalcSplitPosition(v, 120, s)) < 1e-9
+	end
+	check("segments match at the knots, below the first, at the max and past it", ok)
+	-- vertical, reversed: same chain on the other axis
+	s.vertical, s.reversed = true, true
+	geo = P.Geometry(s)
+	P.Segments(cts, CDTL3_Lane_1, s, geo)
+	local p1, p2 = { cts.segs[1]:GetPoint(1) }, { cts.segs[2]:GetPoint(1) }
+	local okv = p1[1] == "TOP" and p1[3] == "TOP" and p2[1] == "TOP" and p2[2] == cts.segs[1]:GetStatusBarTexture() and p2[3] == "BOTTOM"
+		and cts.segs[1].__w == 1 and cts.segs[1].__reverse == true
+	for _, v in ipairs({ 5, 25, 45, 90 }) do
+		for _, seg in ipairs(cts.segs) do seg:SetValue(v) end
+		okv = okv and math.abs(chainPosition(cts.segs, cts.segCount, v, geo) - CDTL3.CalcSplitPosition(v, 120, s)) < 1e-9
+	end
+	check("vertical reversed lane: chained TOP to BOTTOM fill edge, reverse fill, same positions", okv)
+end
+do
+	local s = laneCopy("SPLIT_ABS", 3)
+	s.mode.splitAbs.s2v = 5
+	check("values not increasing: no segments (straight line)", P.SplitKnots(s) == nil and P.Segments({}, CDTL3_Lane_1, s, P.Geometry(s)) == nil)
+	s = laneCopy("SPLIT_ABS", 2)
+	s.mode.splitAbs.s2p = 0.25
+	check("positions not increasing: no segments", P.SplitKnots(s) == nil)
+	s = laneCopy("SPLIT_ABS", 3)
+	s.mode.splitAbs.s3v = 120
+	check("a split point at the max: no segments", P.SplitKnots(s) == nil)
+	s = laneCopy("SPLIT_ABS", 0)
+	check("no split points: no segments", P.SplitKnots(s) == nil)
+	s = laneCopy("SPLIT_ABS", 1)
+	s.mode.splitAbs.s2v, s.mode.splitAbs.s2p = 5, 0.1   -- inactive points are ignored
+	check("inactive split points ignored", P.SplitKnots(s) ~= nil and #P.SplitKnots(s) == 3)
+end
+
+---------------------------------------------------------------- 1c. countdown text format
+print("[text format " .. FLAVOR .. "]")
+local function freshFormatter() P.formatter, P.textForm = nil, nil; return P.Formatter() end
+-- CDTL3:GetReadableTime as the game's Lua 5.1 prints it (fengari is 5.3, where 7.0 .. ".0" is "7.0.0")
+local function readable(v)
+	if v > 60 then local r = math.floor(v + 0.5); return string.format("%d:%02d", math.floor(r / 60), r % 60) end
+	if v > 10 then return string.format("%.0f", v) end
+	return string.format("%.1f", v)
+end
+check("test's GetReadableTime copy agrees where 5.3 prints the same", readable(3.24) == tostring(CDTL3:GetReadableTime(3.24))
+	and readable(42.4) == tostring(CDTL3:GetReadableTime(42.4)))
+do
+	local fmt = freshFormatter()
+	check("rule formatter chosen: CDTL3's style", fmt and fmt.kind == "rule" and P.textForm == "cdtl3", tostring(P.textForm))
+	local bad = nil
+	for i = 0, 1500 do
+		local v = 0.05 + i * 0.4013
+		local tenths = (v * 10) % 1
+		local frac = v % 1
+		-- skip exact rounding ties (printf rounds half to even), and 10 itself ("10.0" in CDTL3)
+		if math.abs(tenths - 0.5) > 0.01 and math.abs(frac - 0.5) > 0.01 and math.abs(v - 10) > 0.01 then
+			if fmt:FormatNumber(v) ~= readable(v) then bad = bad or string.format("%.3f: %s vs %s", v, fmt:FormatNumber(v), readable(v)) end
+		end
+	end
+	check("rule formatter text matches GetReadableTime from 0 to 600 s", bad == nil, bad)
+	RULE_STYLE = "brace"
+	fmt = freshFormatter()
+	check("formatter reading {} specs: found by the self-check", fmt and fmt.kind == "rule" and P.textForm == "cdtl3" and fmt:FormatNumber(93.4) == "1:33")
+	RULE_STYLE = "broken"
+	fmt = freshFormatter()
+	check("rule formatter failing: seconds formatter with the documented enums", fmt and fmt.kind == "seconds" and P.textForm == "units"
+		and fmt.abbreviation == Enum.SecondsFormatterAbbreviation.OneLetter and fmt.strip == Enum.SecondsFormatterIntervalWhitespace.Strip
+		and fmt.minInterval == Enum.SecondsFormatterInterval.Seconds and fmt.units == 2)
+	RULE_STYLE = "printf"
+	NO_RULE, NO_SECONDS = true, true
+	fmt = freshFormatter()
+	check("no formatter at all: the binding's own default", fmt == nil and P.textForm == "default")
+	local b = C_DurationUtil.CreateDurationTextBinding()
+	local okNone = pcall(P.SetFormatter, b)
+	check("binding without a formatter: no error, none set", okNone and b.formatter == nil)
+	NO_RULE, NO_SECONDS = false, false
+	freshFormatter()
+	local refusing = C_DurationUtil.CreateDurationTextBinding()
+	refusing.SetFormatter = function(self, f) if f.kind == "rule" then error("not a formatter") end self.formatter = f end
+	local okR = pcall(P.SetFormatter, refusing)
+	check("binding refusing the rule formatter: seconds formatter instead, for later bindings too", okR and refusing.formatter
+		and refusing.formatter.kind == "seconds" and P.textForm == "units" and P.Formatter().kind == "seconds")
+	freshFormatter()
+	check("formatter reset to CDTL3's style for the rest", P.textForm == "cdtl3")
+end
+
 ---------------------------------------------------------------- 2. a spell rides in combat
 print("[spells " .. FLAVOR .. "]")
 declare(TEST, "Test Bolt", 30000)
@@ -270,6 +467,8 @@ end
 local bound = nil
 for _, b in ipairs(BINDINGS) do if b.fs == f.icon.txt.text2 then bound = b end end
 check("[cd.time] text gets a duration binding, enabled, with the timer", bound and bound.enabled and bound.dur == ct.dur)
+check("the binding formats in CDTL3's style (rule formatter)", bound and bound.formatter and bound.formatter.kind == "rule"
+	and bound.formatter:FormatNumber(93.4) == "1:33" and bound.formatter:FormatNumber(4.26) == "4.3")
 local other = false
 for _, b in ipairs(BINDINGS) do if b.fs == f.icon.txt.text1 then other = true end end
 check("[cd.stacks] text gets no binding", not other)
@@ -439,11 +638,48 @@ check("LINEAR: rider takes Blizzard's max and value", Val(bmx) == 60 and Val(fb.
 check("buff [cd.time] text: %.0f of the fed value", txt and txt.__fmt == "%.0f" and Val(txt.__fv) == 55)
 lane.mode.type = "SPLIT_ABS"
 feed(ITEM, 0.04, 60, 54)
-check("SPLIT_ABS: buff on a straight line over splitAbs.max", select(2, fb.ct.rider:GetMinMaxValues()) == lane.mode.splitAbs.max and Val(fb.ct.rider:GetValue()) == 54)
+do
+	local c = fb.ct
+	local n = c.segCount
+	local pt = { fb.icon:GetPoint(1) }
+	local fedAll = n == 4
+	for k = 1, n do fedAll = fedAll and IsS(c.segs[k]:GetValue()) and Val(c.segs[k]:GetValue()) == 54 end
+	check("SPLIT_ABS: buff rides 4 chained segments, each fed Blizzard's value (hidden)", fedAll and not c.rider:IsShown(), "segments=" .. tostring(n))
+	check("SPLIT_ABS: icon anchored to the last segment's fill edge", pt[1] == "LEFT" and pt[2] == c.segs[n]:GetStatusBarTexture() and pt[3] == "RIGHT")
+	local geo = P.Geometry(lane)
+	local pos = chainPosition(c.segs, n, 54, geo)
+	check("SPLIT_ABS: chain puts the buff at CalcSplitPosition", math.abs(pos - CDTL3.CalcSplitPosition(54, lane.mode.splitAbs.max, lane)) < 1e-9,
+		string.format("%.4f", pos))
+	check("SPLIT_ABS: no module errors", P.errors == 0, tostring(P.lastError))
+	-- the lane's settings change: laid out again
+	lane.mode.splitAbs.count = 2
+	feed(ITEM, 0.04, 60, 53)
+	check("settings changed (2 split points): 3 segments, the 4th hidden", c.segCount == 3 and not c.segs[4]:IsShown()
+		and ({ fb.icon:GetPoint(1) })[2] == c.segs[3]:GetStatusBarTexture())
+	lane.mode.splitAbs.count = 3
+	-- split points that don't increase: build 1's straight line
+	local s2v = lane.mode.splitAbs.s2v
+	lane.mode.splitAbs.s2v = 5
+	feed(ITEM, 0.04, 60, 52)
+	check("split points not increasing: straight line over splitAbs.max, segments hidden", c.rider:IsShown() and not c.segs[1]:IsShown()
+		and select(2, c.rider:GetMinMaxValues()) == lane.mode.splitAbs.max and Val(c.rider:GetValue()) == 52
+		and ({ fb.icon:GetPoint(1) })[2] == c.rider:GetStatusBarTexture())
+	lane.mode.splitAbs.s2v = s2v
+	lane.mode.type = "SPLIT"
+	feed(ITEM, 0.04, 60, 52)
+	check("SPLIT (%): buff keeps the straight line", c.rider:IsShown() and not c.segs[1]:IsShown())
+	lane.mode.type = "SPLIT_ABS"
+	feed(ITEM, 0.04, 60, 52)
+	check("back on Split (Time): segments again", c.segs[1]:IsShown() and not c.rider:IsShown())
+	P.Leave(fb, false)
+	check("leaving hides the segments", not c.segs[1]:IsShown() and not c.segs[4]:IsShown() and not c.rider:IsShown())
+	feed(ITEM, 0.04, 60, 52)
+	check("rides the segments again on the next frame", CT:Riding(fb) and c.segs[1]:IsShown())
+end
 lane.mode.type = "LINEAR"
 if fb.bar:IsVisible() then
 	local _, fmx = fb.bar.bar:GetMinMaxValues()
-	check("buff bar takes Blizzard's max and value", Val(fmx) == 60 and Val(fb.bar.bar:GetValue()) == 54)
+	check("buff bar takes Blizzard's max and value", Val(fmx) == 60 and Val(fb.bar.bar:GetValue()) == 52)
 end
 local rogue = 0
 for _, cd in ipairs(CDTL3.cooldowns) do if cd ~= fb and cd.ct and cd.ct.kind == "buff" and cd.ct.riding then rogue = rogue + 1 end end
@@ -475,6 +711,48 @@ check("one update of an idle bar doesn't start the buff", not CT:Riding(fb) and 
 RunOnUpdate(0.02, 15)
 feed(ITEM, 0.4, 60, 59)
 check("a real feed after it starts the buff", CT:Riding(fb) and parentName(fb.icon) == "CDTL3_Lane_1")
+
+---------------------------------------------------------------- 3b. estimated buffs are dimmed
+print("[estimated " .. FLAVOR .. "]")
+SPELLINFO[6020] = { "Guess Ward", 136004 }
+local gs = entry(6020, "Guess Ward", "buffs", { bCD = 30000 })
+table.insert(tables.buffs, gs)
+local fg = CDTL3:CreateCooldown(CDTL3:GetUID(), "buffs", gs)
+CDTL3:SendToLane(fg); CDTL3:SendToBarFrame(fg)
+fg.data.currentCD = 25
+local gt = fg.icon.txt and fg.icon.txt.text2
+local gb = fg.bar.txt and fg.bar.txt.text1
+local alphaSets = 0
+if gt then
+	local orig = gt.SetAlpha
+	rawset(gt, "SetAlpha", function(self, a) alphaSets = alphaSets + 1; orig(self, a) end)
+end
+feed(ITEM, 0.1, 60, 50)
+check("unfed buff while auras are hidden: estimated", CT:Estimated(fg) == true and parentName(fg.icon) == "CDTL3_Lane_1")
+check("its icon text drawn at 0.55", gt and gt:GetAlpha() == 0.55, gt and tostring(gt:GetAlpha()))
+check("its bar text drawn at 0.55", gb and gb:GetAlpha() == 0.55, gb and tostring(gb:GetAlpha()))
+feed(ITEM, 0.2, 60, 50)
+check("alpha set only when it changes", alphaSets == 1, tostring(alphaSets))
+check("a riding buff: not estimated, text at full alpha", CT:Riding(fb) and CT:Estimated(fb) == false and fb.icon.txt.text2:GetAlpha() == 1)
+check("a spell: not estimated", CT:Estimated(f) == false and f.icon.txt.text2:GetAlpha() == 1)
+check("a debuff with no feed: estimated", CT:Estimated({ data = { type = "debuffs" } }) == true)
+check("an item: not estimated", CT:Estimated({ data = { type = "items" } }) == false)
+SECRET_AURAS = false
+feed(ITEM, 0.06, 60, 50)
+check("auras readable: not estimated, alpha back to 1", CT:Estimated(fg) == false and gt:GetAlpha() == 1 and gb:GetAlpha() == 1)
+SECRET_AURAS = true
+feed(ITEM, 0.06, 60, 50)
+check("hidden again: dimmed again", gt:GetAlpha() == 0.55)
+CT:SetEnabled(false)
+feed(ITEM, 0.06, 60, 50)
+check("module off: not estimated, alpha 1", CT:Estimated(fg) == false and gt:GetAlpha() == 1)
+CT:SetEnabled(true)
+feed(ITEM, 0.06, 60, 50)
+check("module on again: dimmed", gt:GetAlpha() == 0.55)
+fg.data.currentCD = 0.01
+feed(ITEM, 0.1, 60, 50)
+check("estimate over, off its lane: text alpha restored", parentName(fg.icon) ~= "CDTL3_Lane_1" and gt:GetAlpha() == 1 and gb:GetAlpha() == 1,
+	tostring(parentName(fg.icon)) .. " " .. tostring(gt:GetAlpha()))
 
 ---------------------------------------------------------------- 4. setting off
 print("[off " .. FLAVOR .. "]")

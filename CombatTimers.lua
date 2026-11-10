@@ -297,6 +297,7 @@ private.Leave = function(f, resync)
 	if ct.rider then
 		pcall(Method, ct.rider, "Hide")
 	end
+	private.HideSegments(ct)
 	if ct.anchored then
 		ct.anchored = false
 		pcall(function()
@@ -373,6 +374,9 @@ end
 
 -- every frame from CooldownUpdate, before IconUpdate / BarUpdate
 function CT:Update(f, elapsed)
+	if f.ctDim then
+		pcall(private.CheckDim, f)
+	end
 	if not (f.ct and f.ct.riding) and not CT:Enabled() then
 		return
 	end
@@ -384,6 +388,76 @@ end
 
 function CT:Riding(f)
 	return (f.ct and f.ct.riding) and true or false
+end
+
+-- ESTIMATED BUFFS: while auras are hidden, a buff or debuff with no Tracked Bars feed is only an
+-- estimate, so its texts are dimmed
+private.DIM = 0.55
+
+function CT:Estimated(f)
+	local d = f and f.data
+	local t = d and d["type"]
+	if t ~= "buffs" and t ~= "debuffs" then
+		return false
+	end
+	if f.ct and f.ct.riding then
+		return false
+	end
+	return (CT:Enabled() and CDTL3:AurasAreSecret() == true) and true or false
+end
+
+private.SetDim = function(f, tf, dim)
+	if dim then
+		tf.ctDimmed = true
+		f.ctDim = f.ctDim or {}
+		f.ctDim[tf] = true
+		tf:SetAlpha(private.DIM)
+	else
+		tf.ctDimmed = nil
+		if f.ctDim then
+			f.ctDim[tf] = nil
+			if next(f.ctDim) == nil then
+				f.ctDim = nil
+			end
+		end
+		tf:SetAlpha(1)
+	end
+end
+
+private.DimText = function(f, tf)
+	local dim = CT:Estimated(f)
+	if dim ~= (tf.ctDimmed and true or false) then
+		private.SetDim(f, tf, dim)
+	end
+end
+
+-- from UpdateText: the alpha is only set when it changes
+function CT:DimText(f, tf)
+	if not tf then
+		return
+	end
+	if not tf.ctDimmed then
+		local t = f.data and f.data["type"]
+		if (t ~= "buffs" and t ~= "debuffs") or not CT:Enabled() then
+			return
+		end
+	end
+	local ok, err = pcall(private.DimText, f, tf)
+	if not ok then
+		private.Error(err)
+	end
+end
+
+-- a dimmed text whose icon or bar has left its lane or bar frame (UpdateText no longer runs for it)
+private.CheckDim = function(f)
+	local estimated = CT:Estimated(f)
+	for tf in pairs(f.ctDim) do
+		local holder = tf:GetParent() and tf:GetParent():GetParent()
+		local placed = (holder == f.bar) and private.OnBarFrame(f) or (holder ~= f.bar and private.OnLane(f))
+		if not (estimated and placed) then
+			private.SetDim(f, tf, false)
+		end
+	end
 end
 
 -- SPLIT LANE CURVES
@@ -441,8 +515,9 @@ private.SplitCurve = function(s, variant, total)
 	return curve
 end
 
--- out of combat, so the curves exist before the pull
+-- out of combat, so the curves and the text formatter exist before the pull
 private.Prewarm = function()
+	pcall(private.Formatter)
 	local lanes = CDTL3.db and CDTL3.db.profile and CDTL3.db.profile.lanes
 	if not lanes then
 		return
@@ -460,42 +535,56 @@ private.Prewarm = function()
 end
 
 -- LANE ICONS
-private.Rider = function(ct, lane, s)
-	local rider = ct.rider
-	if not rider then
-		rider = CreateFrame("StatusBar", nil, lane)
-		rider:SetStatusBarTexture(private.FILL)
-		rider:SetStatusBarColor(0, 0, 0, 0)
-		local tex = rider:GetStatusBarTexture()
-		if tex then
-			tex:SetAlpha(0)
-		end
-		rider:EnableMouse(false)
-		ct.rider = rider
-	end
-
+-- the lane's travel: the same anchor and length IconUpdate uses
+private.Geometry = function(s)
 	local vertical = s["vertical"] and true or false
 	local reversed = s["reversed"] and true or false
-	local len = math.max(s["width"] - s["icons"]["size"], 1)
 	local anchor = "LEFT"
 	if vertical then
 		anchor = reversed and "TOP" or "BOTTOM"
 	elseif reversed then
 		anchor = "RIGHT"
 	end
+	return { anchor = anchor, len = math.max(s["width"] - s["icons"]["size"], 1), vertical = vertical, reversed = reversed }
+end
 
+-- a transparent, 1 px StatusBar: only its fill edge is used
+private.NewBar = function(lane)
+	local bar = CreateFrame("StatusBar", nil, lane)
+	bar:SetStatusBarTexture(private.FILL)
+	bar:SetStatusBarColor(0, 0, 0, 0)
+	local tex = bar:GetStatusBarTexture()
+	if tex then
+		tex:SetAlpha(0)
+	end
+	bar:EnableMouse(false)
+	return bar
+end
+
+private.Shape = function(bar, geo, size)
+	if geo.vertical then
+		bar:SetSize(1, size)
+		bar:SetOrientation("VERTICAL")
+	else
+		bar:SetSize(size, 1)
+		bar:SetOrientation("HORIZONTAL")
+	end
+	bar:SetReverseFill(geo.reversed)
+end
+
+private.Rider = function(ct, lane, geo)
+	local rider = ct.rider
+	if not rider then
+		rider = private.NewBar(lane)
+		ct.rider = rider
+	end
+
+	local anchor, len, vertical = geo.anchor, geo.len, geo.vertical
 	if rider:GetParent() ~= lane or ct.riderAnchor ~= anchor or ct.riderLen ~= len or ct.riderVertical ~= vertical then
 		rider:SetParent(lane)
 		rider:ClearAllPoints()
 		rider:SetPoint(anchor, lane, anchor, 0, 0)
-		if vertical then
-			rider:SetSize(1, len)
-			rider:SetOrientation("VERTICAL")
-		else
-			rider:SetSize(len, 1)
-			rider:SetOrientation("HORIZONTAL")
-		end
-		rider:SetReverseFill(reversed)
+		private.Shape(rider, geo, len)
 		ct.riderAnchor, ct.riderLen, ct.riderVertical = anchor, len, vertical
 	end
 	if not rider:IsShown() then
@@ -504,9 +593,94 @@ private.Rider = function(ct, lane, s)
 	return rider
 end
 
+-- SPLIT (TIME) LANES FOR TRACKED BARS BUFFS
+-- A curve can't take a hidden value from addon code, but CalcSplitPosition is piecewise linear:
+-- one StatusBar per segment, each clamping the value to its own range, each starting at the
+-- previous one's fill edge. The icon sits on the last fill edge, so the fills add up to the split
+-- position with no arithmetic on the value.
+
+-- (0, 0), each active split point, (max, 1); nil unless values and positions strictly increase
+private.SplitKnots = function(s)
+	local ss = s["mode"]["splitAbs"]
+	local count, max = tonumber(ss["count"]), tonumber(ss["max"])
+	if not (count and max) or count < 1 or count > 3 or count ~= math.floor(count) then
+		return nil
+	end
+	local knots = { { 0, 0 } }
+	for i = 1, count do
+		local v, p = tonumber(ss["s" .. i .. "v"]), tonumber(ss["s" .. i .. "p"])
+		if not (v and p) then
+			return nil
+		end
+		knots[#knots + 1] = { v, p }
+	end
+	knots[#knots + 1] = { max, 1 }
+	for i = 2, #knots do
+		if not (knots[i][1] > knots[i - 1][1] and knots[i][2] > knots[i - 1][2]) then
+			return nil
+		end
+	end
+	return knots
+end
+
+private.HideSegments = function(ct)
+	if ct.segs then
+		for _, seg in ipairs(ct.segs) do
+			pcall(Method, seg, "Hide")
+		end
+	end
+end
+
+-- lays the segments out (again when the lane or its settings change); returns the last one, or nil
+-- for a straight line
+private.Segments = function(ct, lane, s, geo)
+	local knots = private.SplitKnots(s)
+	if not knots then
+		return nil
+	end
+	local parts = { geo.anchor, geo.len, tostring(geo.vertical), tostring(geo.reversed) }
+	for _, k in ipairs(knots) do
+		parts[#parts + 1] = k[1] .. "/" .. k[2]
+	end
+	local key = table.concat(parts, ":")
+
+	local segs = ct.segs or {}
+	ct.segs = segs
+	local n = #knots - 1
+	if ct.segKey ~= key or ct.segLane ~= lane then
+		for k = 1, n do
+			local seg = segs[k]
+			if not seg then
+				seg = private.NewBar(lane)
+				segs[k] = seg
+			end
+			seg:SetParent(lane)
+			seg:ClearAllPoints()
+			if k == 1 then
+				seg:SetPoint(geo.anchor, lane, geo.anchor, 0, 0)
+			else
+				seg:SetPoint(geo.anchor, segs[k - 1]:GetStatusBarTexture(), private.OPPOSITE[geo.anchor], 0, 0)
+			end
+			private.Shape(seg, geo, (knots[k + 1][2] - knots[k][2]) * geo.len)
+			seg:SetMinMaxValues(knots[k][1], knots[k + 1][1])
+		end
+		for k = n + 1, #segs do
+			segs[k]:Hide()
+		end
+		ct.segKey, ct.segLane, ct.segCount = key, lane, n
+	end
+	for k = 1, n do
+		if not segs[k]:IsShown() then
+			segs[k]:Show()
+		end
+	end
+	return segs[n]
+end
+
 private.SetRiderValue = function(f, ct, rider, s, mode, max)
 	if ct.kind == "buff" then
-		-- curves can't take a hidden value from addon code: split lanes show buffs on a straight line
+		-- curves can't take a hidden value from addon code: Split (%) lanes, and Split (Time) lanes
+		-- whose split points don't increase, show buffs on a straight line
 		local top = ct.feed.max
 		if mode == "LINEAR_ABS" then
 			top = s["mode"]["linearAbs"]["max"]
@@ -547,16 +721,32 @@ end
 
 private.PlaceIcon = function(f, ct, s, mode, max)
 	local ic = f.icon
-	local rider = private.Rider(ct, ic:GetParent(), s)
-	private.SetRiderValue(f, ct, rider, s, mode, max)
+	local lane = ic:GetParent()
+	local geo = private.Geometry(s)
 
-	local anchor = ct.riderAnchor
+	local bar = nil
+	if ct.kind == "buff" and mode == "SPLIT_ABS" then
+		bar = private.Segments(ct, lane, s, geo)
+	end
+	if bar then
+		if ct.rider then
+			ct.rider:Hide()
+		end
+		for k = 1, ct.segCount do
+			ct.segs[k]:SetValue(ct.feed.value)
+		end
+	else
+		private.HideSegments(ct)
+		bar = private.Rider(ct, lane, geo)
+		private.SetRiderValue(f, ct, bar, s, mode, max)
+	end
+
 	local x, y = 0, ic.yOffset + ic.sOffset
-	if ct.riderVertical then
+	if geo.vertical then
 		x, y = y, 0
 	end
 	ic:ClearAllPoints()
-	ic:SetPoint(anchor, rider:GetStatusBarTexture(), private.OPPOSITE[anchor], x, y)
+	ic:SetPoint(geo.anchor, bar:GetStatusBarTexture(), private.OPPOSITE[geo.anchor], x, y)
 	ct.anchored = true
 end
 
@@ -603,22 +793,115 @@ private.TimeOnly = function(text)
 	return type(text) == "string" and text:match("^%s*(.-)%s*$") == "[cd.time]"
 end
 
--- as close to CDTL3:GetReadableTime as the seconds formatter allows
+-- Countdown text format. CDTL3's own (CDTL3:GetReadableTime): over a minute "m:ss", 10-60 s whole
+-- seconds, under 10 s one decimal. The numeric rule formatter (C_StringUtil.CreateNumericRuleFormatter)
+-- can build it from breakpoints; how its format strings are written isn't documented, so each way
+-- is tried on plain numbers (out of combat when possible) and only one that gives the right text is
+-- used. Else Blizzard's seconds formatter ("59s", "1m 33s"), else the binding's own default.
+private.FORMAT_SAMPLES = {
+	cdtl3 = { { 3.24, "3.2" }, { 7, "7.0" }, { 42.4, "42" }, { 59.6, "60" }, { 93.4, "1:33" }, { 605.2, "10:05" } },
+	whole = { { 3.24, "3" }, { 42.4, "42" }, { 93.4, "1:33" }, { 605.2, "10:05" } },
+}
+private.FORMAT_SPECS = {
+	{ one = "%.1f", whole = "%.0f", clock = "%d:%02d" },
+	{ one = "%.1f", whole = "%.0f", clock = "%.0f:%02.0f" },
+	{ one = "{:.1f}", whole = "{:.0f}", clock = "{}:{:02}" },
+}
+
+private.FormatRules = function(style, spec)
+	local R = Enum and Enum.NumericRuleFormatRounding or {}
+	local clock = { threshold = 60, step = 1, rounding = R.Nearest, format = spec.clock,
+		components = { { div = 60, step = 1, rounding = R.Down }, { mod = 60, step = 1, rounding = R.Down } } }
+	if style == "whole" then
+		return { { threshold = 0, step = 1, rounding = R.Nearest, format = spec.whole }, clock }
+	end
+	return { { threshold = 0, step = 0.1, rounding = R.Nearest, format = spec.one },
+		{ threshold = 10, step = 1, rounding = R.Nearest, format = spec.whole }, clock }
+end
+
+private.FormatsAs = function(fmt, samples)
+	for _, sample in ipairs(samples) do
+		local ok, text = pcall(Method, fmt, "FormatNumber", sample[1])
+		if not ok or IsSecret(text) or text ~= sample[2] then
+			return false
+		end
+	end
+	return true
+end
+
+-- returns a checked rule formatter and its style ("cdtl3", or "whole": no decimal under 10 s)
+private.RuleFormatter = function()
+	if not (C_StringUtil and C_StringUtil.CreateNumericRuleFormatter) then
+		return nil
+	end
+	local ok, fmt = pcall(C_StringUtil.CreateNumericRuleFormatter)
+	if not (ok and fmt) then
+		return nil
+	end
+	for _, style in ipairs({ "cdtl3", "whole" }) do
+		for _, spec in ipairs(private.FORMAT_SPECS) do
+			local rules = private.FormatRules(style, spec)
+			local descending = {}
+			for i = #rules, 1, -1 do
+				descending[#descending + 1] = rules[i]
+			end
+			for _, list in ipairs({ rules, descending }) do
+				if pcall(Method, fmt, "SetBreakpoints", list) and private.FormatsAs(fmt, private.FORMAT_SAMPLES[style]) then
+					return fmt, style
+				end
+			end
+		end
+	end
+	return nil
+end
+
+-- build 1's formatter, with the documented enum for the whitespace setting
+private.SecondsFormatter = function()
+	if not (C_StringUtil and C_StringUtil.CreateSecondsFormatter) then
+		return nil
+	end
+	local ok, fmt = pcall(C_StringUtil.CreateSecondsFormatter)
+	if not (ok and fmt) then
+		return nil
+	end
+	pcall(function() fmt:SetMinInterval(Enum.SecondsFormatterInterval.Seconds) end)
+	pcall(function() fmt:SetDefaultAbbreviation(Enum.SecondsFormatterAbbreviation.OneLetter) end)
+	pcall(function() fmt:SetDesiredUnitCount(2) end)
+	pcall(function() fmt:SetStripIntervalWhitespace(Enum.SecondsFormatterIntervalWhitespace.Strip) end)
+	return fmt
+end
+
+-- private.textForm: "cdtl3", "whole", "units" (seconds formatter) or "default" (none)
 private.Formatter = function()
 	if private.formatter == nil then
-		private.formatter = false
-		if C_StringUtil and C_StringUtil.CreateSecondsFormatter then
-			local ok, fmt = pcall(C_StringUtil.CreateSecondsFormatter)
+		private.formatter, private.textForm = false, "default"
+		local ok, fmt, style = pcall(private.RuleFormatter)
+		if ok and fmt then
+			private.formatter, private.textForm = fmt, style
+		else
+			ok, fmt = pcall(private.SecondsFormatter)
 			if ok and fmt then
-				pcall(function() fmt:SetMinInterval(Enum.SecondsFormatterInterval.Seconds) end)
-				pcall(function() fmt:SetDefaultAbbreviation(Enum.SecondsFormatterAbbreviation.OneLetter) end)
-				pcall(function() fmt:SetDesiredUnitCount(2) end)
-				pcall(function() fmt:SetStripIntervalWhitespace(true) end)
-				private.formatter = fmt
+				private.formatter, private.textForm = fmt, "units"
 			end
 		end
 	end
 	return private.formatter or nil
+end
+
+-- a binding that refuses the rule formatter gets the seconds formatter, and so does every later one
+private.SetFormatter = function(binding)
+	local fmt = private.Formatter()
+	if not fmt or pcall(Method, binding, "SetFormatter", fmt) then
+		return
+	end
+	if private.textForm == "units" then
+		error("SetFormatter failed")
+	end
+	local ok, secs = pcall(private.SecondsFormatter)
+	private.formatter, private.textForm = (ok and secs) or false, (ok and secs) and "units" or "default"
+	if private.formatter then
+		binding:SetFormatter(private.formatter)
+	end
 end
 
 private.BindText = function(f, ct, tf)
@@ -631,10 +914,7 @@ private.BindText = function(f, ct, tf)
 	if not b then
 		local binding = C_DurationUtil.CreateDurationTextBinding()
 		binding:SetFontString(tf)
-		local fmt = private.Formatter()
-		if fmt then
-			binding:SetFormatter(fmt)
-		end
+		private.SetFormatter(binding)
 		b = { binding = binding }
 		ct.bindings[tf] = b
 	end
