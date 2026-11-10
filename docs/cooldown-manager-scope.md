@@ -208,3 +208,20 @@ Forever is done: every line of the three walks passes or was a settings matter. 
   written from, then the owner's walk there (charges are only testable on Retail).
 - Release shape: version, whether combat timers are on by default, and `hideBlizzardBars` (on in test
   builds; hiding a user's own Tracked Bars by default would surprise them), `/cdtl3 probe` in or out.
+
+## Retail source check (2026-11-10)
+
+Retail 12.1.5 (`live` branch of Gethe/wow-ui-source) against the Forever code the build was written
+from:
+- `Blizzard_CooldownViewer/CooldownViewer.lua`: 24 changed lines out of about 2380, none in the buff
+  bar code (an Edit Mode icon lookup, where a spell ID is read for one alert, and Forever's extra Edit
+  Mode refresh callback). `CooldownViewerBuffBarItemMixin:RefreshCooldownInfo`, the item OnUpdate
+  registration and `OnAcquireItemFrame` are the same.
+- `EditModeCooldownViewerSystemMixin:UpdateSystemSettingOpacity` exists and is the same.
+- API docs present on Retail: `C_Spell.GetSpellCooldownDuration` / `GetSpellChargeDuration`
+  (AllowedWhenTainted), `C_Secrets.ShouldSpellCooldownBeSecret` / `ShouldCooldownsBeSecret` /
+  `ShouldAurasBeSecret` (in `SecretPredicateAPIDocumentation.lua`), curves, duration objects, the text
+  binding, the seconds and numeric rule formatters.
+So build 3 should behave on Retail as on Forever. Unproven until the owner's walk
+(`2026-11-10-retail`, 14 lines): charges, a talent- or haste-shortened cooldown, a cooldown reduced
+mid-way, a buff gained in combat, and Edit Mode with Blizzard's Tracked Bars hidden.
