@@ -607,7 +607,10 @@ check("recharge done (charge isActive false): Ready", parentName(fc.icon) == "CD
 
 ---------------------------------------------------------------- 3. Tracked Bars mirror
 print("[mirror " .. FLAVOR .. "]")
-check("Blizzard's Tracked Bars hidden (alpha 0) at login", BuffBarCooldownViewer:GetAlpha() == 0)
+check("hide is off by default (3.1.0): Blizzard's Tracked Bars shown at login",
+	g.combatTimers.hideBlizzardBars == false and BuffBarCooldownViewer:GetAlpha() == 1, tostring(BuffBarCooldownViewer:GetAlpha()))
+CT:SetHideBlizzardBars(true)
+check("hide ticked: Blizzard's Tracked Bars at alpha 0", BuffBarCooldownViewer:GetAlpha() == 0)
 BuffBarCooldownViewer:UpdateSystemSettingOpacity()   -- Edit Mode resets it
 check("re-hidden after Edit Mode resets the opacity", BuffBarCooldownViewer:GetAlpha() == 0)
 CT:SetHideBlizzardBars(false)

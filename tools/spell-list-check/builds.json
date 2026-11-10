@@ -12,7 +12,7 @@
 			"key": "forever",
 			"name": "WoW: Forever",
 			"interface": 16001,
-			"build": "1.60.1.70862",
+			"build": "1.60.1.70888",
 			"classes": ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"],
 			"extraTables": ["TalentTab"]
 		},

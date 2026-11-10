@@ -364,6 +364,18 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."CDTL3 continues Cooldown Timeline for Retail (Midnight), Classic Era,\n"
 	changeLog = changeLog.."TBC Anniversary, MoP Classic and World of Warcraft: Forever,\n"
 	changeLog = changeLog.."based on the original by Vreenak and the v2 rewrite by cliffclive.\n\n"
+	changeLog = changeLog.."Changelog 3.1.0:\n\n"
+	changeLog = changeLog.."  - Retail and Forever: combat timers (experimental, on by default). In\n"
+	changeLog = changeLog.."    combat, spell icons, bars and countdown text follow the game's own timer\n"
+	changeLog = changeLog.."    at the real length, and go to ready on time\n"
+	changeLog = changeLog.."  - Buffs in the Cooldown Manager's Tracked Bars (/cdm) get an exact timer\n"
+	changeLog = changeLog.."    in combat; other buffs show an estimate in dimmed text. Global tab:\n"
+	changeLog = changeLog.."    turn combat timers off, or hide Blizzard's Tracked Bars\n"
+	changeLog = changeLog.."  - Lanes: Max Time and Split (Time) values go up to an hour on the slider,\n"
+	changeLog = changeLog.."    and a Long buffs scale button sets up a lane for 10 and 60 minute buffs\n"
+	changeLog = changeLog.."  - Unticking Ignored on a buff that's up shows it at once\n"
+	changeLog = changeLog.."  - Bar frames: unticking Transition bars brings hidden bars back without\n"
+	changeLog = changeLog.."    a reload\n\n"
 	changeLog = changeLog.."Changelog 3.0.13:\n\n"
 	changeLog = changeLog.."  - Forever: spell list updated for the November changes (Lightning\n"
 	changeLog = changeLog.."    Mastery, Totemic Call at 30 s, no Lava Burst; Swift Judgement is a\n"
@@ -484,14 +496,26 @@ function CDTL3:GetChangeLog()
 	return changeLog
 end
 
+-- Shown in the welcome window under the support link, above the changelog
 function CDTL3:GetSpecialMessage()
 	local message = ""
-	--message = message.."\n"
-	--message = message.."Profile import/exporting testing is still ongoing.\n"
-	--message = message.."\n"
-	--message = message.."While I havent seen any issues with this feature yet, I want to make sure it works ok, so please provide feedback where appropriate.\n"
-	--message = message.."\n"
-		
+
+	-- 3.1.0: combat timers are on for everyone; say so once, with how to turn them off
+	local CT = CDTL3.CombatTimers
+	if CT and CT:Available() then
+		message = message.."|cFFffd100New in 3.1.0: combat timers (experimental), on for everyone|r\n\n"
+		message = message.."In combat the game hides cooldown and buff timings from addons. CDTL3 now\n"
+		message = message.."uses the game's own timer instead:\n\n"
+		message = message.."  - Spell cooldowns keep sliding, draining and counting down in combat, at\n"
+		message = message.."    their real length (talents and haste included), and go to ready on time\n"
+		message = message.."  - Buffs you add to Tracked Bars in Blizzard's Cooldown Manager (/cdm) get\n"
+		message = message.."    an exact timer in combat; other buffs show an estimate in dimmed text\n\n"
+		message = message.."To turn them off: Global tab > Combat timers (experimental), or type\n"
+		message = message.."/cdtl3 combattimers off\n\n"
+		message = message.."This is new. If anything looks wrong, please report it at the link above,\n"
+		message = message.."with your class and what you saw. Spells with charges are the least tested.\n\n"
+	end
+
 	return message
 end
 
