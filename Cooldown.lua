@@ -961,6 +961,15 @@ private.BarUpdate = function(f, elapsed)
 			local CT = CDTL3.CombatTimers
 			local riding = CT and CT:Riding(f)
 
+			-- "Transition bars" hides a bar once its cooldown is under the lane's Max Time. With the
+			-- option off (or no lane), a bar it hid earlier comes back: it used to stay hidden until
+			-- a /reload, so unticking the option looked like it did nothing.
+			if (d["lane"] == 0 or not s["transition"]["hideTransitioned"]) and not ba.valid
+				and d["enabled"] and not d["ignored"] then
+				ba.valid = true
+				ba:GetParent().triggerUpdate = true
+			end
+
 			if d["lane"] == 0 then
 				-- For now, do nothing
 			else

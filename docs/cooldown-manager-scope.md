@@ -186,3 +186,13 @@ Walk `2026-11-10-combat-timers-2`: **all 10 checks pass**, and the bar-frame ret
 
 Still open: charges and the whole walk on Retail; Blizzard's Tracked Bars invisible in Edit Mode while
 hidden; 35 other sliders with soft limits; how this ships (version, and whether it is on by default).
+
+**After the build 2 walk (same evening):** "none of the bar frames seem to be working now with
+transition checked or unchecked; lanes and ready frames are fine". Traced in `private.BarUpdate`
+(`Cooldown.lua`): a bar's `valid` flag was set back to true only while "Transition bars" was on and
+the cooldown was above the lane's Max Time, so a bar the option had hidden stayed hidden after
+unticking it (until a /reload), and so did the bar of an entry that was ignored and un-ignored. The
+walk had raised his lanes' Max Time to 3600, which puts every cooldown under the transition point.
+An old bug, not from the combat timers code. Fixed in build 3: with the option off (or no lane) a
+hidden bar of an enabled, not-ignored cooldown is shown again. With the option on and a lane Max Time
+of 3600, bars for anything shorter than an hour still hide: that is what the option does.

@@ -483,6 +483,27 @@ else
 	check("bar frame visible for the bar check", false, "parent=" .. tostring(parentName(ba)) .. " visible=" .. tostring(ba:IsVisible()))
 end
 
+-- "Transition bars": a bar it hid comes back when the option is unticked (it used to need a /reload)
+do
+	local bfs = CDTL3.db.profile.barFrames["frame1"]
+	local wasOn, wasThreshold = bfs.transition.hideTransitioned, ba.transitionThreshold
+	bfs.transition.hideTransitioned = true
+	ba.transitionThreshold = 100000
+	poll(f, 0.04)
+	check("Transition bars on, cooldown under the lane's Max Time: bar hidden", ba.valid == false and ba:GetAlpha() == 0)
+	bfs.transition.hideTransitioned = false
+	poll(f, 0.04)
+	check("Transition bars unticked: the hidden bar comes back", ba.valid == true and ba:GetAlpha() == 1)
+	f.data.ignored = true
+	poll(f, 0.04)
+	check("an ignored cooldown's bar stays hidden", ba.valid == false and ba:GetAlpha() == 0)
+	f.data.ignored = false
+	poll(f, 0.04)
+	check("un-ignored: bar back", ba.valid == true and ba:GetAlpha() == 1)
+	bfs.transition.hideTransitioned, ba.transitionThreshold = wasOn, wasThreshold
+	poll(f, 0.04)
+end
+
 -- GROUPED stacking with a riding icon (and a second, plain icon)
 declare(6010, "Plain Bolt", 60000)
 table.insert(tables.spells, entry(6010, "Plain Bolt", "spells", { setCustomCD = true, customCDTime = 60000 }))
