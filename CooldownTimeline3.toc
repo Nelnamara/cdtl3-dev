@@ -25,4 +25,5 @@ Lanes.lua
 BarFrames.lua
 Ready.lua
 Cooldown.lua
+Probe.lua
 EditMode.lua

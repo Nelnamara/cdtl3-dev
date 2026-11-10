@@ -1279,6 +1279,9 @@ function CDTL3:ChatCommand(input)
 			end
 		end
 		CDTL3:Print("  live oaf frames: " .. frames .. " | run once with the buff up and once after using it, paste both")
+	elseif input:trim():match("^probe") then
+		-- read-only Cooldown Manager probe (Probe.lua, docs/cooldown-manager-scope.md)
+		CDTL3:Probe(input:trim():sub(6))
     end
 end
 
