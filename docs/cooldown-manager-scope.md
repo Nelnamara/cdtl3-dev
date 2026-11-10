@@ -196,3 +196,15 @@ walk had raised his lanes' Max Time to 3600, which puts every cooldown under the
 An old bug, not from the combat timers code. Fixed in build 3: with the option off (or no lane) a
 hidden bar of an enabled, not-ignored cooldown is shown again. With the option on and a lane Max Time
 of 3600, bars for anything shorter than an hour still hide: that is what the option does.
+
+## Test build 3: the owner's walk (2026-11-10)
+
+Walk `2026-11-10-combat-timers-3`: **3 of 3 pass.** Unticking "Transition bars" brings running bars back
+with no reload; ticking it hides them again; Thorns' text in combat reads in CDTL3's style while its
+icon holds its place on the Split (Time) lane.
+
+Forever is done: every line of the three walks passes or was a settings matter. Before this ships:
+- Retail: check the live branch's `Blizzard_CooldownViewer` against the Forever code the mirror was
+  written from, then the owner's walk there (charges are only testable on Retail).
+- Release shape: version, whether combat timers are on by default, and `hideBlizzardBars` (on in test
+  builds; hiding a user's own Tracked Bars by default would surprise them), `/cdtl3 probe` in or out.
