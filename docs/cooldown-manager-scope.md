@@ -101,8 +101,19 @@ still to come.
 | 6 Mirror | Not tested: nothing was in Tracked Bars, so Blizzard drew no bar. Forever's `CooldownViewerBuffBarItemMixin:RefreshCooldownInfo` drives the bar with `SetMinMaxValues(0, duration)` + `SetValue(remaining)` from OnUpdate while active, which is what the probe hooks. Re-run with a buff moved into Tracked Bars. No blocked / forbidden actions. |
 | 7 Swipe | **Go.** `SetCooldownFromDurationObject` OK in combat from addon code (18 calls), nothing blocked. |
 
-So far: exact spell cooldowns in combat look buildable (Phase 1), pending the owner's eyes on rows A–D.
-Buffs in combat can come only from copying the Cooldown Manager, and only for buffs the player has
-put in Tracked Bars; 3.0.13's recast estimate stays the fallback for everything else. If the bar
-copy fails or Tracked Bars prove too awkward, a second probe could hook the Tracked Buff icons'
-`CooldownFrame_Set` (BuffIcon items, `CooldownViewer.lua` around line 1425), which show by default.
+**Run 2, 2026-11-09:** same character, two fights, about 32 s in combat, with Thorns moved into
+Tracked Bars. Report: `docs/probe-results/2026-11-09-forever-druid-run2.txt`.
+
+| Row | Result |
+|---|---|
+| 1, 2, 7 | Same as run 1 with more data: 2313 frames in combat, 49 cooldown refreshes and 49 swipes, 0 errors. |
+| 4 | Same no-go (21 of 21 failed in combat). Also: the cached Thorns ID went dead (`nil` x22) after a recast, so a recast gives a buff a new instance ID. |
+| 6 Mirror | **Go.** Blizzard drove the Thorns bar 1683 times in combat (SetMinMaxValues + SetValue every frame) and the copy into row F succeeded on all 1683, 0 failed, no blocked / forbidden actions. |
+
+So far: exact spell cooldowns in combat look buildable (Phase 1), and exact buff timers in combat work
+for buffs the player puts in the Cooldown Manager's Tracked Bars (Cooldown Manager on). Both pending
+the owner's eyes on whether rows A–D and F visibly moved. 3.0.13's recast estimate stays the fallback
+for buffs not in Tracked Bars. Open for a later probe: whether Blizzard's bars still feed the copy
+when faded out (the viewer's OnUpdate stops if its frame is hidden, so hiding is not an option;
+fading may be), and the Tracked Buff icons' `CooldownFrame_Set` (BuffIcon items, `CooldownViewer.lua`
+around line 1425) as a source that needs no move into Tracked Bars.
