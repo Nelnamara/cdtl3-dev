@@ -117,3 +117,29 @@ for buffs not in Tracked Bars. Open for a later probe: whether Blizzard's bars s
 when faded out (the viewer's OnUpdate stops if its frame is hidden, so hiding is not an option;
 fading may be), and the Tracked Buff icons' `CooldownFrame_Set` (BuffIcon items, `CooldownViewer.lua`
 around line 1425) as a source that needs no move into Tracked Bars.
+
+## Experimental build: combat timers (scope 2026-11-09)
+
+Builds on October's Phase 1 scope (`secret-timers-scope.md`, decided 2026-10-25) with what the two
+probe runs settled. One test build, branch `combat-timers` cut from `cdm-probe`, walked on Forever
+first (the owner's Druid), then Retail for charges.
+
+| Item | How | Settled by |
+|---|---|---|
+| Spell and pet cooldown icons move on lanes in combat | A transparent rider StatusBar per icon; the icon anchors to its fill edge. LINEAR_ABS / LINEAR: `SetMinMaxValues` + `SetValue(dur:GetRemainingDuration())`. SPLIT / SPLIT_ABS: a curve per lane with knots sampled from `private.CalcSplitPosition` (`Cooldown.lua`), fed through `EvaluateRemainingDuration` | probe rows A–C |
+| Bar frames drain | `SetTimerDuration(dur, Immediate, RemainingTime)` | row B |
+| Countdown text | Duration text binding where the template is a single time tag; mixed templates keep the estimate | row D |
+| Swipes | `SetCooldownFromDurationObject` | section 7 |
+| Ready on time | `isActive` (never hidden) | section 2 |
+| Real cooldown length | The timer object is the game's own cooldown. Spells with Custom CD Time keep today's estimate (the user's override wins) | Oct decision |
+| Re-fetch | A new object comes back on each fetch: re-fetch on `SPELL_UPDATE_COOLDOWN` / `SPELL_UPDATE_CHARGES` | section 2 |
+| Charges | `GetSpellChargeDuration` | not proven yet: Retail walk |
+| Exact buffs in combat | Post-hooks on each `BuffBarCooldownViewer` item's `.Bar` `SetMinMaxValues` / `SetValue` (the probe's mirror). Item cooldownID → spellID and linkedSpellIDs (static, never hidden) → CDTL3's buff entries; the copied values drive that buff's rider bar or bar frame | section 6 |
+| Buff start and end in combat | Check in the build: a post-hook on the item's `OnActiveStateChanged` / `SetIsActive` and whether `IsActive()` / `IsShown()` read back. Fallback: 3.0.13's cast restart and UNIT_AURA timing | open |
+| Other buffs | 3.0.13's recast estimate, text dimmed while it is an estimate | Oct decision |
+| Blizzard's Tracked Bars on screen | Forever's Edit Mode fades them to 50% at most (`EditModeSettingDisplayInfo.lua`, Opacity min 50), and "Hidden" hides the viewer, which stops the OnUpdate that feeds the copy. Option "Hide Blizzard's Tracked Bars" sets the viewer's alpha to 0, out of combat only; on by default in the test build. It is the one write to a Blizzard frame: the walk checks for Blizzard errors and blocked actions, and it goes if there are any | source |
+| Setup hint | Each buff's options say whether it is in Tracked Bars (exact in combat) or not ("add it in /cdm") | — |
+| Off switch | Global tab "Combat timers (experimental)" and `/cdtl3 combattimers on` / `off`; on by default only in test builds. Feature-detected (`C_DurationUtil`, `C_Spell.GetSpellCooldownDuration`), so Classic clients are untouched | Oct decision |
+| Diagnostics | `/cdtl3 probe` stays; a "combat timers" line in `/cdtl3 debug` | — |
+| Limits in combat | GROUPED stacking and position saving skip riding icons, so they may overlap until combat ends. Icon positions stay hidden while anchored to a rider (probe), so icons re-anchor to their normal points on leaving combat; check that positions read back after that. hideTimeSurplus icons pin at the far end | probe row 1, Oct |
+| Not doing | Item cooldowns (no API); number tags and sorting by time in combat (need maths on hidden values) | Oct |
