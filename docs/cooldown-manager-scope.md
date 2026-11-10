@@ -225,3 +225,21 @@ from:
 So build 3 should behave on Retail as on Forever. Unproven until the owner's walk
 (`2026-11-10-retail`, 14 lines): charges, a talent- or haste-shortened cooldown, a cooldown reduced
 mid-way, a buff gained in combat, and Edit Mode with Blizzard's Tracked Bars hidden.
+
+## Retail walk (2026-11-10, Druid, build 3)
+
+Walk `2026-11-10-retail`: **11 pass, 2 Later, 1 unmarked, no fails.**
+- Pass: install and status line; a Tracked Bars buff (Stampeding Roar) named in the status line,
+  Blizzard's bar hidden, the Filters hint; an ordinary cooldown slides and counts in CDTL3's style; a
+  talent- or haste-shortened cooldown reaches Ready when the button lights up; a cooldown reduced
+  mid-way jumps to the new time ("best as I can tell"); the Tracked Bars buff refreshes, ends, and
+  starts when gained in combat; no jump leaving combat; Edit Mode open and close; no Lua errors,
+  blocked actions or module errors.
+- Later, charges (lines 6, 7), his words: "We'll need to trust this is working and leave it to testers
+  as I dont have a class with charges." Covered here only by `tools/tests/combattimers.lua`.
+- Unmarked: line 14 (`combattimers off` brings Blizzard's bar back); the same check passed on Forever.
+
+Combat timers now pass on both Forever and Retail. Left before a release: the release shape (version,
+whether combat timers are on by default: October's plan says on only in test builds; the
+`hideBlizzardBars` default; `/cdtl3 probe` in or out), and PR #6 (3.0.13) merging first, since this
+branch is cut from it.
