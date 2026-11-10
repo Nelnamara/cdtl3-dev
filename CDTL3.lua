@@ -769,7 +769,10 @@ local defaults = {
 			hideOutOfCombat = false,
 
 			dynamicSpellDetection = false,
-			
+
+			-- CombatTimers.lua. On by default in test builds only: set enabled = false before a release.
+			combatTimers = { enabled = true, hideBlizzardBars = true },
+
 			exportMode = "SETTINGS",
 			importMode = "SETTINGS",
 
