@@ -32,5 +32,7 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
 - `cooldown3.lua`: cooldown frames, lanes, items and the Filters bulk controls.
 - `events.lua`: pet casts, ranked casts, the combat log gate and runes.
 - `fixes.lua`: checks for the fixes of each release.
+- `combattimers.lua`: CombatTimers.lua (branch combat-timers) with faked timer, curve, text binding and
+  Cooldown Manager APIs (`full`), or inert where the APIs are missing.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).

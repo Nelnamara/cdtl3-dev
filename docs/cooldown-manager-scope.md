@@ -1,6 +1,7 @@
 # Scope: the Cooldown Manager and exact timers in combat
 
-Status: **scoped 2026-11-09; probe run 1 done on Forever (see Probe results at the end).** Builds on `secret-timers-scope.md` (2026-10-07)
+Status: **two probe runs done on Forever; combat timers test build 1 built 2026-11-09 on branch
+`combat-timers` (spec and as-built notes in `combat-timers-spec.md`), waiting for the owner's walk.** Builds on `secret-timers-scope.md` (2026-10-07)
 and its Phase 1 plan (2026-10-25, branch `secret-timers`), neither of which was run in game.
 Sources: Blizzard's UI source and generated API docs (Gethe/wow-ui-source `live` = Retail 12.1.5
 build 70783, `forever` = 1.60.1 build 70862) and the code of addons that already use the

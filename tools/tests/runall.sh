@@ -8,3 +8,5 @@ for s in "11509 CooldownTimeline3_Vanilla.toc" "16001 CooldownTimeline3_Camelot.
 for s in "16001 CooldownTimeline3_Camelot.toc HUNTER" "120105 CooldownTimeline3_Mainline.toc HUNTER" "120105 CooldownTimeline3_Mainline.toc DEATHKNIGHT" "50504 CooldownTimeline3_Mists.toc DEATHKNIGHT" "11509 CooldownTimeline3_Vanilla.toc WARLOCK" "20506 CooldownTimeline3_TBC.toc HUNTER"; do set -- $s; run $1 $T/events.lua $2 $3; done
 for s in "11509 CooldownTimeline3_Vanilla.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc"; do set -- $s; run $1 $T/probe.lua $2; done
 for s in "16001 CooldownTimeline3_Camelot.toc" "120105 CooldownTimeline3_Mainline.toc"; do set -- $s; run $1 $T/probe.lua $2 full; done
+for s in "11509 CooldownTimeline3_Vanilla.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc"; do set -- $s; run $1 $T/combattimers.lua $2; done
+for s in "16001 CooldownTimeline3_Camelot.toc" "120105 CooldownTimeline3_Mainline.toc"; do set -- $s; run $1 $T/combattimers.lua $2 full; done

@@ -26,4 +26,5 @@ BarFrames.lua
 Ready.lua
 Cooldown.lua
 Probe.lua
+CombatTimers.lua
 EditMode.lua

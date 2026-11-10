@@ -1285,6 +1285,20 @@ function CDTL3:ChatCommand(input)
 	elseif input:trim():match("^probe") then
 		-- read-only Cooldown Manager probe (Probe.lua, docs/cooldown-manager-scope.md)
 		CDTL3:Probe(input:trim():sub(6))
+	elseif input:trim():match("^combattimers") then
+		-- combat timers (CombatTimers.lua): status, or "on" / "off"
+		local arg = input:trim():sub(13):trim():lower()
+		local CT = CDTL3.CombatTimers
+		if not (CT and CT:Available()) then
+			CDTL3:Print("Combat timers: not available on this client")
+		else
+			if arg == "on" then
+				CT:SetEnabled(true)
+			elseif arg == "off" then
+				CT:SetEnabled(false)
+			end
+			CDTL3:Print(CT:StatusLine())
+		end
     end
 end
 

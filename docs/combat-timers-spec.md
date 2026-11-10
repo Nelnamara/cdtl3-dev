@@ -196,6 +196,23 @@ failing frame stops riding (falls back to the estimate) rather than erroring eve
 - `CLAUDE.md`: a Files entry for `CombatTimers.lua` (branch `combat-timers`, test build) and the slash
   subcommand in the Slash section, in the file's existing style.
 
+## As built (2026-11-09), where it differs from the text above
+
+- **Hide Blizzard's Tracked Bars** remembers the viewer's own alpha and puts it back; it never calls
+  `UpdateSystemSettingOpacity` or any other Blizzard method (the post-hook on it only re-hides).
+- **Ready for charge spells** comes from `C_Spell.GetSpellCharges(id).isActive`; `isOnGCD` is read only
+  in the `SPELL_UPDATE_COOLDOWN` handler and cleared when a ride starts. A new rider waits up to 0.5 s
+  to see `isActive` true before trusting a false read.
+- **A Tracked Bars feed counts** only once Blizzard has updated the bar for 0.1 s (a single layout
+  refresh of an idle bar is ignored), and stays fresh across a long frame (an update made in the last
+  frame the module saw is never stale).
+- **A failing countdown text** falls back to the estimate on its own; the icon and bar keep riding.
+- **Countdown text format** while riding is Blizzard's seconds formatter ("1m 33s"), not CDTL3's "1:33".
+- `CT:BuffInTrackedBars` also reads the saved Tracked Bars list, so an idle bar still counts.
+- `CT:StatusLine()` adds `| errors: N` when the module has caught errors.
+- Not built: showing Blizzard's Tracked Bars again while Edit Mode is open (they stay invisible there
+  while the hide option is on).
+
 ## Rules for both lanes
 - Edit only the files your lane lists. Don't commit, push, tag, or touch other branches.
 - No AI/assistant attribution anywhere (code comments, text, docs).

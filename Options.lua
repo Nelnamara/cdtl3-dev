@@ -648,6 +648,52 @@ function CDTL3:GetMainOptions()
 								end
 							end,
 					},
+					combatTimers = {
+						name = "Combat timers (experimental)",
+						desc = "Keeps spell cooldowns moving in combat with the game's own timer, and gives buffs in Blizzard's Cooldown Manager Tracked Bars an exact timer. Other buffs keep an estimate.",
+						order = 350,
+						type = "toggle",
+						width = "full",
+						hidden = function(info)
+								local CT = CDTL3.CombatTimers
+								return not (CT and CT:Available())
+							end,
+						get = function(info, index)
+								local CT = CDTL3.CombatTimers
+								return CT and CT:Enabled() or false
+							end,
+						set = function(info, val)
+								local CT = CDTL3.CombatTimers
+								if CT then
+									CT:SetEnabled(val)
+								end
+							end,
+					},
+					combatTimersHideBars = {
+						name = "Hide Blizzard's Tracked Bars",
+						desc = "Blizzard's bars must stay on to feed CDTL3; this makes them invisible.",
+						order = 351,
+						type = "toggle",
+						width = "full",
+						hidden = function(info)
+								local CT = CDTL3.CombatTimers
+								return not (CT and CT:Available())
+							end,
+						disabled = function(info)
+								local CT = CDTL3.CombatTimers
+								return not (CT and CT:Enabled())
+							end,
+						get = function(info, index)
+								local ct = CDTL3.db.profile.global["combatTimers"]
+								return ct and ct["hideBlizzardBars"] or false
+							end,
+						set = function(info, val)
+								local CT = CDTL3.CombatTimers
+								if CT then
+									CT:SetHideBlizzardBars(val)
+								end
+							end,
+					},
 					enableTooltip = {
 						name = "Enable tooltips",
 						desc = "If selected mousing over icons will display a tooltip",
@@ -3832,6 +3878,35 @@ private.GetFilterSet = function(t, o)
 	}
 
 	private.AddEntryColorArgs(options.args, t)
+
+	-- Combat timers: tell the user if this buff gets an exact timer in combat
+	if t == "buffs" then
+		options.args["combatTimerNote"] = {
+			name = function(info)
+					local CT = CDTL3.CombatTimers
+					local inBars = CT and CT:BuffInTrackedBars(CDTL3.currentFilter[t])
+					if inBars then
+						return "\nExact in combat: this buff is in the Cooldown Manager's Tracked Bars."
+					end
+					return "\nEstimated in combat. For an exact timer, add it to Tracked Bars in the Cooldown Manager (/cdm)."
+				end,
+			type = "description",
+			order = 703,
+			width = "full",
+			hidden = function(info)
+					if CDTL3.currentFilterHidden[t] then
+						return true
+					end
+
+					local CT = CDTL3.CombatTimers
+					if not (CT and CT:Available()) then
+						return true
+					end
+
+					return CT:BuffInTrackedBars(CDTL3.currentFilter[t]) == nil
+				end,
+		}
+	end
 
 	return options
 end
