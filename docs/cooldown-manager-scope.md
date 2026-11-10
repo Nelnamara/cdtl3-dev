@@ -144,3 +144,26 @@ first (the owner's Druid), then Retail for charges.
 | Diagnostics | `/cdtl3 probe` stays; a "combat timers" line in `/cdtl3 debug` | — |
 | Limits in combat | GROUPED stacking and position saving skip riding icons, so they may overlap until combat ends. Icon positions stay hidden while anchored to a rider (probe), so icons re-anchor to their normal points on leaving combat; check that positions read back after that. hideTimeSurplus icons pin at the far end | probe row 1, Oct |
 | Not doing | Item cooldowns (no API); number tags and sorting by time in combat (need maths on hidden values) | Oct |
+
+## Test build 1: the owner's walk (2026-11-09, Forever, level 14 Druid)
+
+Walk `2026-11-09-combat-timers` on the CDTL3 Walk Sheet: **14 of 15 pass.**
+
+- Pass in combat: Nature's Grasp's icon slides for the whole cooldown; its countdown text counts
+  (it reads "59sec"); Ready lands when the spell lights up on the action bar; Thorns' icon (Tracked
+  Bars) keeps sliding and jumps back on a recast; `/cdtl3 combattimers` shows riding with no errors.
+- Pass around it: the status line, both Global toggles, the Filters hint, Blizzard's Tracked Bars
+  hidden and back with `combattimers off`, no jump on leaving combat, no Lua errors or blocked actions.
+- Fail, line 12 (bar frame): "Nature's Grasp does not work in a bar but other spells do." Not the
+  build: bar frames default to "Transition bars" (`transition.hideTransitioned`), which hides a bar
+  once the cooldown is under the lane's Max Time (`BarUpdate`, `CalcTransitionIndicator`), and
+  Nature's Grasp's 60 s never exceeds the default 120 s. So a bar draining from the game's timer is
+  **still unproven in game**; retest line `2026-11-10-bar-frame-retest-01` is on the sheet.
+
+Still open after this walk:
+- Countdown text format: the seconds formatter's short-unit setting didn't take ("59sec"); look for a
+  format that matches CDTL3's ("59", "1:33") through the binding's `SetTextFormat`.
+- In the scope but not in build 1: dimmed text on estimated buffs. (Swipes: CDTL3's icons have no
+  swipe to drive, so there was nothing to build.)
+- Charges, and the whole walk, on Retail.
+- Blizzard's Tracked Bars stay invisible in Edit Mode while hidden.
