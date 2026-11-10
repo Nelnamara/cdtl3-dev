@@ -905,10 +905,6 @@ private.SetFormatter = function(binding)
 end
 
 private.BindText = function(f, ct, tf)
-	if ct.kind == "buff" then
-		tf:SetFormattedText("%.0f", ct.feed.value)
-		return
-	end
 	ct.bindings = ct.bindings or {}
 	local b = ct.bindings[tf]
 	if not b then
@@ -928,10 +924,14 @@ private.BindText = function(f, ct, tf)
 	end
 end
 
--- from UpdateText: true = the module owns this FontString this frame (a [cd.time]-only template)
+-- from UpdateText: true = the module owns this FontString this frame (a [cd.time]-only template).
+-- Spells only. A Tracked Bars buff keeps CDTL3's own text from the estimate ("9:02"): the value
+-- copied from Blizzard's bar can't be reformatted by addon code, only shown as raw seconds ("542"),
+-- and the owner chose the usual style (walk of 2026-11-10). Its icon and bar stay exact.
 function CT:OwnsText(f, tf, s)
 	local ct = f.ct
-	if not (ct and ct.riding and not ct.noText and tf and s and s["enabled"] and private.TimeOnly(s["text"])) then
+	if not (ct and ct.riding and ct.kind ~= "buff" and not ct.noText and tf and s and s["enabled"]
+		and private.TimeOnly(s["text"])) then
 		return false
 	end
 	local ok, err = pcall(private.BindText, f, ct, tf)

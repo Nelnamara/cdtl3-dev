@@ -626,7 +626,7 @@ end
 BuffBarCooldownViewer:OnAcquireItemFrame(ITEM2)
 check("bars hooked (acquired item too)", P.mirror.hooked[ITEM.Bar] ~= nil and P.mirror.hooked[ITEM2.Bar] ~= nil)
 check("mirror on", P.mirrorOn == true)
--- the buff's text: SetFormattedText takes hidden values in game; record instead of formatting
+-- the buff's text stays CDTL3's own (from the estimate): the fed value must never reach a text
 local txt = fb.icon.txt and fb.icon.txt.text2
 local function record(fs) if fs then rawset(fs, "SetFormattedText", function(self, fmt, v) self.__fmt, self.__fv = fmt, v end) end end
 record(txt)
@@ -635,7 +635,7 @@ feed(ITEM, 0.4, 60, 55)
 check("fresh feed starts the buff on its lane", parentName(fb.icon) == "CDTL3_Lane_1" and CT:Riding(fb) and fb.ct.kind == "buff", tostring(parentName(fb.icon)))
 local _, bmx = fb.ct.rider:GetMinMaxValues()
 check("LINEAR: rider takes Blizzard's max and value", Val(bmx) == 60 and Val(fb.ct.rider:GetValue()) == 55)
-check("buff [cd.time] text: %.0f of the fed value", txt and txt.__fmt == "%.0f" and Val(txt.__fv) == 55)
+check("buff [cd.time] text: CDTL3's own, the fed value is never formatted into it", txt and txt.__fmt == nil and txt.__fv == nil)
 lane.mode.type = "SPLIT_ABS"
 feed(ITEM, 0.04, 60, 54)
 do

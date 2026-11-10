@@ -167,3 +167,22 @@ Still open after this walk:
   swipe to drive, so there was nothing to build.)
 - Charges, and the whole walk, on Retail.
 - Blizzard's Tracked Bars stay invisible in Edit Mode while hidden.
+
+## Test build 2: the owner's walk (2026-11-10, Forever, same Druid)
+
+Walk `2026-11-10-combat-timers-2`: **all 10 checks pass**, and the bar-frame retest from build 1 passes
+(a bar frame's bar drains from the game's timer in combat). Spec and as-built notes:
+`combat-timers-build2-spec.md`.
+
+- Proven in game by this walk: a spell's countdown text in combat reads like CDTL3's normal text;
+  a Tracked Bars buff on a Split (Time) lane keeps its place when combat starts and ends (the chain of
+  segment bars works, an empty fill included); estimated buffs dim in combat and come back after;
+  the sliders reach 3600 / 7200 and show the saved value; "Long buffs scale"; unticking Ignored shows
+  an active buff at once. No Lua errors, no blocked actions, no module errors.
+- His call on the Tracked Bars buff text ("542" exact seconds, or CDTL3's "9:02" from the estimate):
+  **Change.** Build 3 (same day): `CT:OwnsText` leaves buffs alone, so their text is CDTL3's own; the
+  icon and bar stay exact.
+- He didn't note which text formatter was picked (line 7 asked); it passed as CDTL3's style.
+
+Still open: charges and the whole walk on Retail; Blizzard's Tracked Bars invisible in Edit Mode while
+hidden; 35 other sliders with soft limits; how this ships (version, and whether it is on by default).
