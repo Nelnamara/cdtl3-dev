@@ -14,3 +14,6 @@ Thumbs.db
 # tools/spell-list-check: npm install and downloaded wago.tools tables
 tools/spell-list-check/node_modules/
 tools/spell-list-check/cache/
+
+# tools/package-test.py output
+dist/

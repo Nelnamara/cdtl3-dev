@@ -12,7 +12,7 @@
 			"key": "forever",
 			"name": "WoW: Forever",
 			"interface": 16001,
-			"build": "1.60.1.70707",
+			"build": "1.60.1.70862",
 			"classes": ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"],
 			"extraTables": ["TalentTab"]
 		},
@@ -36,7 +36,7 @@
 			"key": "retail",
 			"name": "Retail",
 			"interface": 120105,
-			"build": "12.1.5.70575",
+			"build": "12.1.5.70783",
 			"classes": ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID", "DEATHKNIGHT", "MONK", "DEMONHUNTER", "EVOKER"],
 			"extraTables": ["SpecializationSpells", "ChrSpecialization", "TraitDefinition", "PvpTalent"]
 		}
