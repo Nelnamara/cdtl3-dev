@@ -1,6 +1,6 @@
 # flight-data
 
-Turns Blizzard's flight-path data (wago.tools DB2 tables `TaxiPath` and `TaxiPathNode`) into one small Lua file per client in `FlightData/`. The addon estimates a flight it has not timed yet as the sum of each hop's length divided by taxi speed, plus stop delays.
+Turns Blizzard's flight-path data (wago.tools DB2 tables `TaxiPath`, `TaxiPathNode` and `TaxiNodes`) into one small Lua file per client in `FlightData/`. The addon estimates a flight it has not timed yet as the sum of each hop's length divided by taxi speed, plus stop delays. The flight points let it find the route of a flight that didn't start from the taxi map (a chat option, a quest) from where it took off and landed.
 
 Clients and builds come from `tools/spell-list-check/builds.json`. No npm dependencies (Node's built-in `fetch`). Tables are cached in `tools/flight-data/cache/<build>/` (git-ignored).
 
@@ -23,10 +23,16 @@ CDTL3.flightData = {
 	paths = {
 		["22-25"] = { 4752, 0 },   -- ["from-to"] = { length in yards, stop delay in seconds }
 	},
+	nodes = {
+		[22] = { 1, -1197, 30, 2, "Thunder Bluff" },   -- [id] = { continent, x, y, side, English name }
+		[96] = { 530, -145, 5533, 0 },                 -- on no taxi map: no name
+	},
 }
 ```
 
 Keys are `TaxiNodes` IDs, sorted by from then to. A path's points are sorted by `NodeIndex`; length is the sum of 3D distances between consecutive points.
+
+`nodes` holds every flight point a route starts or ends at: `TaxiNodes.ContinentID`, `Pos_0`/`Pos_1` rounded to yards (the same axes as `UnitPosition`'s first two values), the side from `Flags & 3` (1 Alliance, 2 Horde, 3 both, 0 on no taxi map), and the name before its first comma. Points on no taxi map are quest and scripted flights whose names are internal ("Quest - Caverns of Time (Intro Flight Path) (End)"), so they get none. Points placed at 0,0 (transports) are left out and listed by the script.
 
 ## Findings (checked against the data)
 

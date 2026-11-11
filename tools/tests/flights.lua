@@ -1,7 +1,9 @@
 -- Flight timers (Flights.lua): the route pick from the taxi map, the countdown (estimated, then
 -- saved), the hold until landing, learning and the speed fit, Hide Long Timers and Hide out of
 -- combat, resuming after a /reload or login, early landing, a flight cut short, the straight-line
--- fallback, turning it off and Forget. Runs per client against that client's FlightData file.
+-- fallback, turning it off and Forget; then flights that don't start from the taxi map (a chat
+-- option like the druids' Moonglade flight, or a loss of control): the route from the takeoff
+-- point, learning from the landing point. Runs per client against that client's FlightData file.
 dofile(HARNESS_DIR .. "/wow.lua")
 PLAYER.class = "DRUID"
 
@@ -42,6 +44,14 @@ end
 C_Map = C_Map or {}
 C_Map.GetWorldPosFromMapPos = function(mapID, v) return 1, { x = v.x * 10000, y = v.y * 10000 } end
 CreateVector2D = CreateVector2D or function(x, y) return { x = x, y = y } end
+-- where the player stands ({ continent, x, y } in TaxiNodes coordinates; nil = no position), the
+-- chat option call, and the zone text a landing reads
+POS = nil
+function UnitPosition() if POS then return POS[2], POS[3], 0, POS[1] end end
+C_GossipInfo = C_GossipInfo or {}
+C_GossipInfo.SelectOption = C_GossipInfo.SelectOption or function() end
+ZONE = "Test Glade"
+function GetMinimapZoneText() return ZONE end
 
 LoadTOC(HARNESS_TOCFILE)
 Login()
@@ -256,6 +266,178 @@ TAXI.slots = {}
 TakeTaxiNode(1)
 check("a pick with no map does nothing", P.pending == nil)
 TAXI.slots = saveSlots
+
+print("[off the taxi map: setup " .. FLAVOR .. "]")
+local nodes = CDTL3.flightData.nodes
+check("flight points loaded for this client", type(nodes) == "table" and next(nodes) ~= nil)
+FACTION = "Alliance"
+function UnitFactionGroup() return FACTION, FACTION end
+local function usable(n, faction)
+	return n[4] ~= ((faction == "Horde" and 1) or (faction == "Alliance" and 2))
+end
+-- no other usable point within 20 yards, so standing at it can only mean it
+local function alone(id, faction)
+	local n = nodes[id]
+	for j, m in pairs(nodes) do
+		if j ~= id and m[1] == n[1] and usable(m, faction)
+			and math.sqrt((m[2] - n[2]) ^ 2 + (m[3] - n[3]) ^ 2) < 20 then
+			return false
+		end
+	end
+	return true
+end
+local outCount = {}
+local candidates = {}
+for k in pairs(paths) do
+	local a = k:match("^(%d+)-")
+	outCount[tonumber(a)] = (outCount[tonumber(a)] or 0) + 1
+	candidates[#candidates + 1] = k
+end
+table.sort(candidates)
+-- the druids' Nighthaven, Moonglade -> Thunder Bluff first where it exists, flown as the Horde
+if paths["63-22"] and nodes[63] and nodes[63][4] == 2 then
+	table.insert(candidates, 1, "63-22")
+	FACTION = "Horde"
+end
+local function pick(want)
+	for _, k in ipairs(candidates) do
+		local a, b = k:match("^(%d+)-(%d+)$")
+		a, b = tonumber(a), tonumber(b)
+		local na, nb = nodes[a], nodes[b]
+		if a ~= b and na and nb and na[1] == nb[1] and want(a, b, k)
+			and usable(na, FACTION) and usable(nb, FACTION) and alone(a, FACTION) and alone(b, FACTION) then
+			return a, b, k
+		end
+	end
+end
+local uFrom, uTo, uKey = pick(function(a, b, k) return outCount[a] == 1 and paths[k][1] > 500 end)
+local mFrom, mTo = pick(function(a, b, k) return outCount[a] >= 2 and nodes[b][5] ~= nil end)
+check("a point with one route out: " .. tostring(uKey) .. " (" .. FACTION .. ")", uKey ~= nil)
+check("a point with several: " .. tostring(mFrom) .. "-" .. tostring(mTo), mFrom ~= nil)
+local function stand(id) local n = nodes[id]; POS = { n[1], n[2] + 5, n[3] + 5 } end
+local function gossipFlight(option, at)
+	stand(at)
+	C_GossipInfo.SelectOption(option)
+	TAXI.onTaxi = true
+	tick(2)
+end
+
+print("[a chat option that isn't a flight " .. FLAVOR .. "]")
+stand(uFrom)
+C_GossipInfo.SelectOption(1111)
+check("a chat option watches for a takeoff", P.pending and P.pending.unpicked and P.pending.origin == "g:1111")
+tick(60)
+check("no takeoff: the watch ends", P.pending == nil and not FL:InFlight())
+
+print("[a chat option's flight, one route " .. FLAVOR .. " " .. uKey .. "]")
+local uLen, uDelay = paths[uKey][1], paths[uKey][2]
+local uName = P.NodeName(uTo) or "Flight"
+gossipFlight(4242, uFrom)
+f = P.frame
+check("takeoff off the map starts a flight from the point stood at", FL:InFlight() and P.flight.from == uFrom,
+	P.flight and P.flight.from)
+check("the one route from there", P.flight and P.flight.key == uKey, P.flight and P.flight.key)
+check("named for the destination (" .. uName .. ")", f.data.name == uName, f.data.name)
+check("estimate from the route data, dimmed", near(f.data.baseCD, uLen / FL:Speed() + uDelay, 0.01)
+	and f.data.estimated == true, f.data.baseCD)
+flyFor(60)
+stand(uTo)
+land()
+check("landing saves the time", near(store().routes[uKey], 60, 1.0), store().routes[uKey])
+check("and what that chat option flies", store().starts["g:4242"] == uKey, store().starts["g:4242"])
+check("the countdown goes to the ready frame", f.icon:GetParent() == CDTL3_Ready_1_MF, f.icon:GetParent():GetName())
+
+print("[the same chat option again " .. FLAVOR .. "]")
+Advance(30); tick(4)
+gossipFlight(4242, uFrom)
+check("counts down from the saved time", near(f.data.baseCD, store().routes[uKey], 0.01) and not f.data.estimated,
+	f.data.baseCD)
+flyFor(60); stand(uTo); land()
+
+print("[a takeoff with no chat option " .. FLAVOR .. "]")
+Advance(30); tick(4)
+stand(uFrom)
+FireEvent("PLAYER_CONTROL_LOST")
+TAXI.onTaxi = true
+tick(2)
+check("a takeoff after losing control is found", FL:InFlight() and P.flight.origin == "n:" .. uFrom,
+	P.flight and P.flight.origin)
+check("the one route from there, at its saved time", P.flight and P.flight.key == uKey
+	and near(f.data.baseCD, store().routes[uKey], 0.01), f.data.baseCD)
+flyFor(60); stand(uTo); land()
+FireEvent("PLAYER_CONTROL_GAINED")
+
+print("[a point several routes leave " .. FLAVOR .. "]")
+Advance(30); tick(4)
+local mKey = mFrom .. "-" .. mTo
+gossipFlight(5555, mFrom)
+check("no route known: a flight with no countdown", FL:InFlight() and P.flight.key == nil
+	and P.flight.duration == nil)
+flyFor(20)
+check("the last countdown isn't brought back to the lane", f.icon:GetParent() ~= CDTL3_Lane_1
+	and f.data.currentCD <= 0, tostring(f.data.currentCD) .. " " .. tostring(f.icon:GetParent():GetName()))
+flyFor(25)
+stand(mTo)
+land()
+check("landing names the route", near(store().routes[mKey], 45, 1.0), store().routes[mKey])
+check("and learns it for the chat option", store().starts["g:5555"] == mKey, store().starts["g:5555"])
+Advance(30); tick(4)
+gossipFlight(5555, mFrom)
+check("next time it counts down from the learned time", P.flight and P.flight.key == mKey
+	and near(f.data.baseCD, store().routes[mKey], 0.01), f.data.baseCD)
+check("named for where it lands", f.data.name == P.NodeName(mTo), f.data.name)
+-- this time it lands somewhere else: a point the data has no name for
+flyFor(30)
+local spot = nodes[mFrom]
+nodes[99998] = { spot[1], spot[2] + 3000, spot[3] + 3000, 0 }
+POS = { spot[1], spot[2] + 3000, spot[3] + 3000 }
+land()
+check("landing somewhere else fixes the route", store().starts["g:5555"] == mFrom .. "-99998"
+	and near(store().routes[mFrom .. "-99998"], 30, 1.0), store().starts["g:5555"])
+check("a point with no name is named for where it was landed at", P.NodeName(99998) == "Test Glade",
+	P.NodeName(99998))
+nodes[99998] = nil
+
+print("[reload during a flight off the map " .. FLAVOR .. "]")
+Advance(30); tick(4)
+gossipFlight(4242, uFrom)
+flyFor(10)
+P.OnEvent(nil, "PLAYER_LOGOUT")
+P.flight = nil
+Advance(3)
+P.OnEvent(nil, "PLAYER_ENTERING_WORLD", false, true)
+Advance(2)
+check("resumes knowing how it started", FL:InFlight() and P.flight.origin == "g:4242" and P.flight.from == uFrom)
+flyFor(50); stand(uTo); land()
+check("and still saves", near(store().routes[uKey], 65.5, 2.0), store().routes[uKey])
+
+if nodes[62] and nodes[63] and nodes[62][4] == 1 and nodes[63][4] == 2 then
+	print("[each side's Nighthaven " .. FLAVOR .. "]")
+	local keep = FACTION
+	FACTION = "Horde"
+	check("a Horde druid at the Alliance point gets the Horde one",
+		P.NearestNode({ cont = nodes[62][1], x = nodes[62][2], y = nodes[62][3] }) == 63)
+	FACTION = "Alliance"
+	check("an Alliance druid at the Horde point gets the Alliance one",
+		P.NearestNode({ cont = nodes[63][1], x = nodes[63][2], y = nodes[63][3] }) == 62)
+	FACTION = keep
+end
+
+print("[no position, off " .. FLAVOR .. "]")
+Advance(30); tick(4)
+POS = nil
+C_GossipInfo.SelectOption(7777)
+TAXI.onTaxi = true
+tick(2)
+check("no position: a flight with no countdown", FL:InFlight() and P.flight.duration == nil)
+flyFor(10)
+land()
+check("nothing learned without a position", store().starts["g:7777"] == nil)
+FL:SetEnabled(false)
+stand(uFrom)
+C_GossipInfo.SelectOption(4242)
+check("off: a chat option watches for nothing", P.pending == nil)
+FL:SetEnabled(true)
 
 local errs = #ERRORS - base
 print(string.format("RESULT flights %s: fails=%d lua errors=%d", FLAVOR, fails, errs))

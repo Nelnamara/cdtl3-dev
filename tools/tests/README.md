@@ -39,7 +39,9 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
 - `flights.lua`: Flights.lua under a stubbed taxi client (map slots, hops, `UnitOnTaxi`), against each
   client's real `FlightData` file: estimate, saved time, hold until landing, speed fit, both hide
   settings, resume after a reload or login, early landing, cut-short flights, straight-line fallback,
-  off and Forget.
+  off and Forget; then flights off the taxi map (a chat option, a loss of control): the one route from
+  the takeoff point (the druids' 63 → 22 where it exists), learning from the landing point, a wrong
+  route corrected, names, reload, each side's Nighthaven point, no position.
 - The `/cdtl3 probe` test build and its `probe.lua` harness live on branch `cdm-probe`.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).

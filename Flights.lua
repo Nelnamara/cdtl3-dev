@@ -7,8 +7,13 @@
 	tools/flight-data, divided by the taxi speed), in dimmed text. Landing saves the real time and
 	refits the speed used for estimates.
 
-	Only post-hooks (TakeTaxiNode, TaxiRequestEarlyLanding) and reads: nothing of Blizzard's is
-	replaced. None of the taxi calls or events are on Midnight's secret list.
+	A flight that doesn't start from the taxi map (a flight master's chat option such as the
+	druids' Moonglade flight, or a quest) is found by its takeoff: the flight point it took off at
+	gives its route when only one route leaves there, and the one it lands at fixes the route for
+	next time.
+
+	Only post-hooks (TakeTaxiNode, TaxiRequestEarlyLanding, C_GossipInfo.SelectOption) and reads:
+	nothing of Blizzard's is replaced. None of the taxi calls or events are on Midnight's secret list.
 ]]--
 
 local FL = {}
@@ -26,6 +31,7 @@ private.MIN_LEARN = 5		-- flights shorter than this aren't saved
 private.SHORT = 0.6			-- a flight under this share of its saved time was cut short: not saved
 private.STRAIGHT = 1.2		-- straight-line yards x this, for a route the data doesn't have
 private.RESUME_DELAY = 2	-- seconds after login before a flight in progress is shown again
+private.NODE_RANGE = 150	-- yards from a flight point's spot that count as taking off or landing there
 private.DIM = 0.55
 private.ICONS = {
 	Horde = "Interface\\Icons\\Ability_Mount_Wyvern_01",
@@ -36,7 +42,7 @@ private.EVENTS = { "TAXIMAP_OPENED", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAIN
 
 private.slots = nil		-- the open taxi map: [slot] = { name, type, nodeID, x, y, hops }
 private.mapID = nil
-private.pending = nil	-- a picked route waiting for takeoff
+private.pending = nil	-- a picked route waiting for takeoff, or (unpicked) a takeoff watched for
 private.flight = nil	-- the flight in the air
 private.frame = nil		-- the flights cooldown frame (one, reused for every flight)
 private.elapsed = 0
@@ -79,7 +85,9 @@ private.ClientKey = function()
 	return "project" .. tostring(WOW_PROJECT_ID or 0)
 end
 
--- account-wide: routes["from-to"] = seconds, plus the yards and seconds behind the speed fit
+-- account-wide: routes["from-to"] = seconds, plus the yards and seconds behind the speed fit;
+-- starts[how a flight off the taxi map started] = its route; names[flight point] = its name as
+-- the game showed it (localized)
 private.Store = function()
 	local g = CDTL3.db.global
 	g.flightTimes = g.flightTimes or {}
@@ -90,6 +98,8 @@ private.Store = function()
 		g.flightTimes[key] = t
 	end
 	t.routes = t.routes or {}
+	t.starts = t.starts or {}
+	t.names = t.names or {}
 	t.len = t.len or 0
 	t.time = t.time or 0
 	return t
@@ -179,11 +189,15 @@ private.ReadMap = function()
 	if mapID and C_TaxiMap and C_TaxiMap.GetAllTaxiNodes then
 		local ok, nodes = pcall(C_TaxiMap.GetAllTaxiNodes, mapID)
 		if ok and type(nodes) == "table" then
+			local names = private.Store().names
 			for _, node in ipairs(nodes) do
 				local s = node.slotIndex and slots[node.slotIndex]
 				if s then
 					s.nodeID = node.nodeID
 					s.x, s.y = private.XY(node.position)
+					if s.nodeID and type(s.name) == "string" then
+						names[s.nodeID] = private.ShortName(s.name)
+					end
 				end
 			end
 		end
@@ -237,21 +251,29 @@ end
 
 ---------------------------------------------------------------- estimates
 
+-- one route's yards and stop seconds from the data, or nil
+private.PathLength = function(key)
+	local p = key and CDTL3.flightData and CDTL3.flightData.paths and CDTL3.flightData.paths[key]
+	if p and p[1] and p[1] > 0 then
+		return p[1], p[2] or 0
+	end
+	return nil
+end
+
 -- from the route data: yards and stop seconds summed over the hops, or nil
 private.DataLength = function(slots, hops)
-	local data = CDTL3.flightData and CDTL3.flightData.paths
-	if not data or not hops or #hops == 0 then
+	if not (CDTL3.flightData and CDTL3.flightData.paths) or not hops or #hops == 0 then
 		return nil
 	end
 	local len, delay = 0, 0
 	for _, h in ipairs(hops) do
 		local a, b = slots[h[1]], slots[h[2]]
-		local p = a and b and a.nodeID and b.nodeID and data[a.nodeID .. "-" .. b.nodeID]
-		if not p or not p[1] or p[1] <= 0 then
+		local l, d = private.PathLength(a and b and a.nodeID and b.nodeID and (a.nodeID .. "-" .. b.nodeID))
+		if not l then
 			return nil
 		end
-		len = len + p[1]
-		delay = delay + (p[2] or 0)
+		len = len + l
+		delay = delay + d
 	end
 	return len, delay
 end
@@ -295,22 +317,162 @@ private.StraightLength = function(slots, hops, src, dst)
 	return total * private.STRAIGHT
 end
 
--- seconds, saved (true) or estimated (false), and the route's data length and delay when known
-private.Duration = function(key, slots, src, dst)
-	local saved = private.Store().routes[key]
-	local len, delay = private.DataLength(slots, dst.hops)
+-- seconds and whether that's an estimate: the route's saved time, else its yards / speed + stops
+private.Time = function(key, len, delay)
+	local saved = key and private.Store().routes[key]
 	if saved then
-		return saved, false, len, delay
+		return saved, false
 	end
-	local speed = FL:Speed()
 	if len then
-		return len / speed + delay, true, len, delay
+		return len / FL:Speed() + (delay or 0), true
+	end
+	return nil
+end
+
+-- seconds, estimated or not, and the route's data length and delay when known
+private.Duration = function(key, slots, src, dst)
+	local len, delay = private.DataLength(slots, dst.hops)
+	local duration, estimated = private.Time(key, len, delay)
+	if duration then
+		return duration, estimated, len, delay
 	end
 	local straight = private.StraightLength(slots, dst.hops, src, dst)
 	if straight then
-		return straight / speed, true, nil, nil
+		return straight / FL:Speed(), true, nil, nil
 	end
 	return nil
+end
+
+---------------------------------------------------------------- flights that don't start from the taxi map
+
+-- the player's world position in TaxiNodes coordinates { cont, x, y }, or nil (in an instance)
+private.PlayerPos = function()
+	local ok, pos = pcall(function()
+		-- adding 0 throws here, inside the pcall, if a value is ever secret
+		if UnitPosition then
+			-- UnitPosition's first value is TaxiNodes' x (north), its second the y (west)
+			local x, y, _, cont = UnitPosition("player")
+			if type(x) == "number" and type(y) == "number" and type(cont) == "number" then
+				return { cont = cont + 0, x = x + 0, y = y + 0 }
+			end
+		end
+		if C_Map and C_Map.GetBestMapForUnit and C_Map.GetPlayerMapPosition and C_Map.GetWorldPosFromMapPos then
+			local mapID = C_Map.GetBestMapForUnit("player")
+			local v = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
+			if v then
+				local cont, world = C_Map.GetWorldPosFromMapPos(mapID, v)
+				local x, y = private.XY(world)
+				if type(cont) == "number" and x then
+					return { cont = cont + 0, x = x + 0, y = y + 0 }
+				end
+			end
+		end
+		return nil
+	end)
+	return ok and pos or nil
+end
+
+-- the flight point nearest pos on its continent and within range, skipping the other side's
+private.NearestNode = function(pos)
+	local nodes = CDTL3.flightData and CDTL3.flightData.nodes
+	if not (pos and nodes) then
+		return nil
+	end
+	local faction = UnitFactionGroup and UnitFactionGroup("player")
+	local other = (faction == "Horde" and 1) or (faction == "Alliance" and 2) or nil
+	local best, bestD = nil, private.NODE_RANGE
+	for id, n in pairs(nodes) do
+		if n[1] == pos.cont and n[4] ~= other then
+			local d = math.sqrt((n[2] - pos.x) ^ 2 + (n[3] - pos.y) ^ 2)
+			if d < bestD then
+				best, bestD = id, d
+			end
+		end
+	end
+	return best
+end
+
+-- the one route the data has from a flight point; nil when it has none or several
+private.OnlyRouteFrom = function(from)
+	local data = CDTL3.flightData and CDTL3.flightData.paths
+	if not (data and from) then
+		return nil
+	end
+	local prefix = from .. "-"
+	local found = nil
+	for key in pairs(data) do
+		if key:sub(1, #prefix) == prefix then
+			if found then
+				return nil
+			end
+			found = key
+		end
+	end
+	return found
+end
+
+-- a flight point's name as a taxi map (or a landing) showed it, else the data's English one
+private.NodeName = function(id)
+	local n = CDTL3.flightData and CDTL3.flightData.nodes and CDTL3.flightData.nodes[id]
+	return private.Store().names[id] or (n and n[5]) or nil
+end
+
+-- the route a takeoff off the taxi map flies: what was learned for how it started (the chat
+-- option picked, else the flight point), else the one route the data has from that point
+private.Unpicked = function(p)
+	local store = private.Store()
+	local from = private.NearestNode(p.pos or private.PlayerPos())
+	local origin = p.origin or (from and ("n:" .. from)) or nil
+	local key = (origin and store.starts[origin]) or private.OnlyRouteFrom(from)
+	local flight = { from = from, origin = origin, key = key, delay = 0 }
+	if key then
+		local to = tonumber(key:match("%-(%d+)$"))
+		flight.len, flight.delay = private.PathLength(key)
+		flight.delay = flight.delay or 0
+		flight.duration, flight.estimated = private.Time(key, flight.len, flight.delay)
+		flight.name = (to and private.NodeName(to)) or "Flight"
+	end
+	return flight
+end
+
+-- landed after a takeoff off the taxi map: the flight point it landed at fixes its route
+private.Arrived = function(flight)
+	local head = flight.from or flight.origin
+	local to = private.NearestNode(private.PlayerPos())
+	if not (head and to) then
+		return
+	end
+	local names = private.Store().names
+	if not private.NodeName(to) and GetMinimapZoneText then
+		local zone = GetMinimapZoneText()
+		if type(zone) == "string" and zone ~= "" then
+			names[to] = zone
+		end
+	end
+	local key = head .. "-" .. to
+	if key ~= flight.key then
+		flight.key = key
+		flight.len, flight.delay = private.PathLength(key)
+		flight.delay = flight.delay or 0
+	end
+end
+
+-- a taxi can also start from a chat option, a quest or a spell: watch a few seconds for a takeoff
+private.WatchTakeoff = function(origin)
+	if not FL:Enabled() or private.flight then
+		return
+	end
+	local p = private.pending
+	if p and not p.unpicked then
+		return		-- a route picked on the taxi map
+	end
+	if not p then
+		p = { unpicked = true, pos = private.PlayerPos() }
+		private.pending = p
+	end
+	p.at = GetTime()
+	p.origin = origin or p.origin
+	private.StartTicker()
 end
 
 ---------------------------------------------------------------- the countdown
@@ -378,9 +540,11 @@ private.EndCountdown = function()
 	end
 end
 
--- from CooldownUpdate: a countdown that runs out before landing waits at the end
+-- from CooldownUpdate: a countdown that runs out before landing waits at the end (a flight with
+-- no countdown leaves the last one in its ready frame)
 function FL:Hold(f)
-	if private.flight and f == private.frame and f.data["currentCD"] < private.HOLD then
+	local flight = private.flight
+	if flight and flight.duration and f == private.frame and f.data["currentCD"] < private.HOLD then
 		f.data["currentCD"] = private.HOLD
 	end
 end
@@ -416,7 +580,8 @@ function FL:Holds(frame)
 		local n = p:GetName()
 		inReady = n == "CDTL3_Ready_1_MF" or n == "CDTL3_Ready_2_MF" or n == "CDTL3_Ready_3_MF"
 	end
-	if not private.flight and not (inReady and ic.readyTime and ic.readyTime > 0) then
+	local counting = private.flight and private.flight.duration
+	if not counting and not (inReady and ic.readyTime and ic.readyTime > 0) then
 		return false
 	end
 	for _, r in ipairs({ ic, ba }) do
@@ -478,15 +643,23 @@ private.Takeoff = function()
 	if not p then
 		return
 	end
-	local flight = {
-		key = p.key,
-		name = p.name,
-		duration = p.duration,
-		estimated = p.estimated,
-		len = p.len,
-		delay = p.delay,
-		start = GetTime(),
-	}
+	local flight
+	if p.unpicked then
+		flight = private.Unpicked(p)
+		private.Debug(string.format("off the taxi map from %s (%s): %s %s", tostring(flight.from),
+			tostring(flight.origin), tostring(flight.key),
+			flight.duration and string.format("%.0fs", flight.duration) or "no time"))
+	else
+		flight = {
+			key = p.key,
+			name = p.name,
+			duration = p.duration,
+			estimated = p.estimated,
+			len = p.len,
+			delay = p.delay,
+		}
+	end
+	flight.start = GetTime()
 	private.flight = flight
 	CDTL3.db.char.flight = {
 		key = flight.key,
@@ -495,6 +668,8 @@ private.Takeoff = function()
 		estimated = flight.estimated,
 		len = flight.len,
 		delay = flight.delay,
+		from = flight.from,
+		origin = flight.origin,
 		serverStart = GetServerTime(),
 	}
 	if flight.duration then
@@ -511,17 +686,23 @@ private.Land = function()
 	end
 	local took = GetTime() - flight.start
 	local store = private.Store()
-	local saved = store.routes[flight.key]
+	if flight.from or flight.origin then
+		private.Arrived(flight)
+	end
+	local saved = flight.key and store.routes[flight.key]
 	local cutShort = saved and took < saved * private.SHORT
-	if not flight.aborted and not flight.resumed and not cutShort and took >= private.MIN_LEARN then
+	if flight.key and not flight.aborted and not flight.resumed and not cutShort and took >= private.MIN_LEARN then
 		store.routes[flight.key] = math.floor(took * 10 + 0.5) / 10
+		if flight.origin then
+			store.starts[flight.origin] = flight.key
+		end
 		if flight.len and flight.len > 0 then
 			store.len = store.len + flight.len
 			store.time = store.time + math.max(took - (flight.delay or 0), 1)
 		end
-		private.Debug(string.format("landed: %s took %.1fs (saved)", flight.name, took))
+		private.Debug(string.format("landed: %s took %.1fs (saved)", tostring(flight.key), took))
 	else
-		private.Debug(string.format("landed: %s took %.1fs (not saved)", flight.name, took))
+		private.Debug(string.format("landed: %s took %.1fs (not saved)", tostring(flight.key), took))
 	end
 	if flight.duration then
 		private.EndCountdown()
@@ -555,6 +736,8 @@ private.Resume = function(isReload)
 		estimated = saved.estimated,
 		len = saved.len,
 		delay = saved.delay,
+		from = saved.from,
+		origin = saved.origin,
 		start = GetTime() - ran,
 		resumed = not isReload,
 	}
@@ -591,7 +774,12 @@ private.StartTicker = function()
 		private.elapsed = private.elapsed + elapsed
 		if private.elapsed >= private.TICK then
 			private.elapsed = 0
-			private.Tick()
+			local ok, err = pcall(private.Tick)
+			if not ok then
+				private.pending, private.flight = nil, nil
+				private.StopTicker()
+				private.Debug("error: " .. tostring(err))
+			end
 		end
 	end)
 end
@@ -609,6 +797,9 @@ private.OnEvent = function(_, event, ...)
 			private.ReadMap()
 		end
 	elseif event == "PLAYER_CONTROL_LOST" or event == "PLAYER_CONTROL_GAINED" then
+		if event == "PLAYER_CONTROL_LOST" then
+			private.WatchTakeoff()
+		end
 		if private.pending or private.flight then
 			private.Tick()
 		end
@@ -642,6 +833,16 @@ end)
 if TakeTaxiNode then
 	hooksecurefunc("TakeTaxiNode", function(slot)
 		local ok, err = pcall(private.OnTakeTaxiNode, slot)
+		if not ok then
+			private.Debug("error: " .. tostring(err))
+		end
+	end)
+end
+
+-- a chat option can start a flight with no taxi map (the druids' Moonglade flight masters)
+if C_GossipInfo and C_GossipInfo.SelectOption then
+	hooksecurefunc(C_GossipInfo, "SelectOption", function(optionID)
+		local ok, err = pcall(private.WatchTakeoff, type(optionID) == "number" and ("g:" .. optionID) or nil)
 		if not ok then
 			private.Debug("error: " .. tostring(err))
 		end
