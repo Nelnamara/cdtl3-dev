@@ -12,6 +12,7 @@ CooldownTimeline tracks your ability cooldowns as moving icons along a timeline 
 - **Auto-detection** — spells, items, buffs and debuffs are discovered as you use them; no manual setup required
 - **Three lanes, three bar frames, three ready frames** — send each category (or individual spell) where you want it
 - **Buff and debuff tracking** — your own buffs/debuffs counting down on a lane or bar
+- **Combat timers (Retail, WoW: Forever)** — in combat, spell cooldowns follow the game's own timer at their real length, and buffs in the Cooldown Manager's Tracked Bars get an exact timer (experimental, on by default)
 - **Ready alerts** — sound, flash and highlight when something comes off cooldown
 - **Internal cooldown (ICD) and custom cooldowns** — add anything not auto-detected, including aura-triggered custom timers
 - **Shared cooldown handling** — optionally tracks abilities that lock each other out
@@ -67,6 +68,7 @@ Primary command is `/cdtl3` (or `/cooldowntimeline3`). The old `/cdtl2` / `/cool
 - **`/cdtl3 debug`** — Toggle debug mode (debug frame + chat diagnostics)
 - **`/cdtl3 auras`** — Print every buff/debuff on you as CDTL3 sees it: readable or hidden by the game, saved or not, ignored, which lane, and whether it's assigned to your character. Use this first if a buff won't show up
 - **`/cdtl3 oaf`** — Print the built-in spell list size, every saved "cooldown starts when used" spell (Nature's Swiftness, Presence of Mind, Stealth…) and the live state of those cooldowns. Use this if one of them goes straight to ready
+- **`/cdtl3 combattimers`** — Print the combat timers status: on or off, how many spells and buffs are following the game's timer, the buffs in your Tracked Bars, and any errors. `/cdtl3 combattimers off` / `on` switch them (Retail and Forever)
 
 ### Settings Window
 
@@ -107,8 +109,9 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 
 - **Midnight / Forever:** debuffs on enemies, melee swing timers and spell-school colors need the combat log, which both close to addons
 - **Edit Mode positions** are per Edit Mode layout; a layout you've never placed a frame in uses the frame's last position
-- **Midnight / Forever:** the game hides buff details from addons in combat, so a buff gained in combat, or refreshed by someone else, appears (or updates) only after combat ends. Your own recast restarts the buff from its last known length, an estimate corrected when combat ends. The GCD tracker and cooldowns of spells with no cooldown of their own are also estimated while timings are hidden
-- **Midnight:** the game reports a spell's *base* cooldown, not the talent-reduced one — use **Custom CD Time** on the spell (Filters) to enter the real value
+- **Midnight / Forever:** the game hides buff details from addons in combat. Buffs you add to **Tracked Bars** in Blizzard's Cooldown Manager (`/cdm`) get an exact timer through combat timers; any other buff gained in combat, or refreshed by someone else, appears (or updates) only after combat ends, and your own recast restarts it from its last known length (an estimate, shown in dimmed text). Item cooldowns, the GCD tracker and spells with a **Custom CD Time** are also estimated while timings are hidden
+- **Midnight / Forever, combat timers:** Grouped stacking leaves moving icons out in combat, so they can overlap until combat ends; Blizzard's Tracked Bars must stay switched on to feed CDTL3 (use *Hide Blizzard's Tracked Bars* on the Global tab to make them invisible), and stay invisible in Edit Mode while hidden
+- **Midnight, with combat timers off:** the game reports a spell's *base* cooldown, not the talent-reduced one — use **Custom CD Time** on the spell (Filters) to enter the real value
 - **Forever beta:** the debug frame's *Reload* button may be blocked by the client — type `/reload` instead
 - Some proc ICDs aren't in the built-in data — add them as custom cooldowns
 - The frames may briefly appear at 0,0 on a first-ever login before their position saves — drag them into place and `/reload` once
@@ -116,6 +119,22 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 ---
 
 ## Changelog
+
+### v3.1.0
+
+**Combat timers (Retail and WoW: Forever, experimental, on by default)**
+- **Cooldowns keep moving in combat** — in combat the game hides cooldown timings from addons, so CDTL3 used to estimate them from your cast and the spell's base cooldown: talent and haste reductions were missed and icons could reach ready late. Spell icons now slide, bars drain and countdown text counts from the game's own timer, at the real length, and an icon goes to ready when the spell does
+- **Exact buff timers in combat, for buffs in Tracked Bars** — add a buff to *Tracked Bars* in Blizzard's Cooldown Manager (`/cdm`) and CDTL3 follows Blizzard's own timer for it in combat: refreshes, buffs gained mid-fight and buffs that drop off all show at once. Split (Time) lanes keep their shape for these buffs. Every other buff still uses the estimate, now shown in dimmed text while it is one. In Filters, each buff says whether it gets the exact timer
+- **Settings** — the Global tab has *Combat timers (experimental)* to turn this off and *Hide Blizzard's Tracked Bars* to make Blizzard's own bars invisible while they keep feeding CDTL3. `/cdtl3 combattimers` prints what's running; `/cdtl3 combattimers off` and `on` switch it. A window on the first login after updating explains this
+- **Limits in combat** — item cooldowns keep the estimate (the game gives addons no timer for them); Grouped stacking leaves moving icons out, so they can overlap until combat ends; an icon text with more than the `[cd.time]` tag keeps the estimate. Spells with charges are the least tested part: please report anything odd
+
+**Lanes**
+- **Max Time and the Split (Time) values go up to an hour on the slider** — the Max Time slider stopped at 180 and the split values at 360, while a larger typed number was saved out of sight. Both sliders now reach every value they can hold, and Filters' *Ignore Threshold* slider reaches 7200
+- **Long buffs scale** — a button next to the lane's Mode sets the lane up for 10 and 60 minute buffs: Split (Time) over an hour, with a quarter of the lane each for the last 30 seconds, 30 seconds to 2 minutes and 2 to 10 minutes
+
+**Fixes**
+- **Bar frames: unticking *Transition bars* brings hidden bars back** — a bar the option had hidden stayed hidden until a `/reload`, so unticking it looked like it did nothing
+- **Unticking *Ignored* on a buff that's up shows it at once** — it used to wait for the buff to be applied again
 
 ### v3.0.13
 
@@ -253,7 +272,6 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 - **Drop the legacy `CDTL2DB` declaration** — once users have migrated, remove it from the TOCs
 - **Improved spell detection** — catch more proc ICDs automatically
 - **Compact mode** — smaller single-row layout option
-- **Timers that keep moving in combat on Midnight / Forever** — scoped in [`docs/secret-timers-scope.md`](docs/secret-timers-scope.md): spell icons and bars can likely ride Blizzard's secret-tolerant duration objects (with the real, talented cooldown); needs an in-game spike first
 
 </details>
 

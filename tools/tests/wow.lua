@@ -322,7 +322,8 @@ Methods.GetDuration = function() return 0 end
 Methods.GetElapsed = function() return 0 end
 Methods.GetProgress = function() return 0 end
 Methods.GetOrientation = function() return "HORIZONTAL" end
-Methods.GetReverseFill = function() return false end
+Methods.GetReverseFill = function(s) return s.__reverse or false end
+Methods.SetReverseFill = function(s, r) s.__reverse = r and true or false end
 Methods.GetFillStyle = function() return "STANDARD" end
 Methods.GetRotation = function() return 0 end
 Methods.GetSpacing = function() return 0 end
