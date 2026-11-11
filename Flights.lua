@@ -12,7 +12,8 @@
 	gives its route when only one route leaves there, and the one it lands at fixes the route for
 	next time.
 
-	Only post-hooks (TakeTaxiNode, TaxiRequestEarlyLanding, C_GossipInfo.SelectOption) and reads:
+	Only post-hooks (TakeTaxiNode, TaxiRequestEarlyLanding, C_GossipInfo.SelectOptionByIndex and
+	SelectOption) and reads:
 	nothing of Blizzard's is replaced. None of the taxi calls or events are on Midnight's secret list.
 ]]--
 
@@ -38,11 +39,15 @@ private.ICONS = {
 	Alliance = "Interface\\Icons\\Ability_Mount_Gryphon_01",
 }
 private.EVENTS = { "TAXIMAP_OPENED", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED",
-	"PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT" }
+	"PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT", "GOSSIP_SHOW" }
+-- saved times' format: 2 keys a route through stops by all its points (3.1.1); times saved by
+-- the test builds keyed it by its ends only, so they're dropped once
+private.FORMAT = 2
 
 private.slots = nil		-- the open taxi map: [slot] = { name, type, nodeID, x, y, hops }
 private.mapID = nil
 private.pending = nil	-- a picked route waiting for takeoff, or (unpicked) a takeoff watched for
+private.gossip = nil	-- the open chat window's options: [orderIndex] = gossipOptionID
 private.flight = nil	-- the flight in the air
 private.frame = nil		-- the flights cooldown frame (one, reused for every flight)
 private.elapsed = 0
@@ -85,7 +90,7 @@ private.ClientKey = function()
 	return "project" .. tostring(WOW_PROJECT_ID or 0)
 end
 
--- account-wide: routes["from-to"] = seconds, plus the yards and seconds behind the speed fit;
+-- account-wide: routes["from-...-to"] = seconds, plus the yards and seconds behind the speed fit;
 -- starts[how a flight off the taxi map started] = its route; names[flight point] = its name as
 -- the game showed it (localized)
 private.Store = function()
@@ -94,8 +99,12 @@ private.Store = function()
 	local key = private.ClientKey()
 	local t = g.flightTimes[key]
 	if not t then
-		t = { routes = {}, len = 0, time = 0 }
+		t = { routes = {}, len = 0, time = 0, format = private.FORMAT }
 		g.flightTimes[key] = t
+	end
+	if t.format ~= private.FORMAT then
+		t.routes, t.starts, t.len, t.time = {}, {}, 0, 0
+		t.format = private.FORMAT
 	end
 	t.routes = t.routes or {}
 	t.starts = t.starts or {}
@@ -234,8 +243,28 @@ private.Current = function(slots)
 	return nil
 end
 
-private.RouteKey = function(src, dst)
+-- a route's flight points in order: "from-to" for one hop, "from-stop-...-to" through stops. The
+-- game routes each character through the points it knows, so the same ends can be different flights
+private.RouteKey = function(src, dst, slots)
 	if src.nodeID and dst.nodeID then
+		local hops = dst.hops
+		if slots and hops and #hops > 1 then
+			local ids = {}
+			for i, h in ipairs(hops) do
+				local a, b = slots[h[1]], slots[h[2]]
+				if not (a and b and a.nodeID and b.nodeID) then
+					ids = nil
+					break
+				end
+				if i == 1 then
+					ids[1] = a.nodeID
+				end
+				ids[#ids + 1] = b.nodeID
+			end
+			if ids then
+				return table.concat(ids, "-")
+			end
+		end
 		return src.nodeID .. "-" .. dst.nodeID
 	end
 	return "n:" .. tostring(src.name) .. ">" .. tostring(dst.name)
@@ -540,12 +569,14 @@ private.EndCountdown = function()
 	end
 end
 
--- from CooldownUpdate: a countdown that runs out before landing waits at the end (a flight with
--- no countdown leaves the last one in its ready frame)
+-- from CooldownUpdate: the countdown is counted from takeoff (so time with the UI hidden isn't
+-- lost: the frame doesn't update then) and waits at the end if it runs out before landing. A
+-- flight with no countdown leaves the last one in its ready frame.
 function FL:Hold(f)
 	local flight = private.flight
-	if flight and flight.duration and f == private.frame and f.data["currentCD"] < private.HOLD then
-		f.data["currentCD"] = private.HOLD
+	if flight and flight.duration and f == private.frame then
+		local left = flight.duration - (GetTime() - flight.start)
+		f.data["currentCD"] = math.max(left, private.HOLD)
 	end
 end
 
@@ -621,7 +652,7 @@ private.OnTakeTaxiNode = function(slot)
 	if not dst or not src then
 		return
 	end
-	local key = private.RouteKey(src, dst)
+	local key = private.RouteKey(src, dst, slots)
 	local duration, estimated, len, delay = private.Duration(key, slots, src, dst)
 	private.pending = {
 		key = key,
@@ -816,7 +847,38 @@ private.OnEvent = function(_, event, ...)
 		if private.flight and CDTL3.db.char.flight then
 			CDTL3.db.char.flight.logoutAt = GetServerTime()
 		end
+	elseif event == "GOSSIP_SHOW" then
+		if FL:Enabled() then
+			private.ReadGossip()
+		end
 	end
+end
+
+-- the open chat window's options by their order, so a pick by index can be named by option ID
+private.ReadGossip = function()
+	local byIndex = {}
+	if C_GossipInfo and C_GossipInfo.GetOptions then
+		local ok, options = pcall(C_GossipInfo.GetOptions)
+		if ok and type(options) == "table" then
+			for _, o in ipairs(options) do
+				if type(o) == "table" and type(o.orderIndex) == "number" and type(o.gossipOptionID) == "number" then
+					byIndex[o.orderIndex] = o.gossipOptionID
+				end
+			end
+		end
+	end
+	private.gossip = byIndex
+end
+
+-- Blizzard's chat window picks by index (C_GossipInfo.SelectOptionByIndex); other addons may pick
+-- by option ID (SelectOption)
+private.OnGossipPick = function(index)
+	local id = private.gossip and private.gossip[index]
+	if not id and type(index) == "number" then
+		private.ReadGossip()
+		id = private.gossip[index]
+	end
+	private.WatchTakeoff(id and ("g:" .. id) or nil)
 end
 
 private.eventFrame = CreateFrame("Frame")
@@ -840,6 +902,14 @@ if TakeTaxiNode then
 end
 
 -- a chat option can start a flight with no taxi map (the druids' Moonglade flight masters)
+if C_GossipInfo and C_GossipInfo.SelectOptionByIndex then
+	hooksecurefunc(C_GossipInfo, "SelectOptionByIndex", function(index)
+		local ok, err = pcall(private.OnGossipPick, index)
+		if not ok then
+			private.Debug("error: " .. tostring(err))
+		end
+	end)
+end
 if C_GossipInfo and C_GossipInfo.SelectOption then
 	hooksecurefunc(C_GossipInfo, "SelectOption", function(optionID)
 		local ok, err = pcall(private.WatchTakeoff, type(optionID) == "number" and ("g:" .. optionID) or nil)

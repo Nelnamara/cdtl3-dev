@@ -50,6 +50,9 @@ POS = nil
 function UnitPosition() if POS then return POS[2], POS[3], 0, POS[1] end end
 C_GossipInfo = C_GossipInfo or {}
 C_GossipInfo.SelectOption = C_GossipInfo.SelectOption or function() end
+C_GossipInfo.SelectOptionByIndex = C_GossipInfo.SelectOptionByIndex or function() end
+GOSSIP_OPTIONS = {}
+C_GossipInfo.GetOptions = function() return GOSSIP_OPTIONS end
 ZONE = "Test Glade"
 function GetMinimapZoneText() return ZONE end
 
@@ -438,6 +441,56 @@ stand(uFrom)
 C_GossipInfo.SelectOption(4242)
 check("off: a chat option watches for nothing", P.pending == nil)
 FL:SetEnabled(true)
+
+print("[a chat option picked from Blizzard's window " .. FLAVOR .. "]")
+Advance(30); tick(4)
+GOSSIP_OPTIONS = { { orderIndex = 1, gossipOptionID = 4242, name = "Fly to Thunder Bluff" } }
+FireEvent("GOSSIP_SHOW")
+stand(uFrom)
+C_GossipInfo.SelectOptionByIndex(1)
+check("a pick by index is named by its option ID", P.pending and P.pending.origin == "g:4242",
+	P.pending and P.pending.origin)
+TAXI.onTaxi = true
+tick(2)
+check("and flies what that option learned", P.flight and P.flight.key == store().starts["g:4242"], P.flight and P.flight.key)
+flyFor(60); stand(uTo); land()
+Advance(30); tick(4)
+GOSSIP_OPTIONS = { { orderIndex = 1, gossipOptionID = 4242 }, { orderIndex = 2, gossipOptionID = 5151 } }
+C_GossipInfo.SelectOptionByIndex(2)
+check("options read at the pick when the window changed unseen", P.pending and P.pending.origin == "g:5151",
+	P.pending and P.pending.origin)
+tick(60)
+
+print("[the UI hidden mid-flight " .. FLAVOR .. "]")
+Advance(30); tick(4)
+takeOff(2)
+local d0 = f.data.baseCD
+flyFor(10)
+Advance(30)		-- Alt+Z: the countdown's frame gets no updates
+tick(1)
+check("the countdown counts the hidden time", near(f.data.currentCD, d0 - 41, 1.0), f.data.currentCD)
+land()
+
+print("[a route through a stop " .. FLAVOR .. "]")
+Advance(30); tick(4)
+TAXI.slots[4] = { name = "Far Point, Testland", type = "REACHABLE", nodeID = 99997, x = 0.5, y = 0.5,
+	hops = { { 1, 2 }, { 2, 4 } } }
+takeOff(4)
+local chain = fromID .. "-" .. toID .. "-99997"
+check("keyed by every flight point it stops at", P.flight and P.flight.key == chain, P.flight and P.flight.key)
+flyFor(30)
+land()
+check("its time is saved under that chain", near(store().routes[chain], 30, 1.0) and store().routes[fromID .. "-99997"] == nil,
+	store().routes[chain])
+TAXI.slots[4] = nil
+
+print("[times saved by the test builds " .. FLAVOR .. "]")
+local raw = CDTL3.db.global.flightTimes[P.ClientKey()]
+raw.format = nil
+raw.routes["1-2"] = 99
+P.Store()
+check("dropped once: routes and starts", next(raw.routes) == nil and next(raw.starts) == nil and raw.format == 2)
+check("flight point names kept", next(raw.names) ~= nil)
 
 local errs = #ERRORS - base
 print(string.format("RESULT flights %s: fails=%d lua errors=%d", FLAVOR, fails, errs))

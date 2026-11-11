@@ -38,3 +38,11 @@ Fly a route for the first time (dimmed estimate, then the real time saved), fly 
 - **Names**: the destination as a taxi map showed it (cached per point, localized), else the data's English name. Points on no taxi map (quest and scripted flights, mostly Retail) carry internal names ("Quest - Netherstorm - Stealth Flight - Begin"), so the data omits them; the first landing there saves the zone text (`GetMinimapZoneText`), and until then the countdown says "Flight".
 - **Data**: `FlightData` gains `nodes[id] = { continent, x, y, side, name }` from `TaxiNodes` for every route end (Forever 88 points; Retail 1369, file 199 KB).
 - **Found while building**: during a flight with no countdown, `FL:Hold` would have pushed the last flight's finished icon back to 0.1 s and out of its ready frame; Hold and Hide out of combat now act only while a countdown runs. The ticker runs `Tick` in a pcall.
+
+**Build 2 walk (11 Nov): 3 of 3 pass.**
+
+## Review before 3.1.1 (11 Nov)
+One review of the branch found three things, each checked and fixed:
+- **UI hidden mid-flight (Alt+Z)**: the countdown's frame sits under UIParent and gets no updates while the UI is hidden, so the countdown came back showing the hidden time as still to fly. `FL:Hold` now sets the countdown from takeoff (`duration - (GetTime() - start)`) on every update.
+- **A route through stops**: the game routes each character through the flight points it knows, so the same two ends can be different flights. A map route through stops is now keyed by every point (`from-stop-…-to`); one hop stays `from-to`. Times saved by the test builds keyed by the ends only, so the store gets `format = 2` and drops them once (flight point names are kept).
+- **Blizzard's chat window picks by index**: `GossipFrameShared.lua` calls `C_GossipInfo.SelectOptionByIndex` on Retail, Classic, Era and Forever, never `SelectOption`, so build 2's hook never fired (the Bunthen walk passed through `PLAYER_CONTROL_LOST`). Now hooked too: `GOSSIP_SHOW` caches `C_GossipInfo.GetOptions()` by `orderIndex` → `gossipOptionID` (read again at the pick if the index is missing). The `SelectOption` hook stays for addons that pick by ID.
