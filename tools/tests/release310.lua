@@ -45,8 +45,8 @@ local CT = CDTL3.CombatTimers
 local available = CT and CT:Available()
 
 print("[version " .. FLAVOR .. "]")
-check("version is 3.1.0", CDTL3.version == "3.1.0")
-check("notice version is 3.1", CDTL3.noticeVersion == "3.1")
+check("version is 3.1.1", CDTL3.version == "3.1.1")
+check("notice version stays 3.1 (3.1.1 opens no new window for 3.1.0 players)", CDTL3.noticeVersion == "3.1")
 local function newer(prev)
 	g.previousVersion = prev
 	local ok, v = pcall(CDTL3.IsNewerVersion, CDTL3)
@@ -70,8 +70,10 @@ if available then
 	check("notice names combat timers and says they are on", msg:find("combat timers (experimental), on for everyone", 1, true) ~= nil)
 	check("notice says how to turn them off", msg:find("/cdtl3 combattimers off", 1, true) ~= nil and msg:find("Global tab", 1, true) ~= nil)
 	check("notice asks for reports", msg:find("report it at the link above", 1, true) ~= nil)
-	check("changelog has the 3.1.0 entry first", CDTL3:GetChangeLog():find("Changelog 3.1.0", 1, true) ~= nil
-		and CDTL3:GetChangeLog():find("Changelog 3.1.0", 1, true) < CDTL3:GetChangeLog():find("Changelog 3.0.13", 1, true))
+	local log = CDTL3:GetChangeLog()
+	local at311, at310, at3013 = log:find("Changelog 3.1.1", 1, true), log:find("Changelog 3.1.0", 1, true),
+		log:find("Changelog 3.0.13", 1, true)
+	check("changelog has 3.1.1 first, then 3.1.0", at311 and at310 and at3013 and at311 < at310 and at310 < at3013)
 else
 	check("Classic client: no window after the update", opened == 0, opened)
 	check("Classic client: no combat timers notice", CDTL3:GetSpecialMessage() == "")
