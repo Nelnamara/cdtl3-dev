@@ -107,7 +107,7 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 
 - **Midnight / Forever:** debuffs on enemies, melee swing timers and spell-school colors need the combat log, which both close to addons
 - **Edit Mode positions** are per Edit Mode layout; a layout you've never placed a frame in uses the frame's last position
-- **Midnight / Forever:** buffs gained or recast in combat appear (or update) only after combat ends; the GCD tracker and cooldowns of spells with no cooldown of their own are estimated while timings are hidden
+- **Midnight / Forever:** the game hides buff details from addons in combat, so a buff gained in combat, or refreshed by someone else, appears (or updates) only after combat ends. Your own recast restarts the buff from its last known length, an estimate corrected when combat ends. The GCD tracker and cooldowns of spells with no cooldown of their own are also estimated while timings are hidden
 - **Midnight:** the game reports a spell's *base* cooldown, not the talent-reduced one — use **Custom CD Time** on the spell (Filters) to enter the real value
 - **Forever beta:** the debug frame's *Reload* button may be blocked by the client — type `/reload` instead
 - Some proc ICDs aren't in the built-in data — add them as custom cooldowns
@@ -116,6 +116,16 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 ---
 
 ## Changelog
+
+### v3.0.13
+
+**WoW: Forever**
+- **Spell list updated for Forever's November changes** — Elemental Mastery is now **Lightning Mastery**, Totemic Projection is now **Totemic Call** with a 30-second cooldown, Lava Burst is gone from Shaman, and **Swift Judgement** is a normal cooldown again (it no longer waits for its effect to end). Checked against Forever's current game data, hotfixes included
+- **Buffs you recast in combat restart** (Forever and Retail) — while the game hides buff details in combat, a recast went unseen and the icon kept counting down the old buff until combat ended. Recasting a buff you track now restarts it from its last known length. It's an estimate that corrects itself when combat ends; a buff whose length varies (Slice and Dice) or one refreshed by someone else still only updates then
+
+**Fixes**
+- **Custom CD Time works on spells without a cooldown** — with a Custom CD Time on a spell the game gives no cooldown (a Paladin seal on Forever, to time its 30 seconds), the icon vanished after the global cooldown, or at once in combat. It now counts the custom time from your last cast
+- **Custom timers with trigger type Spell fire for spells you know** — they only fired for spells outside your spellbook, so a timer couldn't be tied to a seal or any other spell you have. They now fire for any spell you cast
 
 ### v3.0.12
 
