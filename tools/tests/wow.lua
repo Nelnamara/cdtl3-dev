@@ -351,6 +351,14 @@ function CreateFrame(otype, name, parent, template, id)
 		_G[name] = f
 	end
 	if otype == "GameTooltip" then f.__shown = false end
+	-- Blizzard's dropdown template: the named parts AceGUI's DropDown widget looks up
+	if name and type(template) == "string" and template:find("UIDropDownMenuTemplate", 1, true) then
+		for _, part in ipairs({ "Left", "Middle", "Right" }) do
+			_G[name .. part] = newObj("Texture", name .. part, f)
+		end
+		_G[name .. "Button"] = newObj("Button", name .. "Button", f)
+		_G[name .. "Text"] = newObj("FontString", name .. "Text", f)
+	end
 	return f
 end
 function CreateFont(name) local f = newObj("Font", name); _G[name] = f; return f end

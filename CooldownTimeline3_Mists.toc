@@ -22,4 +22,6 @@ BarFrames.lua
 Ready.lua
 Cooldown.lua
 CombatTimers.lua
+FlightData\Mists.lua
+Flights.lua
 EditMode.lua
