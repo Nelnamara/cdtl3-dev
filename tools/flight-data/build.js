@@ -24,6 +24,8 @@ const FLAG_TELEPORT = 1;
 // TaxiPathNode.Delay is in seconds (verified against the data, see README).
 // TaxiNodes.Flags: 0x1 = on the Alliance taxi map, 0x2 = on the Horde one (neither = anyone's).
 const SIDE_MASK = 3;
+// a name that is a developer label, not a place: " - " separators, a leading "[", or a leading build number
+const INTERNAL_NAME = / - |^\[|^\d+\.\d+/;
 
 const args = process.argv.slice(2);
 const refresh = args.includes('--refresh');
@@ -208,10 +210,13 @@ function compute(dir) {
 		}
 		// a point on neither side's taxi map is a quest or scripted flight's; its name is internal
 		// ("Quest - Netherstorm - Stealth Flight - Begin"), so it gets none
+		// Some of them carry a taxi-map flag anyway (TBC quest and bombing runs, Duskwither's orb), so a name that
+		// reads as internal ("Quest - ...", "... - Teleport End", "[Hidden] ...", "12.1.5 Labyrinth ...") gets none too.
 		const side = Number(n.Flags) & SIDE_MASK;
+		const name = side ? n.Name_lang.split(',')[0].trim() : null;
 		points.push({
 			id, cont: Number(n.ContinentID), x: Math.round(x), y: Math.round(y),
-			side, name: side ? n.Name_lang.split(',')[0].trim() : null,
+			side, name: name && !INTERNAL_NAME.test(name) ? name : null,
 		});
 	}
 	return { list, points, notes };
@@ -261,7 +266,8 @@ async function main() {
 		}
 		console.log('  skipped hops: ' + notes.teleportHops + ' teleport, ' + notes.contHops + ' continent change, ' + notes.unnamed + ' rows with a 0 endpoint ignored');
 		if (check) {
-			const old = fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : null;
+			// a Windows checkout may hold CRLF; line endings are not drift
+			const old = fs.existsSync(target) ? fs.readFileSync(target, 'utf8').replace(/\r\n/g, '\n') : null;
 			if (old === null) {
 				console.log('  DIFF: ' + path.relative(ROOT, target) + ' is missing');
 				differ++;

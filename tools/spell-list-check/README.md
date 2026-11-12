@@ -10,10 +10,14 @@ For each client in `builds.json` it:
    the client has. It checks exactly what the addon loads in game, version gates and the
    WoW: Forever changes included. (A harness that fills the lists by hand missed the 3.0.10
    bug; keep running the real code.)
-2. downloads the build's DB2 tables from wago.tools into `cache/<build>/` (git-ignored,
-   downloaded once per build).
+2. downloads the build's DB2 tables from wago.tools into `cache/<build>/` (git-ignored).
+   Cached tables older than 24 hours are downloaded again, because Blizzard hotfixes change
+   a build's tables without changing its number (`--offline` skips that and uses the cache).
 3. prints, per client:
    - **missing IDs**: listed spell IDs the game does not have;
+   - **removed from the class**: listed spells still in `SpellName` that no class skill line
+     (`SkillLineAbility`), talent or specialization row ties to that class any more, so
+     Blizzard took them off it (Forever's Lava Burst, 408490, on 2 Nov 2026);
    - **name mismatches**: list `name` differs from `SpellName.Name_lang` (the addon also
      looks spells up by English name);
    - **bCD mismatches**: list `bCD` differs from max(`RecoveryTime`, `CategoryRecoveryTime`)
@@ -36,14 +40,16 @@ npm install
 node check.js                  # every client
 node check.js forever mop      # only these clients (keys from builds.json)
 node check.js --src <folder>   # check another copy of the addon
-node check.js --refresh        # download the tables again
+node check.js --refresh        # download the tables again now
+node check.js --offline        # use the cached tables whatever their age
 ```
 
 ## After a patch
 
 1. Set the client's `interface` and `build` in `builds.json`. The build is the full
    version string wago.tools uses, e.g. `1.60.1.70707` (see https://wago.tools/builds).
-2. Run `node check.js <client>`.
+2. Run `node check.js <client>`. Tables cached more than 24 hours ago are fetched again, so a
+   hotfix to the same build shows up (wago.tools' `/hotfixes` page lists what is still missing).
 3. Fix what it reports in `Data.lua`:
    - Classic Era and TBC: the entries in the `tocversion < 20000` / `< 30000` branches.
    - WoW: Forever loads the Classic lists, which stay Era's. Its differences go in

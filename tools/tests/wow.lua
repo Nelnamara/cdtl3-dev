@@ -677,10 +677,17 @@ else
 	function GetNumSpellTabs() return 1 end
 	function GetSpellTabInfo(i) return "General", 136000, 0, #SPELLBOOK end
 	function GetSpellBookItemName(j) local s = SPELLBOOK[j]; if s then return s.name, "", s.id end end
-	function UnitAura() return nil end
+	-- the old names and the current ones both exist on the Classic clients (the old ones are deprecated
+	-- aliases); a harness drops one set before LoadTOC to prove the other works alone
+	function UnitAura(u, i, f)
+		local l = AURAS and AURAS[f or "HELPFUL"]
+		local a = l and l[i]
+		if a then return a.name, a.icon, a.applications, "", a.duration, a.expirationTime, nil, nil, nil, a.spellId end
+	end
 	function UnitBuff() return nil end
 	function UnitDebuff() return nil end
 	function CombatLogGetCurrentEventInfo() return table.unpack(CLEU_ARGS or {}) end
+	C_CombatLog = { GetCurrentEventInfo = function() return table.unpack(CLEU_ARGS or {}) end }
 	function GetItemSpell(id) return C_Item.GetItemSpell(id) end
 	function GetItemInfoInstant(id) return C_Item.GetItemInfoInstant(id) end
 	function GetItemCooldown(id) return C_Container.GetItemCooldown(id) end
