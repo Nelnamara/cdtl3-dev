@@ -126,6 +126,8 @@ textarea {
 	var items = {};        // doc id -> data
 	var queues = {};       // doc id -> promise chain (one write at a time per document)
 	var noteTimers = {};
+	var shape = "";        // the layout last drawn; redrawn only when lines are added, removed or moved
+	var heads = {};        // walk -> its "N open" label
 	var db = null;
 	var readOnly = false;
 	var statusEl = document.getElementById("status");
@@ -150,6 +152,18 @@ textarea {
 				p.appendChild(document.createTextNode(part));
 			}
 		});
+	}
+
+	// moving a note box out of the page and back drops the cursor; put it back where it was
+	function keepFocus(redraw) {
+		var box = document.activeElement, start = 0, end = 0;
+		if (!box || box.tagName !== "TEXTAREA") { box = null; }
+		if (box) { start = box.selectionStart; end = box.selectionEnd; }
+		redraw();
+		if (box && box.isConnected && document.activeElement !== box) {
+			box.focus({ preventScroll: true });
+			try { box.setSelectionRange(start, end); } catch (e) {}
+		}
 	}
 
 	function write(id, patch) {
@@ -296,12 +310,30 @@ textarea {
 			if (x.walk !== y.walk) { return String(x.walk) < String(y.walk) ? 1 : -1; }
 			return (x.order || 0) - (y.order || 0) || (a < b ? -1 : 1);
 		});
-		Array.prototype.slice.call(walksEl.querySelectorAll(".walk")).forEach(function (n) { n.remove(); });
-		var section = null, group = null, lastWalk = null, lastGroup = null, openCount = {};
+		var openCount = {};
 		ids.forEach(function (id) {
 			var d = items[id];
 			if (!d.status) { openCount[d.walk] = (openCount[d.walk] || 0) + 1; }
 		});
+		// a saved mark or note leaves the layout alone, so a box being typed in is never moved
+		var next = ids.map(function (id) {
+			var d = items[id];
+			return [d.walk, d.walkTitle || "", d.group || "", id].join("\u0001");
+		}).join("\u0002");
+		if (next !== shape) {
+			shape = next;
+			keepFocus(function () { draw(ids); });
+		} else {
+			ids.forEach(paint);
+		}
+		Object.keys(heads).forEach(function (w) { heads[w].textContent = (openCount[w] || 0) + " open"; });
+		summary();
+	}
+
+	function draw(ids) {
+		Array.prototype.slice.call(walksEl.querySelectorAll(".walk")).forEach(function (n) { n.remove(); });
+		heads = {};
+		var section = null, group = null, lastWalk = null, lastGroup = null;
 		ids.forEach(function (id) {
 			var d = items[id];
 			if (d.walk !== lastWalk) {
@@ -313,7 +345,7 @@ textarea {
 				var h = document.createElement("h2");
 				h.textContent = d.walkTitle || d.walk || "Walk";
 				var small = document.createElement("small");
-				small.textContent = (openCount[d.walk] || 0) + " open";
+				heads[d.walk] = small;
 				head.appendChild(h);
 				head.appendChild(small);
 				section.appendChild(head);
@@ -333,7 +365,6 @@ textarea {
 			paint(id);
 			group.appendChild(els[id].root);
 		});
-		summary();
 	}
 
 	function start() {
