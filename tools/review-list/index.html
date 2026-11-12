@@ -149,6 +149,7 @@ details.folded > .review { padding: 16px 14px; }
 	var items = {};        // doc id -> data
 	var queues = {};       // doc id -> one write at a time
 	var noteTimers = {};
+	var dirty = {};        // doc id -> note typed but not saved yet
 	var touched = {};      // reviews marked in this visit stay in place until the next visit
 	var foldOpen = {};     // finished review id -> unfolded
 	var shape = "";        // the layout last drawn; redrawn only when items are added, removed, moved or folded
@@ -244,6 +245,7 @@ details.folded > .review { padding: 16px 14px; }
 		saved.className = "saved";
 		note.addEventListener("input", function () {
 			clearTimeout(noteTimers[id]);
+			dirty[id] = true;
 			saved.textContent = "";
 			noteTimers[id] = setTimeout(function () { saveNote(id); }, 900);
 		});
@@ -266,6 +268,7 @@ details.folded > .review { padding: 16px 14px; }
 		var ui = els[id], d = items[id];
 		if (!ui || !d) { return; }
 		var v = ui.note.value;
+		dirty[id] = false;
 		if (v === (d.note || "")) { return; }
 		d.note = v;
 		write(id, { note: v, updatedAt: new Date().toISOString() });
@@ -303,7 +306,8 @@ details.folded > .review { padding: 16px 14px; }
 			ui.buttons[m].disabled = readOnly;
 		});
 		ui.note.readOnly = readOnly;
-		if (document.activeElement !== ui.note && ui.note.value !== (d.note || "")) {
+		// never refill a box being typed in or holding unsaved typing (a redraw takes the focus away for a moment)
+		if (document.activeElement !== ui.note && !dirty[id] && ui.note.value !== (d.note || "")) {
 			ui.note.value = d.note || "";
 		}
 	}

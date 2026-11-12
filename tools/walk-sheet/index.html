@@ -103,6 +103,19 @@ textarea {
 }
 .saved { font-size: 12px; color: var(--muted); min-height: 1em; }
 .empty { border: 1px dashed var(--line); border-radius: 6px; padding: 20px; color: var(--muted); }
+#walks, #done { display: flex; flex-direction: column; gap: 36px; }
+#done { gap: 10px; }
+.all { color: var(--muted); margin: 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#done-wrap { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--line); padding-top: 20px; }
+details.folded { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+details.folded > summary {
+	cursor: pointer; padding: 12px 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;
+	font-family: var(--font-head); font-weight: 600; font-size: 16px;
+}
+details.folded > summary small { font-family: var(--font-body); font-weight: 400; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+details.folded[open] > summary { border-bottom: 1px solid var(--line); }
+details.folded > .walk { padding: 16px 14px; }
 </style>
 
 <div class="page">
@@ -111,11 +124,16 @@ textarea {
 		<p class="sub">Test lines for Cooldown Timeline 3 builds. Mark each line Pass, Fail or Later (can't try it yet) and add a note where something looks off. Marks save as you go.</p>
 		<div class="lane" id="lane" role="img" aria-label="Progress"></div>
 		<div class="counts" id="counts"></div>
+		<p class="all" id="all" hidden></p>
 		<p class="status" id="status">Loading saved marks…</p>
 	</header>
 	<main id="walks">
 		<div class="empty" id="empty">No walk lines yet. Lines appear here when a test build is ready to try.</div>
 	</main>
+	<section id="done-wrap" hidden>
+		<h3>Finished walks</h3>
+		<div id="done"></div>
+	</section>
 </div>
 
 <script>
@@ -126,13 +144,19 @@ textarea {
 	var items = {};        // doc id -> data
 	var queues = {};       // doc id -> promise chain (one write at a time per document)
 	var noteTimers = {};
-	var shape = "";        // the layout last drawn; redrawn only when lines are added, removed or moved
-	var heads = {};        // walk -> its "N open" label
+	var dirty = {};        // doc id -> note typed but not saved yet
+	var shape = "";        // the layout last drawn; redrawn only when lines are added, removed, moved or folded
+	var heads = {};        // walk -> its count labels
+	var touched = {};      // walks marked in this visit stay in place until the next visit
+	var foldOpen = {};     // finished walk -> unfolded
 	var db = null;
 	var readOnly = false;
 	var statusEl = document.getElementById("status");
 	var walksEl = document.getElementById("walks");
 	var emptyEl = document.getElementById("empty");
+	var doneEl = document.getElementById("done");
+	var doneWrap = document.getElementById("done-wrap");
+	var allEl = document.getElementById("all");
 
 	function setStatus(text, warn) {
 		statusEl.textContent = text;
@@ -202,6 +226,7 @@ textarea {
 		saved.className = "saved";
 		note.addEventListener("input", function () {
 			clearTimeout(noteTimers[id]);
+			dirty[id] = true;
 			saved.textContent = "";
 			noteTimers[id] = setTimeout(function () { saveNote(id); }, 900);
 		});
@@ -222,6 +247,7 @@ textarea {
 		var ui = els[id], d = items[id];
 		if (!ui || !d) { return; }
 		var v = ui.note.value;
+		dirty[id] = false;
 		if (v === (d.note || "")) { return; }
 		d.note = v;
 		write(id, { note: v, updatedAt: new Date().toISOString() });
@@ -231,9 +257,10 @@ textarea {
 		var d = items[id];
 		if (!d) { return; }
 		var next = d.status === mark ? "" : mark;
+		touched[d.walk] = true;
 		d.status = next;
 		paint(id);
-		summary();
+		render();
 		write(id, { status: next, updatedAt: new Date().toISOString() });
 	}
 
@@ -264,21 +291,39 @@ textarea {
 			ui.buttons[m].disabled = readOnly;
 		});
 		ui.note.readOnly = readOnly;
-		if (document.activeElement !== ui.note && ui.note.value !== (d.note || "")) {
+		// never refill a box being typed in or holding unsaved typing (a redraw takes the focus away for a moment)
+		if (document.activeElement !== ui.note && !dirty[id] && ui.note.value !== (d.note || "")) {
 			ui.note.value = d.note || "";
 		}
 	}
 
-	function summary() {
-		var n = { pass: 0, fail: 0, later: 0, open: 0 }, total = 0;
-		Object.keys(items).forEach(function (id) {
+	function tally(ids) {
+		var n = { pass: 0, fail: 0, later: 0, open: 0, total: ids.length };
+		ids.forEach(function (id) {
 			var s = items[id].status;
-			total++;
 			if (s === "pass" || s === "keep") { n.pass++; }
 			else if (s === "fail" || s === "change") { n.fail++; }
 			else if (s === "later") { n.later++; }
 			else { n.open++; }
 		});
+		return n;
+	}
+
+	function countLine(n) {
+		var parts = [];
+		if (n.pass) { parts.push(n.pass + " pass"); }
+		if (n.fail) { parts.push(n.fail + " fail"); }
+		if (n.later) { parts.push(n.later + " later"); }
+		if (n.open) { parts.push(n.open + " open"); }
+		return parts.join(" · ");
+	}
+
+	// the top counts cover the walks still open; the line under them covers every walk
+	function summary(list) {
+		list = list || [];
+		var shownIds = [], allIds = Object.keys(items), folded = 0;
+		list.forEach(function (w) { if (w.fold) { folded++; } else { shownIds = shownIds.concat(w.ids); } });
+		var n = tally(shownIds), total = n.total;
 		var lane = document.getElementById("lane");
 		lane.textContent = "";
 		[["p", n.pass], ["f", n.fail], ["l", n.later]].forEach(function (seg) {
@@ -299,59 +344,79 @@ textarea {
 			span.appendChild(document.createTextNode(" " + c[0]));
 			counts.appendChild(span);
 		});
+		if (folded) {
+			var a = tally(allIds);
+			allEl.textContent = "All " + list.length + " walks: " + a.pass + " pass · " + a.fail + " fail · " + a.later + " later · " + a.open + " open";
+		}
+		allEl.hidden = !folded;
 	}
 
-	// newest walk first; inside a walk, lines in their order, grouped under their heading
+	// walks with unmarked lines on top, newest first; a walk with every line marked folds below
+	// (unless marked in this visit); inside a walk, lines in their order under their headings
 	function render() {
 		var ids = Object.keys(items);
 		emptyEl.hidden = ids.length > 0;
-		ids.sort(function (a, b) {
-			var x = items[a], y = items[b];
-			if (x.walk !== y.walk) { return String(x.walk) < String(y.walk) ? 1 : -1; }
-			return (x.order || 0) - (y.order || 0) || (a < b ? -1 : 1);
-		});
-		var openCount = {};
+		var byWalk = {};
 		ids.forEach(function (id) {
-			var d = items[id];
-			if (!d.status) { openCount[d.walk] = (openCount[d.walk] || 0) + 1; }
+			var d = items[id], key = d.walk || "walk";
+			var w = byWalk[key] || (byWalk[key] = { id: key, title: "", added: "", last: "", ids: [] });
+			w.ids.push(id);
+			if (!w.title && d.walkTitle) { w.title = d.walkTitle; }
+			if ((d.added || "") > w.added) { w.added = d.added; }
+			if ((d.updatedAt || "") > w.last) { w.last = d.updatedAt; }
+		});
+		var list = Object.keys(byWalk).map(function (k) { return byWalk[k]; });
+		list.forEach(function (w) {
+			// walks from before 12 Nov carry no added time: the date their id starts with stands in,
+			// and among those, the last mark breaks ties
+			if (!w.added) {
+				var m = /^(\d{4}-\d{2}-\d{2})/.exec(w.id);
+				w.added = m ? m[1] + "T00:00:00Z" : "";
+			}
+			w.title = w.title || w.id;
+			w.ids.sort(function (a, b) { return (items[a].order || 0) - (items[b].order || 0) || (a < b ? -1 : 1); });
+			w.n = tally(w.ids);
+			w.fold = w.n.open === 0 && !touched[w.id];
+		});
+		list.sort(function (a, b) {
+			if (a.added !== b.added) { return a.added < b.added ? 1 : -1; }
+			if (a.last !== b.last) { return a.last < b.last ? 1 : -1; }
+			return a.id < b.id ? 1 : -1;
 		});
 		// a saved mark or note leaves the layout alone, so a box being typed in is never moved
-		var next = ids.map(function (id) {
-			var d = items[id];
-			return [d.walk, d.walkTitle || "", d.group || "", id].join("\u0001");
+		var next = list.map(function (w) {
+			return [w.id, w.title, w.fold ? "f" : "o", w.ids.map(function (id) {
+				return id + "\u0003" + (items[id].group || "");
+			}).join(",")].join("\u0001");
 		}).join("\u0002");
 		if (next !== shape) {
 			shape = next;
-			keepFocus(function () { draw(ids); });
+			keepFocus(function () { draw(list); });
 		} else {
-			ids.forEach(paint);
+			list.forEach(function (w) { w.ids.forEach(paint); });
 		}
-		Object.keys(heads).forEach(function (w) { heads[w].textContent = (openCount[w] || 0) + " open"; });
-		summary();
+		list.forEach(function (w) {
+			(heads[w.id] || []).forEach(function (s) { s.textContent = countLine(w.n); });
+		});
+		summary(list);
 	}
 
-	function draw(ids) {
-		Array.prototype.slice.call(walksEl.querySelectorAll(".walk")).forEach(function (n) { n.remove(); });
-		heads = {};
-		var section = null, group = null, lastWalk = null, lastGroup = null;
-		ids.forEach(function (id) {
+	function buildWalk(w) {
+		var section = document.createElement("section");
+		section.className = "walk";
+		var head = document.createElement("div");
+		head.className = "walk-head";
+		var h = document.createElement("h2");
+		h.textContent = w.title;
+		var small = document.createElement("small");
+		(heads[w.id] = heads[w.id] || []).push(small);
+		head.appendChild(h);
+		head.appendChild(small);
+		section.appendChild(head);
+		var group = null, lastGroup = null;
+		w.ids.forEach(function (id) {
 			var d = items[id];
-			if (d.walk !== lastWalk) {
-				lastWalk = d.walk; lastGroup = null;
-				section = document.createElement("section");
-				section.className = "walk";
-				var head = document.createElement("div");
-				head.className = "walk-head";
-				var h = document.createElement("h2");
-				h.textContent = d.walkTitle || d.walk || "Walk";
-				var small = document.createElement("small");
-				heads[d.walk] = small;
-				head.appendChild(h);
-				head.appendChild(small);
-				section.appendChild(head);
-				walksEl.appendChild(section);
-			}
-			if (d.group !== lastGroup) {
+			if (group === null || d.group !== lastGroup) {
 				lastGroup = d.group;
 				group = document.createElement("div");
 				group.className = "group";
@@ -365,6 +430,36 @@ textarea {
 			paint(id);
 			group.appendChild(els[id].root);
 		});
+		return section;
+	}
+
+	function draw(list) {
+		Array.prototype.slice.call(walksEl.querySelectorAll(".walk")).forEach(function (n) { n.remove(); });
+		doneEl.textContent = "";
+		heads = {};
+		var folded = 0;
+		list.forEach(function (w) {
+			var section = buildWalk(w);
+			if (w.fold) {
+				var det = document.createElement("details");
+				det.className = "folded";
+				det.open = !!foldOpen[w.id];
+				det.addEventListener("toggle", function () { foldOpen[w.id] = det.open; });
+				var sum = document.createElement("summary");
+				sum.appendChild(document.createTextNode(w.title));
+				var small = document.createElement("small");
+				heads[w.id].push(small);
+				sum.appendChild(small);
+				det.appendChild(sum);
+				section.querySelector(".walk-head").hidden = true;
+				det.appendChild(section);
+				doneEl.appendChild(det);
+				folded++;
+			} else {
+				walksEl.appendChild(section);
+			}
+		});
+		doneWrap.hidden = folded === 0;
 	}
 
 	function start() {
@@ -394,7 +489,9 @@ textarea {
 					var mine = items[doc.id] || {};
 					items[doc.id] = {
 						walk: d.walk, walkTitle: d.walkTitle, group: d.group, order: d.order, kind: d.kind,
-						text: d.text, status: d.status || "", note: d.note || ""
+						text: d.text, status: d.status || "", note: d.note || "",
+						added: typeof d.added === "string" ? d.added : "",
+						updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : ""
 					};
 					// a note being typed stays as typed until it is saved
 					var ui = els[doc.id];
