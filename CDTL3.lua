@@ -30,10 +30,14 @@ if CDTL3.retailAPI then
 	CDTL3.combatLogRegistered = false
 end
 
+-- The Classic clients now call it C_CombatLog.GetCurrentEventInfo; the old global is a deprecated
+-- alias there (and a stub on retail). Prefer the new name, fall back to the old one.
+local GetCombatLogEventInfo = (C_CombatLog and C_CombatLog.GetCurrentEventInfo) or CombatLogGetCurrentEventInfo
+
 -- True where nothing fed only by the combat log can fire. Options.lua hides those options,
 -- Cooldown.lua ignores Spell School Color.
 function CDTL3:NoCombatLog()
-	return CDTL3.combatLogRegistered == false or not CombatLogGetCurrentEventInfo
+	return CDTL3.combatLogRegistered == false or not GetCombatLogEventInfo
 end
 
 -- Globals that no longer exist on Forever (or on retail from 12.1.5): GetItemSpell and
@@ -2061,16 +2065,16 @@ function CDTL3:RecordSpellSchool(spellName, schoolMask)
 end
 
 function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
-	local _, subevent, _, sourceGUID, sourceName, _, _, destGUID, destName, _, _ = CombatLogGetCurrentEventInfo()
+	local _, subevent, _, sourceGUID, sourceName, _, _, destGUID, destName, _, _ = GetCombatLogEventInfo()
 
 	if sourceGUID == CDTL3.player["guid"] and (subevent == "SPELL_CAST_SUCCESS" or subevent == "SPELL_AURA_APPLIED") then
-		local _, spellName, spellSchool = select(12, CombatLogGetCurrentEventInfo())
+		local _, spellName, spellSchool = select(12, GetCombatLogEventInfo())
 		CDTL3:RecordSpellSchool(spellName, spellSchool)
 	end
 
 	if subevent == "SPELL_AURA_APPLIED" then
 		if sourceGUID == CDTL3.player["guid"] or destGUID == CDTL3.player["guid"] then
-			local spellID, spellName, _, auraType, _, _, _, _, _, _, _, _, _ = select(12, CombatLogGetCurrentEventInfo())
+			local spellID, spellName, _, auraType, _, _, _, _, _, _, _, _, _ = select(12, GetCombatLogEventInfo())
 			auraType = auraType:lower().."s"
 			
 			--CDTL3:Print(destGUID)
@@ -2172,7 +2176,7 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 		end
 	elseif subevent == "SPELL_AURA_REFRESH" then
 		if sourceGUID == CDTL3.player["guid"] then
-			local spellID, spellName, _, auraType, _, _, _, _, _, _, _, _, _ = select(12, CombatLogGetCurrentEventInfo())
+			local spellID, spellName, _, auraType, _, _, _, _, _, _, _, _, _ = select(12, GetCombatLogEventInfo())
 			auraType = auraType:lower().."s"
 			
 			if CDTL3.db.profile.global["debugMode"] then
@@ -2186,7 +2190,7 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 		end		
 	elseif subevent == "SPELL_AURA_REMOVED" then
 		if sourceGUID == CDTL3.player["guid"] then
-			local spellID, spellName, _, auraType, _, _, _, _, _, _, _, _, _ = select(12, CombatLogGetCurrentEventInfo())
+			local spellID, spellName, _, auraType, _, _, _, _, _, _, _, _, _ = select(12, GetCombatLogEventInfo())
 			auraType = auraType:lower().."s"
 			
 			if CDTL3.db.profile.global["debugMode"] then
@@ -2202,7 +2206,7 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 	-- SWING DAMAGE
 	elseif subevent == "SWING_DAMAGE" then
 		if sourceGUID == CDTL3.player["guid"] then
-			local amount, _, _, _, _, _, _, _, _, isOffHand = select(12, CombatLogGetCurrentEventInfo())
+			local amount, _, _, _, _, _, _, _, _, isOffHand = select(12, GetCombatLogEventInfo())
 			local mhSpeed, ohSpeed = UnitAttackSpeed("player")
 			
 			if isOffHand then
@@ -2215,7 +2219,7 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 	-- SWING MISSED
 	elseif subevent == "SWING_MISSED" then
 		if sourceGUID == CDTL3.player["guid"] then
-			local _, isOffHand, _, _ = select(12, CombatLogGetCurrentEventInfo())
+			local _, isOffHand, _, _ = select(12, GetCombatLogEventInfo())
 			local mhSpeed, ohSpeed = UnitAttackSpeed("player")
 			
 			if isOffHand then
@@ -2883,7 +2887,7 @@ function CDTL3:TurnOn()
 		-- nothing). Only register it on the other clients, where its accessor exists, and never
 		-- let a refusal abort the rest of TurnOn.
 		CDTL3.combatLogRegistered = false
-		if not CDTL3.retailAPI and CombatLogGetCurrentEventInfo then
+		if not CDTL3.retailAPI and GetCombatLogEventInfo then
 			CDTL3.combatLogRegistered = pcall(CDTL3.RegisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
 		end
 		CDTL3:RegisterUnitEvents("UNIT_SPELLCAST_SUCCEEDED", "player", "pet")

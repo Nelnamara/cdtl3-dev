@@ -15,6 +15,7 @@ const TABLES = ['SpellName', 'SpellMisc', 'SpellCooldowns', 'SpellCategories', '
 
 const STARTS_ON_EVENT = 0x02000000; // SpellMisc Attributes_0: the cooldown starts when the effect ends
 const PASSIVE = 0x00000040;
+const MAX_AGE_MS = 24 * 60 * 60 * 1000; // cached tables older than this are downloaded again
 const MIN_CD = 3000; // the addon ignores cooldowns of 3 s or less by default
 
 const CLASS_BY_ID = { 1: 'WARRIOR', 2: 'PALADIN', 3: 'HUNTER', 4: 'ROGUE', 5: 'PRIEST', 6: 'DEATHKNIGHT',
@@ -27,13 +28,15 @@ const WARLOCK_PETS = ['Imp', 'Felhunter', 'Voidwalker', 'Succubus', 'Infernal', 
 // ---------- arguments ----------
 let src = path.resolve(HERE, '..', '..');
 let refresh = false;
+let offline = false;
 const wanted = [];
 const argv = process.argv.slice(2);
 for (let i = 0; i < argv.length; i++) {
 	if (argv[i] === '--src') src = path.resolve(argv[++i]);
 	else if (argv[i] === '--refresh') refresh = true;
+	else if (argv[i] === '--offline') offline = true;
 	else if (argv[i] === '-h' || argv[i] === '--help') {
-		console.log('usage: node check.js [' + CLIENTS.map((c) => c.key).join('|') + ' ...] [--src <addon folder>] [--refresh]');
+		console.log('usage: node check.js [' + CLIENTS.map((c) => c.key).join('|') + ' ...] [--src <addon folder>] [--refresh] [--offline]');
 		process.exit(0);
 	} else wanted.push(argv[i]);
 }
@@ -50,7 +53,8 @@ async function fetchTables(build, tables) {
 	fs.mkdirSync(dir, { recursive: true });
 	for (const t of tables) {
 		const file = path.join(dir, t + '.csv');
-		if (fs.existsSync(file) && !refresh) continue;
+		// a cached table older than 24 hours is downloaded again: Blizzard hotfixes change a build's tables in place
+		if (fs.existsSync(file) && !refresh && (offline || Date.now() - fs.statSync(file).mtimeMs < MAX_AGE_MS)) continue;
 		const url = 'https://wago.tools/db2/' + t + '/csv?build=' + encodeURIComponent(build);
 		process.stderr.write('downloading ' + t + ' (' + build + ')\n');
 		const res = await fetch(url);
@@ -255,7 +259,7 @@ function loadLists(client) {
 
 // ---------- checks ----------
 function check(client, g, lists) {
-	const r = { missing: [], name: [], bCD: [], oaf: [], unlisted: [], checked: 0, onEvent: 0 };
+	const r = { missing: [], removed: [], name: [], bCD: [], oaf: [], unlisted: [], checked: 0, onEvent: 0 };
 	const classes = Object.keys(lists);
 	const inAll = (id) => classes.every((c) => lists[c].some((e) => e.id === id));
 	const label = (cls, id) => (classes.length > 1 && inAll(id) ? 'all classes' : cls);
@@ -271,6 +275,10 @@ function check(client, g, lists) {
 			if (!g.name.has(e.id)) {
 				r.missing.push(`${e.id} ${e.name} [${who}]`);
 				continue;
+			}
+			// still in SpellName but Blizzard took it off the class: nothing in the game data ties it to that class any more
+			if (!inAll(e.id) && e.race === undefined && !owners(g, e.id).some(([kind, c]) => kind === 'RACIAL' || c === cls)) {
+				r.removed.push(`${e.id} ${e.name} [${who}]: no SkillLineAbility, talent or specialization row for ${cls}`);
 			}
 			if (g.name.get(e.id) !== e.name) r.name.push(`${e.id} ${e.name} [${who}]: game name "${g.name.get(e.id)}"`);
 			const cd = g.cd.get(e.id) || 0;
@@ -304,7 +312,7 @@ function check(client, g, lists) {
 	return r;
 }
 
-const KINDS = [['missing', 'missing IDs'], ['name', 'name mismatches'], ['bCD', 'bCD mismatches'],
+const KINDS = [['missing', 'missing IDs'], ['removed', 'removed from the class'], ['name', 'name mismatches'], ['bCD', 'bCD mismatches'],
 	['oaf', 'oaf mismatches'], ['unlisted', 'on-event spells not listed']];
 
 async function main() {
@@ -324,8 +332,8 @@ async function main() {
 		}
 		summary.push([client.key].concat(KINDS.map(([k]) => res[k].length)));
 	}
-	console.log('\nclient    missing  name  bCD  oaf  unlisted');
-	for (const s of summary) console.log(s[0].padEnd(9) + s.slice(1).map((v, k) => String(v).padStart([8, 6, 5, 5, 10][k])).join(''));
+	console.log('\nclient    missing  removed  name  bCD  oaf  unlisted');
+	for (const s of summary) console.log(s[0].padEnd(9) + s.slice(1).map((v, k) => String(v).padStart([8, 9, 6, 5, 5, 10][k])).join(''));
 	process.exit(total ? 1 : 0);
 }
 

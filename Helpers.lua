@@ -1023,7 +1023,8 @@ function CDTL3:GetUnitAura(unit, i, filter)
 	local count = 0
 	local expirationTime = 0
 
-	if CDTL3.retailAPI then
+	-- the Classic clients carry C_UnitAuras.GetAuraDataByIndex too; UnitAura is the fallback only
+	if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
     	local data = C_UnitAuras.GetAuraDataByIndex(unit, i, filter)
 
 		if not data then
