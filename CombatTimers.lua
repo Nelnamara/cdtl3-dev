@@ -1332,6 +1332,74 @@ function CT:BuffInTrackedBars(name)
 	return all[name] and true or false
 end
 
+-- For Filters > Buffs > Pull from Cooldown Manager: one { name, spellID, names } per Tracked Bars
+-- buff (its display spell first, then the linked spells), plus whether the Cooldown Manager is on.
+-- Static info only (never hidden); nil where there's no Cooldown Manager.
+function CT:TrackedBarBuffs()
+	if not (CT:Available() and C_CooldownViewer and C_CooldownViewer.GetCooldownViewerCooldownInfo) then
+		return nil
+	end
+
+	local ok, list = pcall(function()
+		local out, seen = {}, {}
+		local function add(cooldownID)
+			if not cooldownID or seen[cooldownID] then
+				return
+			end
+			seen[cooldownID] = true
+			local okI, info = pcall(C_CooldownViewer.GetCooldownViewerCooldownInfo, cooldownID)
+			if not (okI and type(info) == "table") then
+				return
+			end
+			local bar = { names = {} }
+			local function take(spellID)
+				if not IsSecret(spellID) and type(spellID) == "number" then
+					local name = private.SpellName(spellID)
+					if name then
+						if not bar.name then
+							bar.name, bar.spellID = name, spellID
+						end
+						bar.names[#bar.names + 1] = name
+					end
+				end
+			end
+			take(info.spellID)
+			if type(info.linkedSpellIDs) == "table" then
+				for _, id in ipairs(info.linkedSpellIDs) do
+					take(id)
+				end
+			end
+			if bar.name then
+				out[#out + 1] = bar
+			end
+		end
+
+		local viewer = _G["BuffBarCooldownViewer"]
+		if viewer then
+			for _, item in ipairs(private.Items(viewer)) do
+				add(private.ItemCooldownID(item))
+			end
+		end
+		if C_CooldownViewer.GetCooldownViewerCategorySet then
+			local cat = Enum.CooldownViewerCategory and Enum.CooldownViewerCategory.TrackedBar or 3
+			local okS, ids = pcall(C_CooldownViewer.GetCooldownViewerCategorySet, cat)
+			if okS and type(ids) == "table" then
+				for _, id in ipairs(ids) do
+					if not IsSecret(id) and type(id) == "number" then
+						add(id)
+					end
+				end
+			end
+		end
+		return out
+	end)
+	if not ok then
+		return nil
+	end
+
+	return list, private.ViewerOn()
+end
+
 -- SETTINGS
 function CT:SetEnabled(on)
 	local cs = Settings()

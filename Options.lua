@@ -4050,7 +4050,254 @@ private.GetFilterSet = function(t, o)
 		}
 	end
 
+	-- why the entry won't show (every tab); My spells and the spec rules (Spells); the Cooldown
+	-- Manager's Tracked Bars (Buffs)
+	private.AddEntryReasonArgs(options.args, t)
+	if t == "spells" then
+		private.AddSpellRuleArgs(options.args, t)
+	elseif t == "buffs" then
+		private.AddCooldownManagerArgs(options.args)
+	end
+
 	return options
+end
+
+-- WHY ISN'T IT SHOWING: a one-line reason under the entry's name, and Show anyway
+private.ReasonEntry = function(t)
+	if CDTL3.currentFilterHidden[t] or (t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>") then
+		return nil
+	end
+
+	return CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, t == "items")
+end
+
+private.ShowAnywayText = {
+	unignore = "Unticks Ignored for it",
+	enable = "Ticks its Enabled box",
+	tick = "Ticks it in My spells",
+	spec = "Adds the spec you're in now to the specs it shows in",
+	type = "Switches this whole type back on (Filters > Defaults)",
+	lane = "Puts it on a lane: the type's Default Lane, or the first lane that's switched on",
+	laneOn = "Switches its lane on",
+}
+
+private.AddEntryReasonArgs = function(args, t)
+	args["whyNotShowing"] = {
+		name = function(info)
+				local text = CDTL3:WhyNotShowing(private.ReasonEntry(t), t)
+				return "|cffffd100" .. tostring(text or "") .. "|r"
+			end,
+		type = "description",
+		order = 206,
+		width = "full",
+		hidden = function(info)
+				return CDTL3:WhyNotShowing(private.ReasonEntry(t), t) == nil
+			end,
+	}
+	args["showAnyway"] = {
+		name = "Show anyway",
+		desc = function(info)
+				local _, fix = CDTL3:WhyNotShowing(private.ReasonEntry(t), t)
+				return private.ShowAnywayText[fix or ""] or ""
+			end,
+		type = "execute",
+		order = 207,
+		hidden = function(info)
+				local _, fix = CDTL3:WhyNotShowing(private.ReasonEntry(t), t)
+				return fix == nil
+			end,
+		func = function(info)
+				local s = private.ReasonEntry(t)
+				local _, fix, n = CDTL3:WhyNotShowing(s, t)
+
+				-- the same change the entry's own control makes (live icons included)
+				if fix == "unignore" then
+					args["ignored"].set(info, false)
+				elseif fix == "enable" then
+					args["enabled"].set(info, true)
+				elseif fix == "lane" then
+					args["lane"].set(info, n)
+				elseif fix == "tick" then
+					CDTL3:TickSpell(s["name"], true)
+				elseif fix == "spec" then
+					CDTL3:SetOnlyThisSpec(s, true)
+				elseif fix == "type" then
+					CDTL3.db.profile.global[t]["enabled"] = true
+					for _, cd in pairs(CDTL3.cooldowns) do
+						if cd.data["type"] == t then
+							local saved = CDTL3:GetSpellSettings(cd.data["name"], t)
+							cd.data["enabled"] = not (saved and saved["enabled"] == false)
+						end
+					end
+				elseif fix == "laneOn" then
+					CDTL3.db.profile.lanes["lane" .. n]["enabled"] = true
+					CDTL3:CreateLanes()
+					CDTL3:RefreshLane(n)
+				end
+			end,
+	}
+end
+
+-- FILTERS > SPELLS: Hide spells I don't know, Show only the ticked spells, My spells, Only for this spec
+private.AddSpellRuleArgs = function(args, t)
+	args["hideUnknown"] = {
+		name = "Hide spells I don't know",
+		desc = "Spells this character doesn't know right now (another spec's, or a talent you've swapped out) don't show; their settings are kept",
+		type = "toggle",
+		order = 90,
+		width = 1.5,
+		get = function(info)
+				return CDTL3.db.profile.global["spells"]["hideUnknown"] and true or false
+			end,
+		set = function(info, val)
+				CDTL3:SetHideUnknownSpells(val)
+			end,
+	}
+	args["onlyTicked"] = {
+		name = "Show only the ticked spells",
+		desc = "Only the spells ticked in My spells (below) show; every other spell counts as ignored while this is on and keeps its settings. Just for this character.",
+		type = "toggle",
+		order = 91,
+		width = 1.5,
+		get = function(info)
+				return CDTL3:OnlyTickedSpells()
+			end,
+		set = function(info, val)
+				CDTL3:SetOnlyTickedSpells(val)
+			end,
+	}
+
+	args["onlyThisSpec"] = {
+		name = function(info)
+				local s = private.ReasonEntry(t)
+				if CDTL3:IsSpecLimited(s) then
+					return "Only for " .. CDTL3:SpecNames(s["onlySpecs"])
+				end
+				local _, specName = CDTL3:CurrentSpec()
+				if specName then
+					return "Only for this spec (" .. tostring(specName) .. ")"
+				end
+				return "Only for this spec"
+			end,
+		desc = "Show this spell only in the specs named here; ticking adds the spec you're in now, unticking shows it in every spec",
+		type = "toggle",
+		order = 505,
+		width = 1.5,
+		hidden = function(info)
+				return not (CDTL3:HasSpecs() and private.ReasonEntry(t))
+			end,
+		disabled = function(info)
+				return not CDTL3:IsSpecLimited(private.ReasonEntry(t)) and not CDTL3:CurrentSpec()
+			end,
+		get = function(info)
+				return CDTL3:IsSpecLimited(private.ReasonEntry(t))
+			end,
+		set = function(info, val)
+				CDTL3:SetOnlyThisSpec(private.ReasonEntry(t), val)
+			end,
+	}
+
+	args["mySpells"] = {
+		name = "My spells",
+		type = "group",
+		inline = true,
+		order = 950,
+		args = {
+			intro = {
+				name = "Tick the spellbook spells you want to see. Ticking one sets it up before you've ever cast it. Only spells with a cooldown are listed.\n",
+				type = "description",
+				order = 1,
+			},
+			none = {
+				name = "|cffaaaaaaNo spells with a cooldown in your spellbook yet.|r",
+				type = "description",
+				order = 2,
+				hidden = function(info)
+						return #CDTL3:MySpellsList() > 0
+					end,
+			},
+			list = {
+				name = "",
+				desc = "Ticked spells show and are never ignored; unticking keeps the spell's settings",
+				type = "multiselect",
+				order = 3,
+				values = function(info)
+						local values = {}
+						for _, e in ipairs(CDTL3:MySpellsList()) do
+							values[e.key] = e.label
+						end
+						return values
+					end,
+				get = function(info, key)
+						return CDTL3:IsSpellTicked(key)
+					end,
+				set = function(info, key, val)
+						CDTL3:TickSpell(key, val)
+					end,
+			},
+		},
+	}
+end
+
+-- FILTERS > BUFFS: Pull from Cooldown Manager (Retail and Forever; hidden elsewhere)
+private.NoCooldownManager = function()
+	local CT = CDTL3.CombatTimers
+	return not (CT and CT:Available() and CT.TrackedBarBuffs)
+end
+
+private.PullFromCooldownManager = function()
+	local r = CDTL3:PullTrackedBuffs()
+	if not r then
+		CDTL3:Print("The Cooldown Manager isn't available on this client.")
+		return
+	end
+
+	if r.tracked == 0 then
+		CDTL3:Print("The Cooldown Manager's Tracked Bars have no buffs yet: add some there (/cdm), then pull again.")
+	else
+		CDTL3:Print(string.format("Pulled %d %s from the Cooldown Manager's Tracked Bars: %d new, %d already saved.",
+			r.tracked, r.tracked == 1 and "buff" or "buffs", #r.made, #r.claimed))
+	end
+	if #r.notTracked > 0 then
+		CDTL3:Print("Not in Tracked Bars, so estimated in combat: " .. table.concat(r.notTracked, ", ") .. ".")
+	end
+	if not r.viewerOn then
+		CDTL3:Print("The Cooldown Manager is switched off in the game's options; turn it on for exact buff timers in combat.")
+	end
+end
+
+private.AddCooldownManagerArgs = function(args)
+	args["pullCooldownManager"] = {
+		name = "Pull from Cooldown Manager",
+		desc = "Makes a Buffs entry, on the Buffs default lane, for every buff in the Cooldown Manager's Tracked Bars, and lists your buffs that aren't there",
+		type = "execute",
+		order = 90,
+		width = 1.5,
+		confirm = true,
+		confirmText = "Make an entry for every buff in the Cooldown Manager's Tracked Bars? Buffs you already have keep their settings but stop being ignored.",
+		hidden = private.NoCooldownManager,
+		func = function(info)
+				private.PullFromCooldownManager()
+			end,
+	}
+	args["notInTrackedBars"] = {
+		name = function(info)
+				local bars = CDTL3.CombatTimers:TrackedBarBuffs()
+				local list = CDTL3:BuffsNotInTrackedBars(bars) or {}
+				return "|cffaaaaaaNot in Tracked Bars, so estimated in combat: " .. table.concat(list, ", ") .. "|r"
+			end,
+		type = "description",
+		order = 91,
+		width = "full",
+		hidden = function(info)
+				if private.NoCooldownManager() then
+					return true
+				end
+				local bars, viewerOn = CDTL3.CombatTimers:TrackedBarBuffs()
+				local list = bars and viewerOn and CDTL3:BuffsNotInTrackedBars(bars)
+				return not (list and #list > 0)
+			end,
+	}
 end
 
 private.GetCustomSet = function(t, o)
