@@ -3,6 +3,90 @@
 	https://www.curseforge.com/wow/addons/cooldown-timeline
 ]]--
 
+-- MEDIA FALLBACKS
+-- A saved font, bar texture or sound whose name isn't registered (its media pack was removed,
+-- or the settings came from someone else's string) uses CDTL3's own default of that kind
+-- instead of LibSharedMedia's (Friz Quadrata, "Blizzard", and for sounds "None", which plays
+-- nothing). CDTL3.LSM is CDTL3's own view of the library: everything passes straight through
+-- except Fetch. Other addons keep the library itself. The options' dropdowns say when a saved
+-- name is missing (CDTL3:MediaMissing, Options.lua AddMediaNotes).
+local LSM = LibStub("LibSharedMedia-3.0")
+CDTL3.mediaDefaults = { font = "Fira Sans Condensed", statusbar = "CDTL3 Smooth", sound = "CDTL3 Click" }
+
+CDTL3.LSM = setmetatable({
+	Fetch = function(self, kind, key, noDefault)
+		local fallback = CDTL3.mediaDefaults[kind]
+		if fallback and not noDefault and key ~= nil and not LSM:IsValid(kind, key) and not LSM:GetGlobal(kind) then
+			return LSM:Fetch(kind, fallback)
+		end
+		return LSM:Fetch(kind, key, noDefault)
+	end,
+}, { __index = LSM })
+
+-- Is a saved media name missing here? Then true and the name used instead. Bar textures can
+-- also be the modern atlases below.
+function CDTL3:MediaMissing(kind, name)
+	if type(name) ~= "string" or name == "" or LSM:IsValid(kind, name) then
+		return false
+	end
+	if kind == "statusbar" and CDTL3.barAtlases[name] then
+		return false
+	end
+
+	local fallback = CDTL3.mediaDefaults[kind]
+	local using = LSM:GetGlobal(kind) or (fallback and LSM:IsValid(kind, fallback) and fallback) or LSM:GetDefault(kind) or "None"
+	return true, using
+end
+
+-- MASQUE
+-- One Masque group per timer type inside CDTL3's own group, "CDTL3" (the one group there was
+-- before, so a skin already chosen for it stays): a type's group follows that skin until it is
+-- given its own in Masque's options. Types without a group of their own (test icons) stay in
+-- the CDTL3 group itself.
+local MASQUE_GROUPS = {
+	spells = "Spells", petspells = "Pet Spells", items = "Items", buffs = "Buffs", debuffs = "Debuffs",
+	offensives = "Offensives", runes = "Runes", customs = "Custom", flights = "Flights",
+}
+
+function CDTL3:MasqueGroup(cdType)
+	local MSQ = CDTL3.Masque
+	if not MSQ then
+		return nil
+	end
+
+	CDTL3.masqueGroups = CDTL3.masqueGroups or {}
+	local groups = CDTL3.masqueGroups
+	if not groups["CDTL3"] then
+		groups["CDTL3"] = MSQ:Group("CDTL3")
+		CDTL3.masqueGroup = groups["CDTL3"]
+	end
+
+	local key = MASQUE_GROUPS[cdType] and cdType or "CDTL3"
+	if not groups[key] then
+		groups[key] = MSQ:Group("CDTL3", MASQUE_GROUPS[key], key)
+	end
+
+	return groups[key]
+end
+
+-- Skin a cooldown's icon (or its bar's icon) in its type's group; a frame now showing another
+-- type leaves the group it was in. Removed and added again on every refresh, as before, so a
+-- changed icon texture is picked up.
+function CDTL3:MasqueSkin(button, icon, cdType)
+	local group = CDTL3:MasqueGroup(cdType)
+	if not group then
+		return
+	end
+
+	local was = button.cdtl3MasqueGroup
+	if was and was ~= group then
+		was:RemoveButton(button)
+	end
+	group:RemoveButton(button)
+	group:AddButton(button, { Icon = icon })
+	button.cdtl3MasqueGroup = group
+end
+
 -- Fonts
 CDTL3.LSM:Register("font", "Fira Sans Condensed", [[Interface\Addons\CooldownTimeline3\Media\FiraSansCondensed-Regular.ttf]])
 

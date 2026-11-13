@@ -247,14 +247,8 @@ function CDTL3:RefreshBar(cd)
 		local br = 1 - (zoom - 1)
 		f.icon.tx:SetTexCoord(tl, br, tl, br)
 		
-		if CDTL3.Masque then
-			-- Kill masque for this icon(button)
-			CDTL3.masqueGroup = CDTL3.Masque:Group("CDTL3")
-			CDTL3.masqueGroup:RemoveButton(f.icon)
-			
-			-- Reapply masque
-			CDTL3.masqueGroup:AddButton(f.icon, { Icon = f.icon.tx })
-		end
+		-- Masque: the timer type's own group (Media.lua)
+		CDTL3:MasqueSkin(f.icon, f.icon.tx, cd.data["type"])
 		
 		f.icon:Show()
 	else
@@ -596,14 +590,8 @@ function CDTL3:RefreshIcon(cd)
 	local br = 1 - (zoom - 1)
 	f.tx:SetTexCoord(tl, br, tl, br)
 	
-	if CDTL3.Masque then
-		-- Kill masque for this icon(button)
-		CDTL3.masqueGroup = CDTL3.Masque:Group("CDTL3")
-		CDTL3.masqueGroup:RemoveButton(f)
-		
-		-- Reapply masque
-		CDTL3.masqueGroup:AddButton(f, { Icon = f.tx })	
-	end
+	-- Masque: the timer type's own group (Media.lua)
+	CDTL3:MasqueSkin(f, f.tx, cd.data["type"])
 	
 	-- TEXT
 	if s["icons"]["text1"]["enabled"] or s["icons"]["text2"]["enabled"] or s["icons"]["text3"]["enabled"] then

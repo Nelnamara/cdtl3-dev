@@ -246,6 +246,108 @@ private.AddCopyArgs = function(args, group, i, label)
 	}
 end
 
+-- "Copy this lane" (each lane's General tab, under Copy Settings): shows a share string of just
+-- this lane, which the Import box (Import/Export tab) puts on the same lane number
+private.laneShareShown = {}
+
+private.AddShareLaneArgs = function(args, i)
+	args["shareLane"] = {
+		name = "Copy this lane",
+		desc = "Show this lane's settings as a share string to copy, for another profile or another player's Import box",
+		order = 910,
+		type = "execute",
+		func = function(info)
+				private.laneShareShown[i] = true
+			end,
+	}
+	args["shareLaneBox"] = {
+		name = "Lane share string (select all of it and copy it with Ctrl+C)",
+		desc = "Importing it replaces that lane's settings, except its name, position and whether it's on",
+		order = 911,
+		type = "input",
+		multiline = 3,
+		width = "full",
+		hidden = function(info)
+				return not private.laneShareShown[i]
+			end,
+		get = function(info)
+				return CDTL3:ExportString("LANE", i)
+			end,
+		set = function(info, val)
+				return nil
+			end,
+	}
+end
+
+-- FONT, BAR TEXTURE AND SOUND DROPDOWNS: a saved name that isn't registered here (its media
+-- pack was removed, or the settings came from someone else's string) says so, "(missing)" on
+-- the label and the tooltip naming what is used instead (CDTL3.LSM's fallback, Media.lua).
+-- Added to every such dropdown in the window, whichever tab builds it (CDTL3:GetFullOptions).
+private.MEDIA_CONTROLS = { LSM30_Font = "font", LSM30_Statusbar = "statusbar", LSM30_Sound = "sound" }
+private.mediaNoted = setmetatable({}, { __mode = "k" })
+
+private.AddMediaNote = function(option, kind)
+	if private.mediaNoted[option] or type(option.get) ~= "function" then
+		return
+	end
+	private.mediaNoted[option] = true
+
+	local name, desc, get = option.name, option.desc, option.get
+	local function text(v, info)
+		if type(v) == "function" then
+			return v(info)
+		end
+		return v
+	end
+	local function missing(info)
+		local ok, value = pcall(get, info)
+		if not ok then
+			return false
+		end
+		local gone, using = CDTL3:MediaMissing(kind, value)
+		return gone, using, value
+	end
+
+	option.name = function(info)
+			local base = text(name, info) or ""
+			if missing(info) then
+				return base.." |cffff9900(missing)|r"
+			end
+			return base
+		end
+	option.desc = function(info)
+			local base = text(desc, info)
+			local gone, using, value = missing(info)
+			if not gone then
+				return base
+			end
+			local note = "|cffff9900Missing, using the default: "..tostring(using)..".|r \""..tostring(value):gsub("|", "||").."\" isn't installed here (a media pack may have been removed)."
+			if base and base ~= "" then
+				return note.."\n\n"..base
+			end
+			return note
+		end
+end
+
+private.AddMediaNotes = function(group, seen)
+	seen = seen or {}
+	if type(group) ~= "table" or type(group.args) ~= "table" or seen[group] then
+		return
+	end
+	seen[group] = true
+
+	for key, option in pairs(group.args) do
+		if type(option) == "table" then
+			local kind = option.type == "select" and private.MEDIA_CONTROLS[option.dialogControl]
+			if kind then
+				private.AddMediaNote(option, kind)
+			elseif option.type == "group" and key ~= "profiles" then
+				private.AddMediaNotes(option, seen)
+			end
+		end
+	end
+end
+
 -- The Filters entry being edited: the saved entry, or the in-progress custom when adding one
 private.FilterEntry = function(t)
 	if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
@@ -1284,38 +1386,8 @@ function CDTL3:GetMainOptions()
 						order = 200,
 						width = "full",
 						get = function(info)
-								local exportMode = CDTL3.db.profile.global["exportMode"]
-
-								local table = {}
-
-								if exportMode == "CDDATA" then
-									table = CDTL3:TableCopy(CDTL3.db.profile.tables)
-								else
-									table = CDTL3:TableCopy(CDTL3.db.profile)
-
-									if exportMode == "SETTINGS" then
-										table.tables.spells = {}
-										table.tables.petspells = {}
-										table.tables.items = {}
-										table.tables.buffs = {}
-										table.tables.debuffs = {}
-										table.tables.offensives = {}
-										table.tables.runes = {}
-										table.tables.customs = {}
-										table.tables.detected = {}
-									end
-								end
-
-								-- SERIALIZE
-								local LibAceSerializer = LibStub:GetLibrary("AceSerializer-3.0")	
-								local serialized = LibAceSerializer:Serialize(table)
-
-								-- DEFLATE
-								local LibDeflate = LibStub:GetLibrary("LibDeflate")
-								local deflated = LibDeflate:CompressDeflate(serialized)
-								local printable = LibDeflate:EncodeForPrint(deflated)
-
-								return printable
+								-- a "!CDTL3:2!" share string (Helpers.lua), with this client and CDTL3 version
+								return CDTL3:ExportString(CDTL3.db.profile.global["exportMode"])
 							end,
 						set = function(info, val)
 								return nil
@@ -1345,12 +1417,29 @@ function CDTL3:GetMainOptions()
 								CDTL3.db.profile.global["importMode"] = val
 							end,
 					},
+					importNewProfile = {
+						name = "Import into a new profile",
+						desc = "Import into a new profile (Imported, Imported 2, ...) and switch to it, leaving this profile as it is",
+						order = 302,
+						type = "toggle",
+						width = 1.5,
+						get = function(info)
+								return CDTL3.db.global["importNewProfile"] == true
+							end,
+						set = function(info, val)
+								CDTL3.db.global["importNewProfile"] = val or nil
+							end,
+					},
 					importbox = {
 						name = "",
 						type = "input",
 						multiline = 10,
 						order = 400,
 						width = "full",
+						-- a preview of what the string holds, with Accept / Cancel, before anything is written
+						confirm = function(info, val)
+								return CDTL3:ImportPreview(val)
+							end,
 						get = function(info)
 								return ""
 							end,
@@ -5999,6 +6088,7 @@ private.GetLaneSet = function(i)
 	private.AddBorderArgs(options.args.icons.args, 300, function() return lane["icons"]["border"] end, function() CDTL3:RefreshAllIcons() end)
 
 	private.AddCopyArgs(options.args.general.args, "lanes", i, "Lane")
+	private.AddShareLaneArgs(options.args.general.args, i)
 
 	return options
 end
@@ -6969,6 +7059,8 @@ function CDTL3:GetFullOptions()
 		private.ConfirmProfileWipes(CDTL3.profile)
 		options.args.profiles = CDTL3.profile
 	end
+
+	private.AddMediaNotes(options)
 
 	return options
 end

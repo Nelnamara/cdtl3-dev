@@ -54,6 +54,13 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
   old code (kept in the file as the reference) over 864 layouts, the secondary marker on vertical lanes
   and on a hidden GCD, Secondary Tracking from the options, live lane texts, Hide out of combat by
   frame number, Override Autohide on an empty lane, whole Split Counts, Edit Mode ranges.
+- `share.lua`: sharing and media (feature panel of 12 Nov 2026, cards 34 and 40): `!CDTL3:2!` exports
+  naming the client and CDTL3 version, a round trip of every export kind and of each lane's Copy this
+  lane string, older strings importing exactly as before, the import preview (counts, Cancel, a string
+  from another client, spells this client doesn't have), Into a new profile, refused strings, imported
+  Filters entries listed for the importing character on a shared Default profile, the "(missing)" note
+  on every font / bar texture / sound dropdown with CDTL3's media fallbacks, CDTL3's own media in
+  LibSharedMedia, and Masque groups per timer type (a stub Masque).
 - The `/cdtl3 probe` test build and its `probe.lua` harness live on branch `cdm-probe`.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).
