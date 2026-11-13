@@ -28,4 +28,5 @@ API.lua
 CombatTimers.lua
 FlightData\Era.lua
 Flights.lua
+Group.lua
 EditMode.lua

@@ -1572,6 +1572,8 @@ function CDTL3:GetFilterOptions()
 		end
 	end
 
+	CDTL3:AddGroupDefaultsArgs(defaultsArgs)
+
 	return options
 end
 
@@ -4201,6 +4203,7 @@ private.GetFilterSet = function(t, o)
 
 	private.AddEntryColorArgs(options.args, t)
 	private.AddEntryReadyArgs(options.args, t)
+	CDTL3:AddEffectArgs(options.args, t, private.FilterEntry)
 
 	-- Combat timers: tell the user if this buff gets an exact timer in combat
 	if t == "buffs" then
@@ -6446,6 +6449,7 @@ private.GetLaneSet = function(i)
 	private.AddCopyArgs(options.args.general.args, "lanes", i, L["Lane"])
 	private.AddShowArgs(options.args.general.args, function() return lane end, function() CDTL3:RefreshLane(i) end)
 	private.AddShareLaneArgs(options.args.general.args, i)
+	CDTL3:AddCasterLaneArgs(options.args.general.args, i, lane)
 
 	return options
 end

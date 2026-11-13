@@ -33,4 +33,5 @@ API.lua
 CombatTimers.lua
 FlightData\Retail.lua
 Flights.lua
+Group.lua
 EditMode.lua

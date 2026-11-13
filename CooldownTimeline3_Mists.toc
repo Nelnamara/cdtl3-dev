@@ -29,4 +29,5 @@ API.lua
 CombatTimers.lua
 FlightData\Mists.lua
 Flights.lua
+Group.lua
 EditMode.lua
