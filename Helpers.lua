@@ -325,8 +325,10 @@ function CDTL3:CheckEdgeCases(spellName)
 				end
 			end
 		elseif CDTL3.tocversion < 40000 then
-			-- built for the Classic lists; MoP/retail list Stealth since 3.0.12 but keep the old behaviour
-			s = CDTL3:GetSpellData(0, "Stealth")
+			-- built for the Classic lists; MoP/retail list Stealth since 3.0.12 but keep the old behaviour.
+			-- A copy: the built-in spell data table itself must never become a saved entry (two
+			-- profiles would share it, and one's Filters changes would land in the other's).
+			s = CDTL3:TableCopy(CDTL3:GetSpellData(0, "Stealth"))
 			if s then
 				CDTL3:ApplyEntryDefaults(s, "spells")
 				s["icon"] = select(2, CDTL3:GetSpellInfo(s["id"]))
@@ -361,7 +363,7 @@ function CDTL3:CheckEdgeCases(spellName)
 				end
 			end
 		else
-			s = CDTL3:GetSpellData(0, "Shadowmeld")
+			s = CDTL3:TableCopy(CDTL3:GetSpellData(0, "Shadowmeld"))
 			if s then
 				CDTL3:ApplyEntryDefaults(s, "spells")
 				s["icon"] = select(2, CDTL3:GetSpellInfo(s["id"]))
@@ -429,7 +431,7 @@ function CDTL3:CheckEdgeCases(spellName)
 							end
 						end
 					else
-						s = CDTL3:GetSpellData(0, secondarySpellName)
+						s = CDTL3:TableCopy(CDTL3:GetSpellData(0, secondarySpellName))
 						if s then
 							CDTL3:ApplyEntryDefaults(s, "spells")
 							s["icon"] = select(2, CDTL3:GetSpellInfo(s["id"]))
@@ -491,7 +493,7 @@ function CDTL3:CheckEdgeCases(spellName)
 					end
 				end
 			else
-				s = CDTL3:GetSpellData(0, secondarySpellName)
+				s = CDTL3:TableCopy(CDTL3:GetSpellData(0, secondarySpellName))
 				if s then
 					CDTL3:ApplyEntryDefaults(s, "spells")
 					s["icon"] = select(2, CDTL3:GetSpellInfo(s["id"]))
@@ -599,6 +601,16 @@ function CDTL3:GenerateTestCooldowns()
     local timeRange = testingMaxTime - testingMinTime
     local increment = timeRange / (testingNumber - 1)
 
+    -- test cooldowns parked in holding (by Clear, or finished) are reused, so each Create
+    -- doesn't add another set of frames that lives until a /reload
+    local parked = {}
+    for _, cd in ipairs(CDTL3.cooldowns) do
+        if cd.data["type"] == "testing" and cd.icon:GetParent():GetName() == "CDTL3_Active_Icon_Holding"
+            and cd.bar:GetParent():GetName() == "CDTL3_Bar_Holding" then
+            table.insert(parked, cd)
+        end
+    end
+
     local timeCurrent = testingMinTime
     for i = 1, testingNumber do
         if CDTL3.db.profile.global["debugMode"] then
@@ -606,11 +618,33 @@ function CDTL3:GenerateTestCooldowns()
         end
 
         local data = CDTL3:GetTestTableData(testingType, timeCurrent, i)
-        local newCD = CDTL3:CreateCooldown(CDTL3:GetUID(), "testing", data)
-        table.insert(CDTL3.cooldowns, newCD)
+        local cd = table.remove(parked, 1)
+        if cd then
+            private.ReuseTestCooldown(cd, data)
+        else
+            -- CreateCooldown adds it to CDTL3.cooldowns
+            CDTL3:CreateCooldown(CDTL3:GetUID(), "testing", data)
+        end
 
         timeCurrent = timeCurrent + increment
     end
+end
+
+-- Restart a parked test cooldown as the new one: the fields CreateCooldown takes from the
+-- test data, then the lane and bar frame (SendToLane restarts the countdown, as for a recast)
+private.ReuseTestCooldown = function(cd, data)
+	local d = cd.data
+	for _, k in ipairs({ "name", "icon", "enabled", "ignored", "highlight", "pinned", "lane", "barFrame", "readyFrame" }) do
+		d[k] = data[k]
+	end
+	d["baseCD"] = data["bCD"] / 1000
+	d["currentCD"] = d["baseCD"]
+	d["overrideCD"] = false
+	cd.icon.valid = d["enabled"]
+	cd.bar.valid = d["enabled"]
+
+	CDTL3:SendToLane(cd)
+	CDTL3:SendToBarFrame(cd)
 end
 
 function CDTL3:GetAardvark(t)
@@ -1282,11 +1316,49 @@ function CDTL3:RefreshConfig()
 	-- the Lanes/Ready/Bar Frames/Filters/Profiles tabs from the standalone window.
 	LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3", CDTL3:GetFullOptions())
 	
+	-- the "Frames currently unlocked" box follows this profile's lock state (a switch from an
+	-- unlocked profile to a locked one left it up over locked frames)
 	if CDTL3.db.profile.global["unlockFrames"] then
 		CDTL3.unlockFrame:Show()
+	elseif CDTL3.unlockFrame then
+		CDTL3.unlockFrame:Hide()
 	end
 
+	CDTL3:ResetStaleFilters()
+
 	CDTL3:Cleanup()
+end
+
+-- A Filters selection that no longer names one of this character's entries (after a profile
+-- switch, an import, a reset or Clear Quest Items) goes back to its tab's placeholder, so the
+-- tab's controls can't act on a gone entry or on another character's entry of the same name.
+function CDTL3:ResetStaleFilters()
+	if not CDTL3.currentFilter then
+		return
+	end
+
+	for t, selected in pairs(CDTL3.currentFilter) do
+		if t ~= "default" and CDTL3.db.profile.tables[t] then
+			local list
+			if t == "detected" then
+				list = CDTL3:LoadDetectedList(t)
+			else
+				list = CDTL3:LoadFilterList(t, t == "items")
+			end
+
+			if not list[selected] then
+				if t == "customs" then
+					CDTL3.currentFilter[t] = "<< Add New >>"
+					CDTL3.currentFilterHidden[t] = false
+				elseif t == "detected" then
+					CDTL3.currentFilter[t] = "<< Select Detected >>"
+				else
+					CDTL3.currentFilter[t] = "<< Select >>"
+					CDTL3.currentFilterHidden[t] = true
+				end
+			end
+		end
+	end
 end
 
 function CDTL3:RemoveHighlights(f, s)
@@ -1710,6 +1782,58 @@ end
 -- /reload. Defaults are re-applied afterwards for keys an older export doesn't have.
 local IMPORT_TABLE_TYPES = { "spells", "petspells", "items", "buffs", "debuffs", "offensives", "runes", "customs", "detected" }
 local IMPORT_SETTINGS_KEYS = { "global", "lanes", "barFrames", "ready", "holders" }
+local IMPORT_LIST_NAMES = { spells = "Spells", petspells = "Pet Spells", items = "Items", buffs = "Buffs", debuffs = "Debuffs",
+	offensives = "Offensives", runes = "Runes", customs = "Custom", detected = "Detected" }
+-- saved as the version text ("3.1.1") although its default is the number 0
+local IMPORT_ANY_SCALAR = { previousVersion = true }
+-- fields of a saved Filters entry that are read without a type check
+local IMPORT_ENTRY_FIELDS = { usedBy = "table", color = "table", bCD = "number", customCDTime = "number" }
+
+-- Does value have the shape of its defaults? Where the defaults hold a table it must be a table
+-- (checked key by key, all the way down), where they hold a number or text it must be one too,
+-- and where they hold true/false anything but a table will do (it is only ever tested). Keys
+-- the defaults don't name (Edit Mode layouts, the Filters entries) pass here.
+local function FitsDefaults(value, default, key)
+	if type(default) == "table" then
+		if type(value) ~= "table" then
+			return false
+		end
+		for k, v in pairs(value) do
+			if default[k] ~= nil and not FitsDefaults(v, default[k], k) then
+				return false
+			end
+		end
+		return true
+	end
+
+	if IMPORT_ANY_SCALAR[key] or type(default) == "boolean" then
+		return type(value) ~= "table"
+	end
+
+	return type(value) == type(default)
+end
+
+-- Every Filters list is a table of entries (some code loops over all of them), every entry is
+-- a table, and the entry fields read without a check have the right type
+local function FitsFilterLists(tables)
+	for _, list in pairs(tables) do
+		if type(list) ~= "table" then
+			return false
+		end
+		for _, entry in pairs(list) do
+			if type(entry) ~= "table" then
+				return false
+			end
+			for field, kind in pairs(IMPORT_ENTRY_FIELDS) do
+				if entry[field] ~= nil and type(entry[field]) ~= kind then
+					return false
+				end
+			end
+		end
+	end
+
+	return true
+end
 
 local function ReplaceContents(target, source)
 	for k in pairs(target) do
@@ -1747,6 +1871,7 @@ function CDTL3:ImportHandler(importString)
 
 	local profile = CDTL3.db.profile
 	local importMode = CDTL3.db.profile.global["importMode"]
+	local defaults = CDTL3.db.defaults.profile
 
 	if importMode == "ALL" then
 		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
@@ -1754,15 +1879,45 @@ function CDTL3:ImportHandler(importString)
 				return Fail("All data (not a full CDTL3 export)")
 			end
 		end
-		-- keep this profile's import/export choices
+		if not FitsDefaults(data, defaults) or (data.tables ~= nil and not FitsFilterLists(data.tables)) then
+			return Fail("All data (malformed)")
+		end
+		-- keep this profile's import/export choices, and each of its Filters lists the string
+		-- leaves empty: a "Settings Only" export empties them all, and importing one this way
+		-- wiped every character's spells, Customs and Custom CD Times on the profile
 		local exportMode, keepImportMode = profile.global["exportMode"], profile.global["importMode"]
+		local own = profile.tables
 		ReplaceContents(profile, data)
 		profile.global["exportMode"], profile.global["importMode"] = exportMode, keepImportMode
+
+		if type(profile.tables) ~= "table" then
+			profile.tables = {}
+		end
+		local carried, kept = 0, {}
+		for _, key in ipairs(IMPORT_TABLE_TYPES) do
+			local theirs = profile.tables[key]
+			if type(theirs) == "table" and next(theirs) then
+				carried = carried + 1
+			elseif type(own) == "table" and type(own[key]) == "table" and next(own[key]) then
+				profile.tables[key] = own[key]
+				table.insert(kept, IMPORT_LIST_NAMES[key])
+			end
+		end
+		if carried == 0 then
+			CDTL3:Print("This string has no Filters lists (a Settings Only export leaves them empty): its settings were imported and this profile's Filters lists were kept.")
+		elseif #kept > 0 then
+			CDTL3:Print("Imported. This profile's own "..table.concat(kept, ", ").." Filters lists were kept: the string's were empty.")
+		end
 
 	elseif importMode == "SETTINGS" then
 		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
 			if type(data[key]) ~= "table" then
 				return Fail("Settings data (not a CDTL3 settings export)")
+			end
+		end
+		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
+			if not FitsDefaults(data[key], defaults[key], key) then
+				return Fail("Settings data (malformed)")
 			end
 		end
 		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
@@ -1772,11 +1927,11 @@ function CDTL3:ImportHandler(importString)
 	elseif importMode == "CDDATA" then
 		-- a cooldown-data export is the tables map itself; a full/settings export nests it
 		local tables = type(data.tables) == "table" and data.tables or data
+		if not FitsFilterLists(tables) then
+			return Fail("Cooldown data (malformed)")
+		end
 		local found = 0
 		for _, key in ipairs(IMPORT_TABLE_TYPES) do
-			if tables[key] ~= nil and type(tables[key]) ~= "table" then
-				return Fail("Cooldown data (malformed)")
-			end
 			if type(tables[key]) == "table" and next(tables[key]) then
 				found = found + 1
 			end

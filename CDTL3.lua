@@ -1583,7 +1583,10 @@ private.CreateUnlockFrame = function()
 	b:SetText("Lock")
 	b:SetPoint("BOTTOM", 0, 4)
 	b:SetScript("OnClick", function()
-		CDTL3:ToggleFrameLock()
+		-- always locks: a toggle here unlocked frames that were already locked
+		if CDTL3.db.profile.global["unlockFrames"] then
+			CDTL3:ToggleFrameLock()
+		end
 		f:Hide()
 	end)
 	
