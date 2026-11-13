@@ -25,6 +25,7 @@ Lanes.lua
 BarFrames.lua
 Ready.lua
 Cooldown.lua
+API.lua
 CombatTimers.lua
 FlightData\Forever.lua
 Flights.lua
