@@ -478,7 +478,7 @@ private.TrackingValues = function(info)
 		swingNote = " "..L["(needs combat log)"]
 	end
 
-	return {
+	local values = {
 		["NONE"] = L["None"],
 		["GCD"] = L["GCD"],
 		["HEALTH"] = L["Health"],
@@ -490,6 +490,11 @@ private.TrackingValues = function(info)
 		["OH_SWING"] = L["OH Swing"]..swingNote,
 		["RANGE_SWING"] = L["Ranged Auto-attack"],
 	}
+	-- Brewmaster stagger, offered to monks on a client that has UnitStagger (Retail; MoP if it has it)
+	if UnitStagger and CDTL3.player and CDTL3.player["class"] == "MONK" then
+		values["STAGGER"] = L["Stagger"]
+	end
+	return values
 end
 
 -- Lanes and bars only ever draw the player's own class colour

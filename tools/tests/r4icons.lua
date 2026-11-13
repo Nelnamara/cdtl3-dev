@@ -19,8 +19,13 @@ local function kids(self)
 	end
 	return table.unpack(out)
 end
+-- the stub's scale and vertex colour calls do nothing: record what they were given
 mt.__index = function(t, k)
 	if k == "GetChildren" then return kids end
+	if k == "SetScaleTo" then return function(s, x, y) rawset(s, "__scaleTo", x) end end
+	if k == "SetVertexColor" then return function(s, r, gg, b, a) rawset(s, "__vertex", { r, gg, b, a }) end end
+	if k == "Play" then return function(s) rawset(s, "__playing", true) end end
+	if k == "Stop" then return function(s) rawset(s, "__playing", false) end end
 	return oldIndex(t, k)
 end
 
@@ -146,6 +151,16 @@ do
 		pname(ic) .. " cd=" .. tostring(F.data.currentCD))
 	check("  three pips on the icon's bottom edge", pf and pf:IsShown() and pf.n == 3 and pf.pip[3].__shown and not pf.pip[4].__shown,
 		pf and tostring(pf.n))
+	do
+		local t2 = ic.txt and ic.txt.text2
+		local base2 = l1.icons.text2.offY
+		local last = t2 and t2.__points[#t2.__points]
+		check("  the icon's timer text stands 4 px higher so the pips don't sit on it", t2 and ic.fxNudge == true and last and last[5] == base2 + 4,
+			last and tostring(last[5]) .. " vs " .. tostring(base2))
+		CDTL3:RefreshIcon(F)
+		last = t2.__points[#t2.__points]
+		check("  and a refresh of the icon keeps it there", last and last[5] == base2 + 4, last and tostring(last[5]))
+	end
 	check("  each fed the count: 2 charges light two (pip i spans i-1 to i)", pf and pf.pip[1].lit.__val == 2 and pf.pip[2].lit.__val == 2
 		and pf.pip[3].lit.__val == 2 and pf.pip[1].lit.__min == 0 and pf.pip[2].lit.__min == 1 and pf.pip[3].lit.__max == 3)
 	check("  the third pip fills as it recharges (about half)", pf and near(pf.pip[3].part.__val, 0.6, 0.15) and pf.pip[1].part.__val == 0,
@@ -157,6 +172,7 @@ do
 	SPELLCD[931] = nil
 	RunOnUpdate(0.02, 60)
 	check("all charges back: Ready 1, the pips gone", pname(ic) == "CDTL3_Ready_1_MF" and not ic.fxPips:IsShown(), pname(ic))
+	check("  the timer text is back where it was", ic.fxNudge == false)
 	leave()
 
 	-- a spell that is not a charge spell never gets pips, and the answer is remembered
@@ -299,6 +315,8 @@ do
 	check("shaded window on a Linear (Time) lane: Ready to 25 s, 25/120 of the travel plus the icon", z and z:IsShown() and near(z.__w, (400 - 40) * 25 / 120 + 40, 0.01),
 		z and tostring(z.__w))
 	check("  tagged Burst 25s", z and z.tag.__text == "Burst 25s", z and tostring(z.tag.__text))
+	check("  striped: a dark base and the tiled stripe texture in the zone's colour (gold)", z and z.base and z.fill.__tex and tostring(z.fill.__tex):find("Media\\zone-stripes.tga", 1, true) ~= nil
+		and z.fill.__vertex and near(z.fill.__vertex[1], 1, 0.001) and near(z.fill.__vertex[2], 0.82, 0.001) and z.fill.__vertex[4] == 1, z and tostring(z.fill.__tex))
 	check("  the Ready-by list is not on unless asked for", lane.fxList == nil)
 
 	l1.fx.burst.secs = 60
@@ -427,12 +445,18 @@ do
 	local p = F.icon.fxPulse
 	check("  4 s left: the icon pulses (orange border, once a second)", p and p:IsShown() and F.icon.fxPulseOn == true,
 		p and tostring(p:IsShown()))
+	local sc
+	for _, o in ipairs(GetAllFrames()) do
+		if p and p.sg and rawget(o, "__parent") == p.sg then sc = o end
+	end
+	check("  and the icon itself scales up to about 1.07 at the peak, on the same beat", p and p.sg and p.sg.__playing == true and sc and sc.__scaleTo == 1.07, sc and tostring(sc.__scaleTo))
 	check("  its sound plays once as it starts", #played == 1 and played[1] == P("CDTL3 Tinks"), #played .. " played")
 	RunOnUpdate(0.02, 60)
 	check("  and not again while it keeps pulsing", #played == 1)
 	SPELLCD[932] = nil
 	RunOnUpdate(0.02, 60)
 	check("  ready: the pulse stops (it is the lane's)", pname(F.icon) == "CDTL3_Ready_1_MF" and not p:IsShown() and not F.icon.fxPulseOn)
+	check("  and the scale stops with it", p.sg.__playing == false)
 	leave()
 
 	-- the Filters control, live

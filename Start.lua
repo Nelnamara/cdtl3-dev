@@ -91,8 +91,9 @@ end
 -- goes (spells over `split` seconds to `long`, shorter ones to `short`) and the buffs' Ignore
 -- Threshold. Quick Style shows it on the real frames first; Keep saves it, Undo puts it back.
 ----------------------------------------------------------------------------------------------------
-local function Lane(on, max, label, size)
-	return { on = on, max = max, label = label, size = size }
+-- gauge = true: the lane gets its Mana gauge (ResourceBars.lua), as the Healer look shows mana beside it
+local function Lane(on, max, label, size, gauge)
+	return { on = on, max = max, label = label, size = size, gauge = gauge }
 end
 
 S.setups = {
@@ -103,7 +104,7 @@ S.setups = {
 	},
 	{
 		key = "healer", name = L["Healer"], blurb = L["Short cooldowns, big cooldowns and buffs"],
-		lanes = { Lane(true, 300, L["Big cooldowns, up to 5:00"]), Lane(true, 30, L["Short cooldowns, up to 30 s"]), Lane(true, 60, L["Buffs, up to 1:00"]) },
+		lanes = { Lane(true, 300, L["Big cooldowns, up to 5:00"], nil, true), Lane(true, 30, L["Short cooldowns, up to 30 s"]), Lane(true, 60, L["Buffs, up to 1:00"]) },
 		split = 30, long = 1, short = 2, items = 1, buffs = 3, debuffs = 3, buffThreshold = 300,
 	},
 	{
@@ -162,9 +163,9 @@ local function MyLists()
 	for _, t in ipairs(private.TYPES) do
 		local list = Profile().tables[t]
 		if type(list) == "table" then
-			for _, e in pairs(list) do
+			for k, e in pairs(list) do
 				if type(e) == "table" and CDTL3:IsMyEntry(e) then
-					out[#out + 1] = { entry = e, type = t }
+					out[#out + 1] = { entry = e, type = t, key = k }
 				end
 			end
 		end
@@ -182,20 +183,52 @@ function private.Snapshot()
 		for _, k in ipairs(private.MODE_TABLES) do
 			max[k] = lane.mode[k].max
 		end
-		snap.lanes[n] = { enabled = lane.enabled, size = lane.icons.size, max = max }
+		snap.lanes[n] = { enabled = lane.enabled, size = lane.icons.size, max = max, gauge = lane.gauge and lane.gauge.enabled or false }
 	end
 	for _, t in ipairs(private.TYPES) do
 		local g = p.global[t]
 		snap.defaults[t] = g["defaultLane"]
 		snap.thresholds[t] = g["ignoreThreshold"]
 	end
+	snap.saved = {}	-- the same entries by list and position, for the copy that survives a reload
 	for _, item in ipairs(MyLists()) do
 		snap.entries[item.entry] = item.entry["lane"]
+		snap.saved[#snap.saved + 1] = { t = item.type, k = item.key, lane = item.entry["lane"] }
 	end
 	for _, cd in ipairs(CDTL3.cooldowns) do
 		snap.cooldowns[cd] = cd.data["lane"]
 	end
 	return snap
+end
+
+-- A preview is saved with the profile while it waits for Keep or Undo, so a reload can't make it
+-- count as kept: the next login puts the old lanes back (S.ResolveStale).
+function private.Persist(snap)
+	local saved = { profile = CDTL3.db:GetCurrentProfile(), setupKey = snap.setupKey, lanes = {}, defaults = {},
+		thresholds = {}, entries = {} }
+	for n, was in pairs(snap.lanes) do
+		local max = {}
+		for k, v in pairs(was.max) do
+			max[k] = v
+		end
+		saved.lanes[n] = { enabled = was.enabled, size = was.size, max = max, gauge = was.gauge }
+	end
+	for t, v in pairs(snap.defaults) do
+		saved.defaults[t] = v
+	end
+	for t, v in pairs(snap.thresholds) do
+		saved.thresholds[t] = v
+	end
+	for i, e in ipairs(snap.saved) do
+		saved.entries[i] = { t = e.t, k = e.k, lane = e.lane }
+	end
+	Profile().global["setupUndo"] = saved
+end
+
+function private.ClearPersisted()
+	if CDTL3.db and Profile().global["setupUndo"] ~= nil then
+		Profile().global["setupUndo"] = nil
+	end
 end
 
 local function MoveCooldown(cd, lane)
@@ -205,7 +238,8 @@ local function MoveCooldown(cd, lane)
 	end
 end
 
-function private.Restore(snap)
+-- the saved values only (no frames yet at login)
+function private.RestoreValues(snap)
 	local p = Profile()
 	for n = 1, 3 do
 		local lane, was = p.lanes["lane" .. n], snap.lanes[n]
@@ -213,6 +247,9 @@ function private.Restore(snap)
 		lane.icons.size = was.size
 		for _, k in ipairs(private.MODE_TABLES) do
 			lane.mode[k].max = was.max[k]
+		end
+		if lane.gauge and was.gauge ~= nil then
+			lane.gauge.enabled = was.gauge
 		end
 	end
 	for _, t in ipairs(private.TYPES) do
@@ -223,10 +260,43 @@ function private.Restore(snap)
 	for entry, lane in pairs(snap.entries) do
 		entry["lane"] = lane
 	end
+end
+
+function private.Restore(snap)
+	private.RestoreValues(snap)
 	for cd, lane in pairs(snap.cooldowns) do
 		MoveCooldown(cd, lane)
 	end
 	CDTL3:RefreshConfig()
+end
+
+-- At login: a setup that was previewed and neither kept nor undone before the reload is undone here.
+-- Runs right after the profile is loaded, so it only writes values; the frames are built from them.
+function S.ResolveStale()
+	local saved = CDTL3.db and Profile().global["setupUndo"]
+	if type(saved) ~= "table" then
+		return false
+	end
+	local snap = { lanes = saved.lanes, defaults = saved.defaults, thresholds = saved.thresholds, setupKey = saved.setupKey or "",
+		entries = {} }
+	local ok = pcall(function()
+		for _, e in ipairs(saved.entries or {}) do
+			local list = Profile().tables[e.t]
+			local entry = type(list) == "table" and list[e.k]
+			if type(entry) == "table" then
+				snap.entries[entry] = e.lane
+			end
+		end
+		private.RestoreValues(snap)
+	end)
+	private.ClearPersisted()
+	if ok then
+		S.undoneStale = true
+		C_Timer.After(6, function()
+			CDTL3:Print(L["A setup you were trying was not kept, so your old lanes are back."])
+		end)
+	end
+	return ok
 end
 
 function private.Apply(setup)
@@ -241,6 +311,9 @@ function private.Apply(setup)
 		end
 		if want.size then
 			lane.icons.size = want.size
+		end
+		if want.gauge and lane.gauge then
+			lane.gauge.enabled = true
 		end
 	end
 	for _, t in ipairs(private.TYPES) do
@@ -386,6 +459,7 @@ function S.PreviewSetup(key)
 		private.Restore(S.pending.snapshot)
 	else
 		S.pending = { snapshot = private.Snapshot(), startedPreview = not CDTL3.testing }
+		private.Persist(S.pending.snapshot)
 	end
 	S.pending.key = key
 
@@ -407,6 +481,7 @@ function S.KeepSetup()
 		return false
 	end
 	S.pending = nil
+	private.ClearPersisted()
 	private.HideBanner()
 	if pending.startedPreview and CDTL3.testing then
 		CDTL3:StopPreview()
@@ -422,6 +497,7 @@ function S.UndoSetup()
 		return false
 	end
 	S.pending = nil
+	private.ClearPersisted()
 	private.HideBanner()
 	private.Restore(pending.snapshot)
 	if pending.startedPreview and CDTL3.testing then
@@ -445,6 +521,7 @@ do
 		if fresh and CDTL3.db and CDTL3.db.global then
 			CDTL3.db.global.tourPending = true
 		end
+		pcall(S.ResolveStale)	-- a setup tried before the reload and never kept is undone
 		return result
 	end
 end

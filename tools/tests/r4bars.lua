@@ -221,6 +221,50 @@ check("switched off: the normal color", colorIs(lane, baseColor))
 l1.tracking.primaryTracking = "NONE"
 th.enabled = false
 
+---------------------------------------------------------------- 31: stagger (Brewmaster; where the client has UnitStagger)
+print("[31 stagger " .. FLAVOR .. "]")
+do
+	local gen = CDTL3:GetFullOptions().args.lanes.args.lane1.args.general.args
+	local pt = gen.primaryTracking
+	local mtv = function() return pt.values({}) end
+	local cls = CDTL3.player["class"]
+	check("no UnitStagger on this client: no Stagger choice, whatever the class", (function() CDTL3.player["class"] = "MONK"; local v = mtv(); CDTL3.player["class"] = cls; return v["STAGGER"] == nil end)())
+	local STAG, STAGHIDDEN = 50, false
+	function UnitStagger() if STAGHIDDEN then return SECRET end return STAG end
+	check("UnitStagger there: a monk's list has Stagger, another class's does not", (function()
+		CDTL3.player["class"] = "MONK"; local a = mtv()["STAGGER"]; CDTL3.player["class"] = cls
+		return a == "Stagger" and mtv()["STAGGER"] == nil
+	end)())
+	l1.tracking.primaryTracking = "STAGGER"
+	CDTL3:RefreshLane(1)
+	local baseC = { lane:GetStatusBarColor() }
+	RunOnUpdate(0.02, 12)
+	check("Stagger on the lane: the fill is stagger over max health (50 of 100)", near(lane.__val, 0.5, 0.001), tostring(lane.__val))
+	th.enabled, th.value = true, 40
+	check("  Change color at's controls are not greyed out for it", gen.thresholdValue.disabled() == false and gen.thresholdColor.disabled() == false)
+	RunOnUpdate(0.02, 12)
+	check("  Change color at 40 (percent of max health), out of combat: 50 is over it, the fill changes", colorIs(lane, th.color))
+	STAG = 30
+	RunOnUpdate(0.02, 12)
+	check("  30 is under it: the normal color", colorIs(lane, baseC))
+	STAG, STAGHIDDEN = 60, true
+	e0 = #ERRORS
+	RunOnUpdate(0.02, 12)
+	check("  hidden in combat: the bar is fed the hidden value, the normal color, no errors", rawequal(lane.__val, SECRET) and lane.secretRange == true and colorIs(lane, baseC) and #ERRORS == e0,
+		"errors " .. (#ERRORS - e0))
+	STAGHIDDEN = false
+	RunOnUpdate(0.02, 12)
+	check("  readable again: the change comes back", colorIs(lane, th.color) and lane.secretRange ~= true)
+	l1.tracking.primaryTracking = "NONE"
+	th.enabled = false
+	RunOnUpdate(0.02, 12)
+	UnitStagger = nil
+	l1.tracking.primaryTracking = "STAGGER"
+	RunOnUpdate(0.02, 12)
+	check("  a client without UnitStagger: nothing to show, no errors", #ERRORS == e0)
+	l1.tracking.primaryTracking = "NONE"
+end
+
 -- no closure per frame from the new files while lane 1 updates with both features on
 th.enabled = true
 l1.tracking.primaryTracking = "CLASS_POWER"

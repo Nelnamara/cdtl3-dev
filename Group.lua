@@ -134,7 +134,7 @@ private.RAID = {
 	},
 	era = {
 		{ 29166, 360 }, { 20484, 1800 }, { 10060, 180 }, { 16190, 300 }, { 19752, 3600 }, { 633, 3600 },
-		{ 1022, 300 }, { 871, 1800 }, { 1161, 600 }, { 20707, 1800 }, { 740, 600 }, { 5209, 600 },
+		{ 1022, 300 }, { 871, 1800 }, { 1161, 600 }, { 20707, 1800 }, { 740, 300 }, { 5209, 600 },
 	},
 }
 
@@ -602,7 +602,40 @@ function CDTL3:BuildBurstPack()
 end
 
 ---------------------------------------------------------------- Burst strip (the optional second look)
-local SLOT_W, ICON = 52, 34
+-- The look is the "Burst strip" choice of looks-boards.html fp24: a dark panel (padding 8 and 10, gap 8), five 40 px
+-- slots, a gold label above each, a coloured state word below (up and ready green, sated red, proc gold, cooling grey).
+local SLOT_W, ICON, GAP, PADX, PADY = 40, 40, 8, 10, 8
+local GOLD, GREY, GREEN, RED = { 1, 0.82, 0 }, { 0.604, 0.627, 0.651 }, { 0.369, 0.941, 0.369 }, { 1, 0.478, 0.42 }
+private.STATE_COLOR = { up = GREEN, ready = GREEN, sated = RED, proc = GOLD, cooling = GREY }
+
+-- four bars round a frame, outside its edge: a border (thick, opaque) or a soft shadow (thick, faint)
+local function Ring(frame, thick, r, g, b, a, layer)
+	local ring = {}
+	for i = 1, 4 do
+		ring[i] = frame:CreateTexture(nil, layer or "BACKGROUND")
+		ring[i]:SetColorTexture(r, g, b, a)
+	end
+	ring[1]:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", -thick, 0)
+	ring[1]:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", thick, 0)
+	ring[1]:SetHeight(thick)
+	ring[2]:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", -thick, 0)
+	ring[2]:SetPoint("TOPRIGHT", frame, "BOTTOMRIGHT", thick, 0)
+	ring[2]:SetHeight(thick)
+	ring[3]:SetPoint("TOPRIGHT", frame, "TOPLEFT", 0, 0)
+	ring[3]:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", 0, 0)
+	ring[3]:SetWidth(thick)
+	ring[4]:SetPoint("TOPLEFT", frame, "TOPRIGHT", 0, 0)
+	ring[4]:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", 0, 0)
+	ring[4]:SetWidth(thick)
+	return ring
+end
+
+local function RingShow(ring, shown)
+	for i = 1, 4 do
+		if shown then ring[i]:Show() else ring[i]:Hide() end
+	end
+end
+
 private.SLOTS = { L["Lust"], L["Sated"], L["Trinket 1"], L["Trinket 2"], L["Potion"] }
 -- name -> slot (1-5), aura-based names flagged in auraOf; rebuilt when the pack or the equipment changes
 private.slotOf, private.auraOf, private.slotIcon = {}, {}, {}
@@ -643,33 +676,45 @@ end
 
 private.BuildStrip = function()
 	local f = CreateFrame("Frame", "CDTL3_BurstStrip", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	f:SetSize(SLOT_W * 5 + 8, 78)
+	f:SetSize(SLOT_W * 5 + GAP * 4 + PADX * 2, PADY * 2 + 12 + 4 + ICON + 4 + 12)
 	f:SetFrameStrata("MEDIUM")
 	f:SetMovable(true)
 	f:SetClampedToScreen(true)
 	f:RegisterForDrag("LeftButton")
 	f.bg = f:CreateTexture(nil, "BACKGROUND")
 	f.bg:SetAllPoints()
-	f.bg:SetColorTexture(0, 0, 0, 0.45)
+	f.bg:SetColorTexture(38 / 255, 38 / 255, 38 / 255, 0.62)
+	f.shadow = Ring(f, 3, 0, 0, 0, 0.2)
 	f.slots = {}
 	local font = CDTL3.LSM:Fetch("font", "Fira Sans Condensed")
+	private.font = font
 	for i = 1, 5 do
 		local s = {}
 		s.label = f:CreateFontString(nil, "OVERLAY")
-		s.label:SetPoint("TOP", f, "TOPLEFT", 4 + SLOT_W * (i - 1) + SLOT_W / 2, -4)
+		s.label:SetPoint("TOP", f, "TOPLEFT", PADX + (SLOT_W + GAP) * (i - 1) + SLOT_W / 2, -PADY)
 		s.tx = f:CreateTexture(nil, "ARTWORK")
 		s.tx:SetSize(ICON, ICON)
-		s.tx:SetPoint("TOP", s.label, "BOTTOM", 0, -2)
+		s.tx:SetPoint("TOP", s.label, "BOTTOM", 0, -4)
+		s.edge = Ring(s.tx, 1, 0, 0, 0, 0.85)
+		s.dim = f:CreateTexture(nil, "ARTWORK", nil, 1)
+		s.dim:SetAllPoints(s.tx)
+		s.dim:SetColorTexture(10 / 255, 12 / 255, 14 / 255, 0.6)
+		s.dim:Hide()
+		s.glow = Ring(s.tx, 5, GOLD[1], GOLD[2], GOLD[3], 0.3)
+		s.ring = Ring(s.tx, 2, GOLD[1], GOLD[2], GOLD[3], 1)
+		RingShow(s.glow, false)
+		RingShow(s.ring, false)
 		s.count = f:CreateFontString(nil, "OVERLAY")
 		s.count:SetPoint("CENTER", s.tx, "CENTER", 0, 0)
 		s.state = f:CreateFontString(nil, "OVERLAY")
-		s.state:SetPoint("TOP", s.tx, "BOTTOM", 0, -2)
+		s.state:SetPoint("TOP", s.tx, "BOTTOM", 0, -4)
 		if font then
-			s.label:SetFont(font, 9, "OUTLINE")
-			s.count:SetFont(font, 13, "OUTLINE")
+			s.label:SetFont(font, 10, "OUTLINE")
+			s.count:SetFont(font, 14, "OUTLINE")
 			s.state:SetFont(font, 10, "OUTLINE")
 		end
 		s.label:SetText(private.SLOTS[i])
+		s.label:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
 		f.slots[i] = s
 	end
 	f:SetScript("OnDragStart", function(self)
@@ -731,7 +776,6 @@ private.StripRefresh = function(f)
 			tex = GetInventoryItemTexture("player", i == 3 and 13 or 14)
 		end
 		s.tx:SetTexture(tex or 134400)
-		s.tx:SetDesaturated(tex == nil)
 		local a, it = sa[i], si[i]
 		local active = a or it
 		local text = "-"
@@ -746,10 +790,21 @@ private.StripRefresh = function(f)
 		elseif tex then
 			text = L["ready"]
 		end
-		local color = (text == "-") and 0.6 or 1
+		local c = private.STATE_COLOR[text] or GREY
 		s.state:SetText(text)
-		s.state:SetTextColor(color, color, color)
-		s.count:SetText(active and Clock(active.data["currentCD"]) or "")
+		s.state:SetTextColor(c[1], c[2], c[3])
+		-- on the icon: the time left, or READY where it waits (the look's ready slot)
+		local waiting = text == "ready" and not active
+		s.count:SetText(active and Clock(active.data["currentCD"]) or (waiting and L["READY"] or ""))
+		if private.font then
+			s.count:SetFont(private.font, waiting and 10 or 14, "OUTLINE")
+		end
+		-- cooling: greyed and dimmed; proc: a gold ring and glow
+		local cooling = text == "cooling"
+		s.tx:SetDesaturated(cooling or tex == nil)
+		if cooling then s.dim:Show() else s.dim:Hide() end
+		RingShow(s.ring, text == "proc")
+		RingShow(s.glow, text == "proc")
 	end
 end
 

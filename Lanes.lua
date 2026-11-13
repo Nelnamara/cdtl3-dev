@@ -882,6 +882,19 @@ private.CalcTracking = function(f, s, t, elapsed)
 			return 0, pCurrent, pMax
 		end
 	
+	elseif t == "STAGGER" then
+		-- a Brewmaster's stagger against their max health. Where the client has no UnitStagger there is
+		-- nothing to show. The values can be hidden: the bar is fed them, never a comparison (like health).
+		if UnitStagger then
+			local sCurrent = UnitStagger("player") or 0
+			local sMax = UnitHealthMax("player")
+			position = private.Fraction(sCurrent, sMax)
+
+			if not position then
+				return 0, sCurrent, sMax
+			end
+		end
+
 	elseif t == "COMBO_POINTS" then
 		local cpMax = UnitPowerMax("player", Enum.PowerType.ComboPoints)
 		local cpCurrent = UnitPower("player", Enum.PowerType.ComboPoints)

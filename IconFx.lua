@@ -25,6 +25,7 @@ CDTL3.IconFx = FX
 local private = {}
 
 private.FILL = [[Interface\Buttons\WHITE8X8]]
+private.STRIPES = [[Interface\AddOns\CooldownTimeline3\Media\zone-stripes.tga]]	-- tools/make-stripes.py
 private.LANE_KEYS = { "lane1", "lane2", "lane3" }
 private.READY_FRAMES = { CDTL3_Ready_1_MF = true, CDTL3_Ready_2_MF = true, CDTL3_Ready_3_MF = true }
 private.GCD_REF = 8921			-- the spell Lanes.lua reads the GCD from (any spell without a cooldown)
@@ -220,9 +221,30 @@ private.ClearParts = function(pf)
 	end
 end
 
+-- with pips on, the icon's timer text (text 2) stands 4 px higher so the pips don't sit on it (fp02);
+-- Cooldown.lua's RefreshIcon reads ic.fxNudge for the same 4 px
+private.TIMER_NUDGE = 4
+private.Nudge = function(ic, on, lane)
+	on = on and true or false
+	if (ic.fxNudge or false) == on then
+		return
+	end
+	ic.fxNudge = on
+	local s = lane and private.LaneSettings(lane)
+	local ts = s and s["icons"] and s["icons"]["text2"]
+	local t = ic.txt and ic.txt.text2
+	if t and ts and ts["enabled"] then
+		t:ClearAllPoints()
+		t:SetPoint(ts["align"], ic, ts["anchor"], ts["offX"], ts["offY"] + (on and private.TIMER_NUDGE or 0))
+	end
+end
+
 private.PipsOff = function(ic)
 	if ic.fxPips then
 		ic.fxPips:Hide()
+	end
+	if ic.fxPipsOn then
+		private.Nudge(ic, false, ic.fxNudgeLane)
 	end
 	ic.fxPipsOn = nil
 end
@@ -252,6 +274,8 @@ private.PipsTick = function(ic, d)
 	if not ic.fxPipsOn then
 		ic.fxPips:Show()
 		ic.fxPipsOn = true
+		ic.fxNudgeLane = d["lane"]
+		private.Nudge(ic, true, d["lane"])
 	end
 	if not pcall(private.FillPart, ic.fxPips) then
 		private.ClearParts(ic.fxPips)
@@ -307,10 +331,28 @@ private.PulseFrame = function(ic)
 	a:SetToAlpha(0.45)
 	a:SetDuration(0.5)
 	a:SetOrder(1)
+	-- the icon itself grows to about 1.07 at the pulse peak (fp25): a second group on the icon, same beat
+	pcall(function()
+		local sg = ic:CreateAnimationGroup()
+		sg:SetLooping("BOUNCE")
+		local sc = sg:CreateAnimation("Scale")
+		if sc.SetScaleFrom then
+			sc:SetScaleFrom(1, 1)
+			sc:SetScaleTo(private.PULSE_SCALE, private.PULSE_SCALE)
+		else
+			sc:SetScale(private.PULSE_SCALE, private.PULSE_SCALE)
+		end
+		sc:SetOrigin("CENTER", 0, 0)
+		sc:SetDuration(0.5)
+		sc:SetOrder(1)
+		p.sg = sg
+	end)
 	p:Hide()
 	ic.fxPulse = p
 	return p
 end
+
+private.PULSE_SCALE = 1.07
 
 private.PulseOn = function(ic, d)
 	local p = private.PulseFrame(ic)
@@ -318,6 +360,9 @@ private.PulseOn = function(ic, d)
 		ic.fxPulseOn = true
 		p:Show()
 		p.ag:Play()
+		if p.sg then
+			p.sg:Play()
+		end
 	end
 	if not d["fxWarned"] then
 		d["fxWarned"] = true
@@ -329,6 +374,9 @@ private.PulseOff = function(ic)
 	if ic.fxPulseOn then
 		ic.fxPulseOn = nil
 		ic.fxPulse.ag:Stop()
+		if ic.fxPulse.sg then
+			ic.fxPulse.sg:Stop()
+		end
 		ic.fxPulse:Hide()
 	end
 end
@@ -762,8 +810,15 @@ private.Zone = function(lane, key)
 	z = CreateFrame("Frame", nil, lane)
 	z:SetFrameLevel(lane:GetFrameLevel() + 2)
 	z:EnableMouse(false)
+	-- a dark base, the white stripe tile over it in the zone's colour (fp23, fp22 mockups: 135 degree stripes)
+	z.base = z:CreateTexture(nil, "BACKGROUND")
+	z.base:SetAllPoints(z)
+	z.base:SetColorTexture(0, 0, 0, 0.3)
 	z.fill = z:CreateTexture(nil, "ARTWORK")
 	z.fill:SetAllPoints(z)
+	z.fill:SetTexture(private.STRIPES, "REPEAT", "REPEAT")
+	z.fill:SetHorizTile(true)
+	z.fill:SetVertTile(true)
 	z.edge = z:CreateTexture(nil, "OVERLAY")
 	z.tag = z:CreateFontString(nil, "OVERLAY")
 	private.SetFont(z.tag, 12, "OUTLINE")
@@ -780,7 +835,7 @@ private.PlaceZone = function(z, lane, s, frac, r, g, b, tag)
 	z:ClearAllPoints()
 	z.edge:ClearAllPoints()
 	z.tag:ClearAllPoints()
-	z.fill:SetColorTexture(r, g, b, 0.4)
+	z.fill:SetVertexColor(r, g, b, 1)
 	z.edge:SetColorTexture(r, g, b, 1)
 	if vertical then
 		if reversed then

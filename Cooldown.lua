@@ -665,7 +665,7 @@ function CDTL3:RefreshIcon(cd)
 					f,
 					ts["anchor"],
 					ts["offX"],
-					ts["offY"]
+					ts["offY"] + (f.fxNudge and 4 or 0)	-- charge pips stand under it (IconFx.lua)
 				)
 			local _ol = ts["outline"]
 			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end

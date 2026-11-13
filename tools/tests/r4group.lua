@@ -28,6 +28,16 @@ local function pname(x) return x:GetParent():GetName() end
 local function live(name, t) return CDTL3:GetExistingCooldown(name, t) end
 local function near(a, b, tol) return type(a) == "number" and math.abs(a - b) <= (tol or 0.05) end
 local P = CDTL3.Group
+-- the stub's colour and desaturate calls do nothing: record what they were given
+do
+	local mt = getmetatable(UIParent)
+	local oldIndex = mt.__index
+	mt.__index = function(t, k)
+		if k == "SetTextColor" then return function(s, r, gg, b) rawset(s, "__rgb", { r, gg, b }) end end
+		if k == "SetDesaturated" then return function(s, v) rawset(s, "__desat", v and true or false) end end
+		return oldIndex(t, k)
+	end
+end
 local lane1 = CDTL3.db.profile.lanes["lane1"]
 
 print("[group play " .. FLAVOR .. "]")
@@ -37,6 +47,12 @@ check("a fresh profile: no group settings saved, no feed running, no strip, no e
 	g.group == nil and not P.raidOn and not P.extOn and CDTL3_BurstStrip == nil and next(CDTL3.timerTypes) == nil and CDTL3.effectsLive == false)
 check("  the lane's Caster lane box is off", lane1.casterLane == false)
 local n0 = #CDTL3.cooldowns
+-- lengths checked against each client's SpellCooldowns (tools/spell-list-check cache): Era's Tranquility is 5 minutes
+do
+	local len
+	for _, row in ipairs(P.RAID.era) do if row[1] == 740 then len = row[2] end end
+	check("Era raid list: Tranquility 300 s, as the game data has it", len == 300, tostring(len))
+end
 
 ---------------------------------------------------------------- Caster lane: a fake CooldownCollaborator
 RAID_CLASS_COLORS.DRUID = { r = 1, g = 0.49, b = 0.04 }
@@ -368,6 +384,19 @@ ITEMCD = { [101] = { NOW - 25, 120, 1 } }
 trF.data.currentCD = 95
 RunOnUpdate(0.3, 2)
 check("  a trinket on cooldown: its slot says cooling with the time (1:35)", st.slots[4].state.__text == "cooling" and tostring(st.slots[4].count.__text):match("^1:3%d$") ~= nil,tostring(st.slots[4].state.__text) .. " " .. tostring(st.slots[4].count.__text))
+-- the look of the "Burst strip" choice (looks-boards.html fp24)
+do
+	local s3, s4 = st.slots[3], st.slots[4]
+	check("look: a dark panel 252 x 88, five 40 px slots with a gold label above", st.__w == 252 and st.__h == 88 and s3.tx.__w == 40 and s3.tx.__h == 40
+		and s3.label.__rgb and s3.label.__rgb[1] == 1 and near(s3.label.__rgb[2], 0.82) and s3.label.__rgb[3] == 0 and st.shadow and #st.shadow == 4,
+		tostring(st.__w) .. "x" .. tostring(st.__h))
+	check("  a waiting slot: green ready under it and READY on the icon", s3.state.__text == "ready" and near(s3.state.__rgb[2], 0.941, 0.01) and s3.count.__text == "READY"
+		and s3.tx.__desat == false and not s3.dim.__shown and not s3.ring[1].__shown)
+	check("  a cooling slot: grey word, greyed icon under a dark veil", s4.state.__text == "cooling" and near(s4.state.__rgb[1], 0.604, 0.01) and s4.tx.__desat == true and s4.dim.__shown == true)
+	if lustF then
+		check("  an up slot: green word, normal icon", st.slots[1].state.__text == "up" and near(st.slots[1].state.__rgb[2], 0.941, 0.01) and st.slots[1].tx.__desat == false)
+	end
+end
 -- dragging: only while the frames are unlocked
 local before = g.group.stripX
 st.__scripts.OnDragStart(st)

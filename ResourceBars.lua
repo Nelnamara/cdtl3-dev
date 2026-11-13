@@ -153,6 +153,16 @@ private.AtLeast = function(current, value)
 	return current >= value
 end
 
+-- Stagger's number is a percent of max health (for pcall: the values can be hidden)
+private.StaggerAtLeast = function(stagger, max, pct)
+	return stagger * 100 >= pct * max
+end
+
+-- Primary Tracking choices the colour change works on
+private.Thresholded = function(kind)
+	return kind == "CLASS_POWER" or kind == "STAGGER"
+end
+
 private.SetHot = function(f, th, hot)
 	if hot then
 		local c = th["color"]
@@ -173,7 +183,7 @@ private.ThresholdTick = function(f)
 	end
 
 	local th = tr["threshold"]
-	if not (th and th["enabled"] and tr["primaryTracking"] == "CLASS_POWER") then
+	if not (th and th["enabled"] and private.Thresholded(tr["primaryTracking"])) then
 		if f.cdtl3Hot then
 			private.SetHot(f, th or private.noThreshold, false)
 		end
@@ -187,11 +197,20 @@ private.ThresholdTick = function(f)
 
 	-- the value is compared in a pcall: while it is hidden that fails, and the fill keeps its normal color
 	local hot = nil
-	local pType = CDTL3.player["classPower"]
-	if pType then
-		local ok, over = pcall(private.AtLeast, UnitPower("player", pType), tonumber(th["value"]) or 0)
-		if ok and over == true then
-			hot = true
+	if tr["primaryTracking"] == "STAGGER" then
+		if UnitStagger then
+			local ok, over = pcall(private.StaggerAtLeast, UnitStagger("player") or 0, UnitHealthMax("player"), tonumber(th["value"]) or 0)
+			if ok and over == true then
+				hot = true
+			end
+		end
+	else
+		local pType = CDTL3.player["classPower"]
+		if pType then
+			local ok, over = pcall(private.AtLeast, UnitPower("player", pType), tonumber(th["value"]) or 0)
+			if ok and over == true then
+				hot = true
+			end
 		end
 	end
 
@@ -247,7 +266,7 @@ function CDTL3:AddResourceBarArgs(args, i, lane)
 		CDTL3:RefreshLane(i)
 	end
 	local function notClassPower()
-		return lane["tracking"]["primaryTracking"] ~= "CLASS_POWER"
+		return not private.Thresholded(lane["tracking"]["primaryTracking"])
 	end
 	local function noThreshold()
 		return notClassPower() or not lane["tracking"]["threshold"]["enabled"]
@@ -259,7 +278,7 @@ function CDTL3:AddResourceBarArgs(args, i, lane)
 	args["spacer619"] = { name = "\n", type = "description", order = 619 }
 	args["thresholdEnabled"] = {
 		name = L["Change color at"],
-		desc = L["With Primary Tracking on Class Power, the whole bar takes another color while your resource is at or above the number below. On Retail and WoW: Forever the number is hidden in combat and can't be compared, so the bar keeps its normal color there."],
+		desc = L["With Primary Tracking on Class Power or Stagger, the whole bar takes another color while your resource is at or above the number below. On Retail and WoW: Forever the number is hidden in combat and can't be compared, so the bar keeps its normal color there."],
 		order = 620,
 		type = "toggle",
 		get = function(info) return lane["tracking"]["threshold"]["enabled"] end,
@@ -270,7 +289,7 @@ function CDTL3:AddResourceBarArgs(args, i, lane)
 	}
 	args["thresholdValue"] = {
 		name = L["At or above"],
-		desc = L["The resource number the bar changes color at, such as 40 rage."],
+		desc = L["The resource number the bar changes color at, such as 40 rage. For Stagger it is a percent of your max health."],
 		order = 621,
 		type = "input",
 		width = "half",
