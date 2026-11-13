@@ -197,16 +197,22 @@ do
 	cast(2139)
 	check("a new spell that isn't ignored: no note", not chatSince(n, "won't show") and not CDTL3.db.global.autoIgnoreNoted)
 	cast(133)
-	check("first automatic ignore (Fireball, no cooldown): one chat line", chatSince(n, "Fireball won't show: CDTL3 ignored it because its cooldown is 3 s or less"))
+	check("a spell of 3 s or less (Fireball) is ignored without the note", find("spells", "Fireball") and find("spells", "Fireball").ignored
+		and not chatSince(n, "won't show") and not CDTL3.db.global.autoIgnoreNoted)
+	CDTL3:NoteAutoIgnore({ name = "Ice Block", bCD = 7200000 }, "spells")
+	check("first ignore over the Ignore Threshold: one chat line", chatSince(n, "Ice Block won't show: CDTL3 ignored it because")
+		and chatSince(n, "Ignore Threshold"))
 	check("  it says where to undo it", chatSince(n, "/cdtl3 filters") and chatSince(n, "Spells tab") and chatSince(n, "Show anyway"))
 	check("  saved flag set (account-wide)", CDTL3.db.global.autoIgnoreNoted == true)
 	n = #CHAT
-	cast(116)
-	check("the next automatic ignore (Frostbolt): no second note", find("spells", "Frostbolt") and find("spells", "Frostbolt").ignored and not chatSince(n, "won't show"))
+	CDTL3:NoteAutoIgnore({ name = "Divine Shield", bCD = 7200000 }, "spells")
+	check("the next one: no second note", not chatSince(n, "won't show"))
 	CDTL3.db.global.autoIgnoreNoted = nil
 	n = #CHAT
 	CDTL3:NoteAutoIgnore({ name = "Hearthstone", itemName = "Hearthstone", bCD = 0 }, "items")
-	check("an item learned as no cooldown: names the Items tab", chatSince(n, "Hearthstone won't show") and chatSince(n, "Items tab"))
+	check("an item learned as no cooldown: no note", not chatSince(n, "won't show") and not CDTL3.db.global.autoIgnoreNoted)
+	CDTL3:NoteAutoIgnore({ name = "Hearthstone", itemName = "Hearthstone", bCD = 7200000 }, "items")
+	check("an item over the Items threshold: names the Items tab", chatSince(n, "Hearthstone won't show") and chatSince(n, "Items tab"))
 	CDTL3.db.global.autoIgnoreNoted = nil
 	n = #CHAT
 	CDTL3:NoteAutoIgnore({ name = "Mid", bCD = 60000 }, "spells")

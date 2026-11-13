@@ -1518,10 +1518,15 @@ private.AutoIgnoreText = function(s, kind)
 	end
 end
 
--- The first automatic ignore ever (on this account) says so in chat, once
+-- The first time a long cooldown is ignored for going over the Ignore Threshold (on this account),
+-- chat says so, once. Spells of 3 s or less are skipped: those ignores are expected (Frostbolt, Fireball)
+-- and would use up the note before the case it's for, a 3-minute defensive that vanished.
 function CDTL3:NoteAutoIgnore(s, kind)
 	local g = CDTL3.db and CDTL3.db.global
 	if not g or g["autoIgnoreNoted"] or type(s) ~= "table" or not private.filterTabNames[kind] then
+		return
+	end
+	if (tonumber(s["bCD"]) or 0) <= 3000 then
 		return
 	end
 
