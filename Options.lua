@@ -1400,6 +1400,7 @@ function CDTL3:GetMainOptions()
 
 	private.AddSchoolColorArgs(options.args.colors.args)
 	private.AddStyleArgs(options.args)
+	private.AddPreviewArgs(options.args.global.args)
 
 	return options
 end
@@ -1940,8 +1941,9 @@ function CDTL3:GetReadyOptions()
 			ready3 = private.GetReadySet(3),
 		}
 	}
-	
-	return options	
+	private.AddReadySoundArgs(options.args)
+
+	return options
 end
 
 function CDTL3:GetBarFrameOptions()
@@ -2794,6 +2796,7 @@ private.GetBarFrameSet = function(i)
 	private.AddBorderArgs(options.args.bars.args, 400, function() return frame["bar"]["border"] end, function() CDTL3:RefreshAllBars() end)
 
 	private.AddCopyArgs(options.args.general.args, "barFrames", i, "Bar Frame")
+	private.AddShowArgs(options.args.general.args, function() return frame end, function() CDTL3:RefreshBarFrame(i) end)
 
 	return options
 end
@@ -4016,6 +4019,7 @@ private.GetFilterSet = function(t, o)
 	}
 
 	private.AddEntryColorArgs(options.args, t)
+	private.AddEntryReadyArgs(options.args, t)
 
 	-- Combat timers: tell the user if this buff gets an exact timer in combat
 	if t == "buffs" then
@@ -5999,6 +6003,7 @@ private.GetLaneSet = function(i)
 	private.AddBorderArgs(options.args.icons.args, 300, function() return lane["icons"]["border"] end, function() CDTL3:RefreshAllIcons() end)
 
 	private.AddCopyArgs(options.args.general.args, "lanes", i, "Lane")
+	private.AddShowArgs(options.args.general.args, function() return lane end, function() CDTL3:RefreshLane(i) end)
 
 	return options
 end
@@ -6509,6 +6514,8 @@ private.GetReadySet = function(i)
 	private.AddBorderArgs(options.args.icons.args, 300, function() return ready["icons"]["border"] end, function() CDTL3:RefreshAllIcons() end)
 
 	private.AddCopyArgs(options.args.general.args, "ready", i, "Ready Frame")
+	private.AddReadyTestArgs(options.args.general.args, ready)
+	private.AddShowArgs(options.args.general.args, function() return ready end, function() CDTL3:RefreshReady(i) end)
 
 	return options
 end
@@ -7004,4 +7011,227 @@ private.ConfirmProfileWipes = function(profile)
 
 	profile.args = args
 	private.profileArgs = args
+end
+
+-- Per-entry ready alerts (Filters): its own Ready sound, Flash when ready and Say its name when
+-- ready (where the client has text to speech). Off by default: the Ready frame's sounds as before.
+-- Read when the cooldown reaches its Ready frame (private.ReadyAlert, Cooldown.lua).
+private.AddEntryReadyArgs = function(args, t)
+	local function hidden()
+		return CDTL3.currentFilterHidden[t]
+	end
+	local function entry()
+		return private.FilterEntry(t)
+	end
+	local function get(key)
+		local s = entry()
+		return s and s[key] or false
+	end
+	local function set(key, val)
+		local s = entry()
+		if s then
+			s[key] = val
+		end
+	end
+	-- the Ready frame this entry goes to (its Normal Sound is where an own sound starts)
+	local function readyFrame(s)
+		local n = s and tonumber(s["readyFrame"])
+		return CDTL3.db.profile.ready["ready" .. ((n and n >= 1 and n <= 3) and n or 1)]
+	end
+
+	args["spacer750"] = {
+		name = "\n",
+		type = "description",
+		order = 750,
+		hidden = hidden,
+	}
+	args["ownSound"] = {
+		name = "Own ready sound",
+		desc = "Play this sound when it's ready, instead of its Ready frame's Normal or Highlight Sound",
+		order = 751,
+		type = "toggle",
+		hidden = hidden,
+		get = function(info) return get("ownSound") end,
+		set = function(info, val)
+				local s = entry()
+				if s and val and not s["sound"] then
+					s["sound"] = readyFrame(s)["nSound"]
+				end
+				set("ownSound", val)
+			end,
+	}
+	args["sound"] = {
+		name = "Ready Sound",
+		desc = "The sound this plays when it's ready",
+		order = 752,
+		type = "select",
+		dialogControl = 'LSM30_Sound',
+		values = AceGUIWidgetLSMlists.sound,
+		hidden = function(info)
+				return hidden() or not get("ownSound")
+			end,
+		get = function(info)
+				local s = entry()
+				return s and s["sound"] or "None"
+			end,
+		set = function(info, val) set("sound", val) end,
+	}
+	args["spacer753"] = {
+		name = "",
+		type = "description",
+		order = 753,
+		hidden = hidden,
+	}
+	args["readyFlash"] = {
+		name = "Flash when ready",
+		desc = "Its icon flashes (the Flash Icon highlight) while it waits in the Ready frame",
+		order = 754,
+		type = "toggle",
+		hidden = hidden,
+		get = function(info) return get("readyFlash") end,
+		set = function(info, val)
+				set("readyFlash", val)
+				-- an icon waiting in its Ready frame right now flashes, or stops, at once
+				local s = entry()
+				if s and s ~= CDTL3.custom then
+					local name = CDTL3.currentFilter[t]
+					for _, cd in pairs(CDTL3.cooldowns) do
+						if cd.data["type"] == t and (cd.data["name"] == name or cd.data["itemName"] == name) then
+							local p = cd.icon:GetParent()
+							local n = p and p:GetName()
+							if n == "CDTL3_Ready_1_MF" or n == "CDTL3_Ready_2_MF" or n == "CDTL3_Ready_3_MF" then
+								cd.data["readyLit"] = val and true or nil
+								CDTL3:RefreshIcon(cd)
+							end
+						end
+					end
+				end
+			end,
+	}
+	args["sayName"] = {
+		name = "Say its name when ready",
+		desc = "The game's text to speech says its name when it's ready (voice, speed and volume from the game's Text to Speech options)",
+		order = 755,
+		type = "toggle",
+		width = 1.3,
+		hidden = function(info)
+				return hidden() or not CDTL3:CanSpeak()
+			end,
+		get = function(info) return get("sayName") end,
+		set = function(info, val) set("sayName", val) end,
+	}
+end
+
+-- Ready tab, above the Ready frames' tabs: one switch for every ready sound
+private.AddReadySoundArgs = function(args)
+	args["muteReadySounds"] = {
+		name = "Mute ready sounds",
+		desc = "No sound when something is ready: the Ready frames' sounds, the spells' own Ready sounds and spoken names are all silenced",
+		order = 10,
+		type = "toggle",
+		width = "full",
+		get = function(info) return CDTL3.db.profile.global["muteReadySounds"] end,
+		set = function(info, val) CDTL3.db.profile.global["muteReadySounds"] = val end,
+	}
+end
+
+-- Ready frame > General: a Play sound button beside each sound picker (it plays even while
+-- Mute ready sounds is on, so a sound can still be picked)
+private.AddReadyTestArgs = function(args, ready)
+	local function play(key)
+		local sound = ready[key]
+		if sound and sound ~= "None" then
+			PlaySoundFile(CDTL3.LSM:Fetch("sound", sound), "SFX")
+		end
+	end
+
+	args["nSoundTest"] = {
+		name = "Play sound",
+		desc = "Plays the Normal Sound once, so you can hear it",
+		order = 303,
+		type = "execute",
+		width = "half",
+		func = function(info) play("nSound") end,
+	}
+	args["hSoundTest"] = {
+		name = "Play sound",
+		desc = "Plays the Highlight Sound once, so you can hear it",
+		order = 403,
+		type = "execute",
+		width = "half",
+		func = function(info) play("hSound") end,
+	}
+end
+
+-- Show (each lane, bar frame and ready frame > General): when the frame shows, and Dim instead
+-- of hide. Defaults follow Global > Hide out of combat, as before (CDTL3:ShowRuleHides, Helpers.lua).
+private.SHOW_MODES = {
+	["GLOBAL"] = "Use the global setting",
+	["ALWAYS"] = "Always",
+	["COMBAT"] = "Only in combat",
+	["BOSS"] = "Boss fights only",
+}
+
+private.AddShowArgs = function(args, settings, refresh)
+	args["showHeader"] = {
+		name = "",
+		type = "header",
+		order = 850,
+	}
+	args["showMode"] = {
+		name = "Show",
+		desc = "When this frame shows. Use the global setting follows Hide out of combat on the Global tab",
+		order = 851,
+		type = "select",
+		values = private.SHOW_MODES,
+		sorting = { "GLOBAL", "ALWAYS", "COMBAT", "BOSS" },
+		get = function(info) return settings()["showMode"] or "GLOBAL" end,
+		set = function(info, val)
+				settings()["showMode"] = val
+				refresh()
+			end,
+	}
+	args["dimInsteadOfHide"] = {
+		name = "Dim instead of hide",
+		desc = "When Show would hide this frame, it stays faintly visible instead",
+		order = 852,
+		type = "toggle",
+		disabled = function(info) return settings()["showMode"] == "ALWAYS" end,
+		get = function(info) return settings()["dimInsteadOfHide"] end,
+		set = function(info, val)
+				settings()["dimInsteadOfHide"] = val
+				refresh()
+			end,
+	}
+	args["dimAlpha"] = {
+		name = "Dimmed alpha",
+		desc = "How visible the frame is while dimmed (0 is invisible, 1 is fully shown)",
+		order = 853,
+		type = "range",
+		min = 0,
+		max = 1,
+		step = 0.05,
+		isPercent = true,
+		hidden = function(info) return not settings()["dimInsteadOfHide"] end,
+		get = function(info) return settings()["dimAlpha"] end,
+		set = function(info, val)
+				settings()["dimAlpha"] = val
+				refresh()
+			end,
+	}
+end
+
+-- Global tab, first thing: Preview with sample icons, Stop preview while it runs (the test mode;
+-- CDTL3:TogglePreview, CDTL3.lua)
+private.AddPreviewArgs = function(args)
+	args["preview"] = {
+		name = function(info)
+				return CDTL3.testing and "Stop preview" or "Preview with sample icons"
+			end,
+		desc = "Fills the lanes, bar frames and ready frames with sample icons, so you can see them and move them while frames are unlocked. The Test Panel that opens changes the samples. Click again to stop.",
+		order = 1,
+		type = "execute",
+		width = 1.4,
+		func = function(info) CDTL3:TogglePreview() end,
+	}
 end

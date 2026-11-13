@@ -54,6 +54,13 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
   old code (kept in the file as the reference) over 864 layouts, the secondary marker on vertical lanes
   and on a hidden GCD, Secondary Tracking from the options, live lane texts, Hide out of combat by
   frame number, Override Autohide on an empty lane, whole Split Counts, Edit Mode ranges.
+- `show.lua`: show, sound and first steps (feature panel of 12 Nov 2026, cards 1, 7, 11, 12, 16): a
+  spell's own Ready sound, Flash when ready, Say its name when ready (with and without text to speech),
+  Mute ready sounds and the Play sound buttons; Show per lane, bar frame and ready frame (Always, Only
+  in combat, Boss fights only from the encounter events, boss1 or the game's in-progress flag, Dim
+  instead of hide) against Hide out of combat, test mode and unlock; Preview with sample icons and
+  the minimap Shift-click; the unlock box's move-then-lock wording until the first lock; the first
+  counted flight's one chat line.
 - The `/cdtl3 probe` test build and its `probe.lua` harness live on branch `cdm-probe`.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).

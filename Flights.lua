@@ -705,7 +705,20 @@ private.Takeoff = function()
 	}
 	if flight.duration then
 		private.ShowCountdown(flight)
+		pcall(private.FirstFlightNote, flight)
 	end
+end
+
+-- The first flight CDTL3 counts down (ever, on this game client: account-wide), one chat line
+-- says whose countdown it is and where to turn it off
+private.FirstFlightNote = function(flight)
+	local g = CDTL3.db.global
+	if g.flightNoteShown then
+		return
+	end
+	g.flightNoteShown = true
+	local to = type(flight.name) == "string" and flight.name ~= "" and (" to " .. flight.name) or ""
+	CDTL3:Print("The countdown" .. to .. " is CDTL3's flight timer. To turn flight timers off: /cdtl3, Global tab, Flight timers.")
 end
 
 private.Land = function()

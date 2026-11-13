@@ -1,0 +1,458 @@
+-- Show, sound and first steps (feature panel of 12 Nov 2026, cards 1, 7, 11, 12, 16): per-spell
+-- ready sounds, Flash when ready and a spoken name, Mute ready sounds and Play sound; Show per
+-- lane, bar frame and ready frame (always, only in combat, boss fights only, dim instead of hide);
+-- the Preview button and the minimap Shift-click; the unlock box's move-then-lock wording until
+-- the first lock; the first flight's chat line. Real files, real AceDB.
+dofile(HARNESS_DIR .. "/wow.lua")
+PLAYER.class = "MAGE"
+local ME = PLAYER.guid
+
+-- a GetChildren that works (the stub's returns nothing): the frames parented to self
+local mt = getmetatable(UIParent)
+local oldIndex = mt.__index
+local skipTypes = { Texture = true, FontString = true, AnimationGroup = true, Animation = true }
+local function kids(self)
+	local out = {}
+	for _, f in ipairs(GetAllFrames()) do
+		if rawget(f, "__parent") == self and f ~= self and not skipTypes[rawget(f, "__otype")] then
+			out[#out + 1] = f
+		end
+	end
+	return table.unpack(out)
+end
+mt.__index = function(t, k)
+	if k == "GetChildren" then return kids end
+	return oldIndex(t, k)
+end
+
+-- text to speech as every client documents it today: C_VoiceChat.SpeakText(voiceID, text, rate,
+-- volume, overlap) and the player's voice settings in C_TTSSettings (a case below takes it away)
+local SPOKEN = {}
+local VOICE = 3
+local VoiceChat = {
+	SpeakText = function(voiceID, text, rate, volume, overlap)
+		SPOKEN[#SPOKEN + 1] = { voiceID = voiceID, text = text, rate = rate, volume = volume, overlap = overlap }
+	end,
+	GetTtsVoices = function() return { { voiceID = 7, name = "Voice" } } end,
+}
+local TTSSettings = {
+	GetVoiceOptionID = function() return VOICE end,
+	GetSpeechRate = function() return 2 end,
+	GetSpeechVolume = function() return 80 end,
+}
+C_VoiceChat, C_TTSSettings = VoiceChat, TTSSettings
+
+local function entry(id, name, extra)
+	local e = { id = id, name = name, type = "spells", icon = 1, bCD = 30000, lane = 1, barFrame = 1, readyFrame = 1,
+		enabled = true, ignored = false, highlight = false, pinned = false, usedBy = { ME }, setCustomCD = false }
+	for k, v in pairs(extra or {}) do e[k] = v end
+	return e
+end
+local SPELLS = {
+	[911] = { "Plain Spell" },
+	[912] = { "Own Sound Spell", { ownSound = true, sound = "CDTL3 Tinks" } },
+	[913] = { "Silent Spell", { ownSound = true, sound = "None" } },
+	[914] = { "Flash Spell", { readyFlash = true } },
+	[915] = { "Say Spell", { sayName = true } },
+	[916] = { "Ready2 Spell", { readyFrame = 2 } },
+}
+local list = {}
+for id, s in pairs(SPELLS) do
+	list[#list + 1] = entry(id, s[1], s[2])
+	SPELLINFO[id] = { s[1], 1 }
+	KNOWN[id] = true
+end
+CDTL3DB = { profileKeys = { ["Tester - Realm"] = "Default" }, profiles = { Default = { tables = { spells = list } } } }
+
+LoadTOC(HARNESS_TOCFILE)
+Login()
+Advance(11)
+local base = #ERRORS
+local fails = 0
+local function check(label, ok, detail)
+	if not ok then fails = fails + 1 end
+	print(string.format("  %-4s %s %s", ok and "ok" or "FAIL", label, (tostring(detail or ""):gsub("\n", " / "))))
+end
+local g = CDTL3.db.profile.global
+local function chatSince(n, text)
+	for i = n + 1, #CHAT do
+		if tostring(CHAT[i]):find(text, 1, true) then return true end
+	end
+	return false
+end
+
+-- the stub's fade animations do nothing: finish them at once
+local function instantFades(fr, alpha)
+	if fr.animateOut then fr.animateOut.Play = function() fr:SetAlpha(0) end end
+	if fr.animateIn then fr.animateIn.Play = function() fr:SetAlpha(alpha or 1) end end
+end
+
+---------------------------------------------------------------- card 12: move, then lock
+print("[12 move-then-lock " .. FLAVOR .. "]")
+do
+	local box = CDTL3.unlockFrame
+	local editMode = LibStub("LibEditMode", true) ~= nil
+	local text = box.text:GetText() or ""
+	check("fresh install: frames unlocked, the box is up", g.unlockFrames == true and box:IsShown())
+	check("  it says to drag the frames, then click Lock", text:find("Drag the frames where you want them", 1, true) ~= nil
+		and text:find("then click Lock", 1, true) ~= nil, text)
+	check("  Edit Mode named only where CDTL3's frames are in Edit Mode (" .. (editMode and "yes" or "no") .. " here)",
+		(text:find("Edit Mode can place them too", 1, true) ~= nil) == editMode, text)
+	check("  the box grows to fit the extra lines", box:GetHeight() >= 96, tostring(box:GetHeight()))
+	local btn = _G["CDTL3_Unlock_Frame_Button"]
+	xpcall(btn.__scripts.OnClick, ERRH, btn)
+	check("Lock: frames locked, box hidden, the first lock saved account-wide",
+		g.unlockFrames == false and not box:IsShown() and CDTL3.db.global.lockedOnce == true)
+	CDTL3:ToggleFrameLock()
+	if box.__scripts.OnShow then box.__scripts.OnShow(box) end	-- the game runs OnShow when Show() shows it
+	text = box.text:GetText() or ""
+	check("unlocked again: the box is up with its plain wording", box:IsShown() and text == "CDTL3\nFrames currently unlocked\nDrag and drop to move", text)
+	check("  back to its old size", box:GetWidth() == 180 and box:GetHeight() == 70, box:GetWidth() .. "x" .. box:GetHeight())
+	CDTL3:ToggleFrameLock()
+	check("locked again", g.unlockFrames == false)
+end
+
+local played = {}
+PlaySoundFile = function(path) played[#played + 1] = path; return true end
+local function P(name) return CDTL3.LSM:Fetch("sound", name) end
+local function cast(id, dur)
+	SPELLCD[id] = { startTime = NOW, duration = dur, isEnabled = true, isActive = true, modRate = 1, isOnGCD = false }
+	FireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-" .. id, id)
+end
+local function live(name) return CDTL3:GetExistingCooldown(name, "spells") end
+local function pname(fr) local p = fr:GetParent(); return p and p:GetName() or "nil" end
+-- cast, then the game says ready: what played, and the frame
+local function ready(id)
+	played = {}
+	cast(id, 30)
+	RunOnUpdate(0.02, 5)
+	SPELLCD[id] = nil
+	RunOnUpdate(0.02, 55)
+	return live(SPELLS[id][1])
+end
+local function leave() RunOnUpdate(0.1, 80) end	-- past every Normal Duration
+local function playedOnly(name) return #played == 1 and played[1] == P(name) end
+local function shown(fr) return tostring(#played) .. " played: " .. table.concat(played, ", ") end
+
+---------------------------------------------------------------- card 1: ready sounds, flash, spoken name
+print("[1 ready sounds, flash, spoken name " .. FLAVOR .. "]")
+do
+	local F = ready(911)
+	check("no own sound: its Ready frame's Normal Sound, as before", F and pname(F.icon) == "CDTL3_Ready_1_MF" and playedOnly("CDTL3 Click"), shown())
+	leave()
+	F = ready(916)
+	check("  in Ready 2: Ready 2's Normal Sound", F and pname(F.icon) == "CDTL3_Ready_2_MF" and playedOnly("CDTL3 Tinks"), shown())
+	leave()
+	F = ready(912)
+	check("Own ready sound: its own sound, not the frame's", playedOnly("CDTL3 Tinks"), shown())
+	leave()
+	ready(913)
+	check("Own ready sound None: silent", #played == 0, shown())
+	leave()
+
+	-- Flash when ready
+	F = ready(914)
+	local hl = F and F.icon.hl
+	check("Flash when ready: the icon flashes in Ready 1 (the Flash Icon highlight)", hl and hl:IsShown() and hl.agPulse ~= nil
+		and pname(F.icon) == "CDTL3_Ready_1_MF", hl and tostring(hl:IsShown()))
+	leave()
+	check("  back out of Ready: no flash", pname(F.icon) ~= "CDTL3_Ready_1_MF" and not F.icon.hl:IsShown(), pname(F.icon))
+	local plain = live("Plain Spell")
+	check("  an icon without it never flashes", not (plain.icon.hl and plain.icon.hl:IsShown()))
+
+	-- Say its name when ready
+	SPOKEN = {}
+	F = ready(915)
+	local said = SPOKEN[1]
+	check("Say its name when ready: spoken once, with the player's voice, speed and volume", #SPOKEN == 1 and said.text == "Say Spell"
+		and said.voiceID == VOICE and said.rate == 2 and said.volume == 80 and said.overlap == false,
+		said and string.format("%d said, %s voice %s", #SPOKEN, tostring(said.text), tostring(said.voiceID)))
+	check("  and its sound still plays", playedOnly("CDTL3 Click"), shown())
+	leave()
+	VOICE = nil
+	SPOKEN = {}
+	ready(915)
+	check("no voice picked in the game's options: the first voice", #SPOKEN == 1 and SPOKEN[1].voiceID == 7, SPOKEN[1] and tostring(SPOKEN[1].voiceID))
+	leave()
+	VOICE = 3
+
+	-- the Filters controls
+	local fa = CDTL3:GetFilterOptions().args.spells.args
+	CDTL3.currentFilter["spells"] = "Plain Spell"
+	CDTL3.currentFilterHidden["spells"] = false
+	local e = CDTL3:GetSpellSettings("Plain Spell", "spells")
+	check("Filters: all four controls are there, nothing ticked by default", fa.ownSound and fa.sound and fa.readyFlash and fa.sayName
+		and fa.ownSound.get({}) == false and fa.readyFlash.get({}) == false and fa.sayName.get({}) == false)
+	check("  each has a tooltip", fa.ownSound.desc ~= "" and fa.sound.desc ~= "" and fa.readyFlash.desc ~= "" and fa.sayName.desc ~= "")
+	check("  Ready Sound hidden until Own ready sound is ticked", fa.sound.hidden({}) == true)
+	fa.ownSound.set({}, true)
+	check("ticking Own ready sound starts from its Ready frame's Normal Sound", e.ownSound == true and e.sound == "CDTL3 Click"
+		and fa.sound.hidden({}) == false and fa.sound.get({}) == "CDTL3 Click", tostring(e.sound))
+	fa.sound.set({}, "CDTL3 Rattle")
+	ready(911)
+	check("  picked Rattle: Rattle plays", playedOnly("CDTL3 Rattle"), shown())
+	leave()
+	fa.ownSound.set({}, false)
+	ready(911)
+	check("  unticked: the frame's sound again, the pick kept for next time", playedOnly("CDTL3 Click") and e.sound == "CDTL3 Rattle", shown())
+	leave()
+	fa.readyFlash.set({}, true)
+	F = ready(911)
+	check("Flash when ready ticked in Filters: it flashes", F.icon.hl and F.icon.hl:IsShown())
+	fa.readyFlash.set({}, false)
+	check("  unticked while it waits in Ready: the flash stops at once", not F.icon.hl:IsShown())
+	leave()
+	check("Say its name shown where the game has text to speech", fa.sayName.hidden({}) == false)
+	C_VoiceChat = nil
+	check("  hidden where it doesn't", fa.sayName.hidden({}) == true and CDTL3:CanSpeak() == false)
+	SPOKEN = {}
+	local e0 = #ERRORS
+	ready(915)
+	check("  a saved Say on such a client: no speech, no error, the sound plays", #SPOKEN == 0 and #ERRORS == e0 and playedOnly("CDTL3 Click"), shown())
+	leave()
+	C_VoiceChat = VoiceChat
+	CDTL3.currentFilter["spells"] = "<< Select >>"
+	CDTL3.currentFilterHidden["spells"] = true
+
+	-- the Ready tab: Mute ready sounds and Play sound
+	local ra = CDTL3:GetReadyOptions().args
+	check("Ready tab: Mute ready sounds, off by default, with a tooltip", ra.muteReadySounds and ra.muteReadySounds.get({}) == false
+		and g.muteReadySounds == false and ra.muteReadySounds.desc ~= "")
+	ra.muteReadySounds.set({}, true)
+	SPOKEN = {}
+	ready(911); local n1 = #played; leave()
+	ready(912); local n2 = #played; leave()
+	ready(915); local n3 = #played; leave()
+	check("muted: no Ready frame sound, no own sound, nothing spoken", n1 == 0 and n2 == 0 and n3 == 0 and #SPOKEN == 0,
+		string.format("%d %d %d, %d said", n1, n2, n3, #SPOKEN))
+	F = ready(914)
+	check("  a muted Flash when ready still flashes", F.icon.hl and F.icon.hl:IsShown())
+	leave()
+	local gen = ra.ready1.args.general.args
+	played = {}
+	gen.nSoundTest.func({})
+	check("Ready 1 > Play sound (Normal): plays it, even muted", playedOnly("CDTL3 Click") and gen.nSoundTest.name == "Play sound", shown())
+	played = {}
+	gen.hSoundTest.func({})
+	check("  Play sound (Highlight) with Highlight Sound None: nothing", #played == 0, shown())
+	CDTL3.db.profile.ready.ready1.hSound = "CDTL3 Tinks"
+	played = {}
+	gen.hSoundTest.func({})
+	check("  with Tinks picked: Tinks", playedOnly("CDTL3 Tinks"), shown())
+	CDTL3.db.profile.ready.ready1.hSound = "None"
+	ra.muteReadySounds.set({}, false)
+	ready(911)
+	check("unmuted: sounds again", playedOnly("CDTL3 Click"), shown())
+	leave()
+end
+
+---------------------------------------------------------------- card 7: Show modes
+print("[7 show modes " .. FLAVOR .. "]")
+do
+	local L1, B1, R1 = CDTL3.db.profile.lanes.lane1, CDTL3.db.profile.barFrames.frame1, CDTL3.db.profile.ready.ready1
+	local lane, bar, rdy = CDTL3_Lane_1, CDTL3_BarFrame_1, CDTL3_Ready_1
+	instantFades(lane, L1.alpha); instantFades(bar, 1); instantFades(rdy, 1)
+	local function refresh() CDTL3:RefreshLane(1); CDTL3:RefreshBarFrame(1); CDTL3:RefreshReady(1) end
+	local function alphas() return string.format("lane %s bar %s ready %s", tostring(lane:GetAlpha()), tostring(bar:GetAlpha()), tostring(rdy:GetAlpha())) end
+	local allDefault = true
+	for _, grp in ipairs({ { CDTL3.db.profile.lanes, "lane" }, { CDTL3.db.profile.barFrames, "frame" }, { CDTL3.db.profile.ready, "ready" } }) do
+		for i = 1, 3 do
+			local s = grp[1][grp[2] .. i]
+			if not (s.showMode == "GLOBAL" and s.dimInsteadOfHide == false and s.dimAlpha == 0.3) then allDefault = false end
+		end
+	end
+	check("every lane, bar frame and ready frame starts on Use the global setting, no dim", allDefault)
+	CDTL3.combat = false
+	refresh()
+	check("global Hide out of combat off: all shown out of combat, as before", lane:GetAlpha() == L1.alpha and bar:GetAlpha() == 1 and rdy:GetAlpha() == 1, alphas())
+	local spy = 0
+	local realLane = CDTL3.RefreshLane
+	CDTL3.RefreshLane = function(...) spy = spy + 1; return realLane(...) end
+	CDTL3:ApplyCombatVisibility()
+	check("  nothing set to hide: the combat edge refreshes nothing, as before", spy == 0, tostring(spy))
+	CDTL3.RefreshLane = realLane
+
+	-- Only in combat, on the lane alone
+	L1.showMode = "COMBAT"
+	refresh()
+	check("lane 1 Only in combat, out of combat: lane hidden, the others shown", lane:GetAlpha() == 0 and bar:GetAlpha() == 1 and rdy:GetAlpha() == 1, alphas())
+	FireEvent("PLAYER_REGEN_DISABLED")
+	check("  the pull shows it at once", CDTL3.combat and lane:GetAlpha() == L1.alpha, alphas())
+	FireEvent("PLAYER_REGEN_ENABLED")
+	check("  combat ends: hidden again", lane:GetAlpha() == 0, alphas())
+
+	-- Always against the global Hide out of combat
+	g.hideOutOfCombat = true
+	L1.showMode = "ALWAYS"
+	refresh()
+	check("global Hide out of combat on, lane 1 Always: the lane stays, bar and ready frames (global) hide",
+		lane:GetAlpha() == L1.alpha and bar:GetAlpha() == 0 and rdy:GetAlpha() == 0, alphas())
+	g.hideOutOfCombat = false
+
+	-- Boss fights only
+	L1.showMode = "BOSS"
+	FireEvent("PLAYER_REGEN_DISABLED")
+	check("lane 1 Boss fights only, in combat with no boss: hidden", lane:GetAlpha() == 0, alphas())
+	FireEvent("ENCOUNTER_START", 1, "Test Boss", 14, 20)
+	check("  ENCOUNTER_START shows it", lane:GetAlpha() == L1.alpha, alphas())
+	FireEvent("ENCOUNTER_END", 1, "Test Boss", 14, 20, 1)
+	check("  ENCOUNTER_END hides it", lane:GetAlpha() == 0, alphas())
+	FireEvent("ENCOUNTER_START", 2, "Other Boss", 14, 20)
+	FireEvent("PLAYER_ENTERING_WORLD", false, false)
+	check("  a zone change with no ENCOUNTER_END (released mid-fight): hidden", lane:GetAlpha() == 0 and CDTL3.inEncounter == false, alphas())
+	local realUE = UnitExists
+	UnitExists = function(u) if u == "boss1" then return true end return realUE(u) end
+	FireEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
+	check("  a boss unit frame (boss1) shows it", lane:GetAlpha() == L1.alpha, alphas())
+	UnitExists = realUE
+	FireEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
+	check("  boss1 gone: hidden", lane:GetAlpha() == 0, alphas())
+	local realIEP = IsEncounterInProgress
+	IsEncounterInProgress = function() error("attempt to compare a secret boolean value") end
+	local e0 = #ERRORS
+	CDTL3:RefreshLane(1)
+	check("  the game hiding the answer: no boss, no error", lane:GetAlpha() == 0 and #ERRORS == e0 and CDTL3:InBossFight() == false)
+	IsEncounterInProgress = function() return true end
+	CDTL3:RefreshLane(1)
+	check("  the game saying an encounter is in progress (after a /reload mid-fight): shown", lane:GetAlpha() == L1.alpha, alphas())
+	IsEncounterInProgress = realIEP
+	FireEvent("PLAYER_REGEN_ENABLED")
+	check("  out of combat, no boss: hidden", lane:GetAlpha() == 0, alphas())
+
+	-- Dim instead of hide, on the bar frame and the ready frame
+	L1.showMode = "GLOBAL"
+	B1.showMode, B1.dimInsteadOfHide, B1.dimAlpha = "COMBAT", true, 0.4
+	R1.showMode = "COMBAT"
+	refresh()
+	check("bar frame 1 Only in combat + Dim (0.4), ready frame 1 Only in combat: dimmed and hidden out of combat",
+		lane:GetAlpha() == L1.alpha and bar:GetAlpha() == 0.4 and rdy:GetAlpha() == 0, alphas())
+	FireEvent("PLAYER_REGEN_DISABLED")
+	check("  in combat: both fully shown", bar:GetAlpha() == 1 and rdy:GetAlpha() == 1, alphas())
+	FireEvent("PLAYER_REGEN_ENABLED")
+	check("  out again: dimmed and hidden", bar:GetAlpha() == 0.4 and rdy:GetAlpha() == 0, alphas())
+	g.autohide = true
+	refresh()
+	check("  with Auto-hide Frames, the empty dimmed bar frame still goes", bar:GetAlpha() == 0 and bar.childCount == 0, alphas())
+	g.autohide = false
+	refresh()
+
+	-- what always wins
+	CDTL3.testing = true
+	refresh()
+	check("test mode shows them", bar:GetAlpha() == 1 and rdy:GetAlpha() == 1, alphas())
+	CDTL3.testing = false
+	CDTL3:ToggleFrameLock()
+	check("unlocked frames show", bar:GetAlpha() == 1 and rdy:GetAlpha() == 1, alphas())
+	CDTL3:ToggleFrameLock()
+	check("  locked again: dimmed and hidden", bar:GetAlpha() == 0.4 and rdy:GetAlpha() == 0, alphas())
+
+	-- the options (Lanes > Lane 1 > General)
+	local la = CDTL3:GetLaneOptions().args.lane1.args.general.args
+	local v = la.showMode.values
+	check("Lane 1 > General: Show with its four choices, each control with a tooltip", v.GLOBAL == "Use the global setting" and v.ALWAYS == "Always"
+		and v.COMBAT == "Only in combat" and v.BOSS == "Boss fights only" and la.showMode.desc ~= "" and la.dimInsteadOfHide.desc ~= "" and la.dimAlpha.desc ~= "")
+	check("  Dimmed alpha hidden until Dim instead of hide is ticked", la.dimAlpha.hidden({}) == true)
+	la.showMode.set({}, "COMBAT")
+	check("  Show > Only in combat: saved, the lane hides at once", L1.showMode == "COMBAT" and lane:GetAlpha() == 0, alphas())
+	la.dimInsteadOfHide.set({}, true)
+	la.dimAlpha.set({}, 0.5)
+	check("  Dim instead of hide at 0.5: the lane dims at once", lane:GetAlpha() == 0.5 and la.dimAlpha.hidden({}) == false, alphas())
+	la.showMode.set({}, "ALWAYS")
+	check("  Always: shown, and Dim greyed out", lane:GetAlpha() == L1.alpha and la.dimInsteadOfHide.disabled({}) == true, alphas())
+	local ba = CDTL3:GetBarFrameOptions().args.barFrame1.args.general.args
+	local rd = CDTL3:GetReadyOptions().args.ready1.args.general.args
+	check("  the same controls on Bar Frames and Ready", ba.showMode and ba.dimInsteadOfHide and ba.dimAlpha and rd.showMode and rd.dimInsteadOfHide and rd.dimAlpha)
+	for _, s in ipairs({ L1, B1, R1 }) do s.showMode, s.dimInsteadOfHide, s.dimAlpha = "GLOBAL", false, 0.3 end
+	refresh()
+end
+
+---------------------------------------------------------------- card 11: Preview
+print("[11 preview " .. FLAVOR .. "]")
+do
+	local pv = CDTL3:GetMainOptions().args.global.args.preview
+	local function tests()
+		local onLane = 0
+		for _, cd in ipairs(CDTL3.cooldowns) do
+			if cd.data.type == "testing" and pname(cd.icon) ~= "CDTL3_Active_Icon_Holding" then onLane = onLane + 1 end
+		end
+		return onLane
+	end
+	check("Global tab, first: Preview with sample icons, with a tooltip", pv and pv.order == 1 and pv.type == "execute" and pv.name({}) == "Preview with sample icons" and pv.desc ~= "")
+	g.hideOutOfCombat = true
+	CDTL3.combat = false
+	CDTL3:RefreshLane(1)
+	instantFades(CDTL3_Lane_1, CDTL3.db.profile.lanes.lane1.alpha)
+	check("  (Hide out of combat on: lane 1 hidden)", CDTL3_Lane_1:GetAlpha() == 0)
+	pv.func({})
+	check("click: test mode on, the Test Panel open, sample icons on the lanes", CDTL3.testing == true and CDTL3.testingFrame ~= nil
+		and tests() == g.testingNumber, tostring(tests()))
+	check("  the hidden lane shows them", CDTL3_Lane_1:GetAlpha() ~= 0, tostring(CDTL3_Lane_1:GetAlpha()))
+	check("  the button now reads Stop preview", pv.name({}) == "Stop preview")
+	pv.func({})
+	check("Stop preview: test mode off, panel closed, samples cleared", CDTL3.testing == false and CDTL3.testingFrame == nil and tests() == 0, tostring(tests()))
+	check("  lane 1 hidden again, the button back to Preview", CDTL3_Lane_1:GetAlpha() == 0 and pv.name({}) == "Preview with sample icons")
+	g.hideOutOfCombat = false
+	CDTL3:RefreshLane(1)
+
+	CDTL3:StartPreview()
+	CDTL3.testingFrame:Fire("OnClose")	-- the Test Panel's own close button
+	check("closing the Test Panel ends the preview mode too", CDTL3.testing == false and CDTL3.testingFrame == nil and pv.name({}) == "Preview with sample icons")
+	CDTL3:StopPreview()
+
+	-- the minimap button
+	local btn = CDTL3.minimapBtn
+	local lines = {}
+	GameTooltip.AddLine = function(_, text) lines[#lines + 1] = tostring(text) end
+	local function tip() lines = {}; btn.__scripts.OnEnter(btn); return table.concat(lines, " | ") end
+	check("minimap tooltip: Shift-click: Preview with sample icons", tip():find("Shift-click: Preview with sample icons", 1, true) ~= nil, tip())
+	local realShift = IsShiftKeyDown
+	IsShiftKeyDown = function() return true end
+	xpcall(btn.__scripts.OnClick, ERRH, btn, "LeftButton")
+	check("  Shift-click starts the preview", CDTL3.testing == true and tests() == g.testingNumber, tostring(tests()))
+	check("  the tooltip then says Shift-click: Stop preview", tip():find("Shift-click: Stop preview", 1, true) ~= nil, tip())
+	xpcall(btn.__scripts.OnClick, ERRH, btn, "LeftButton")
+	check("  Shift-click again stops it", CDTL3.testing == false and tests() == 0)
+	IsShiftKeyDown = realShift
+	local locked = g.unlockFrames
+	xpcall(btn.__scripts.OnClick, ERRH, btn, "LeftButton")
+	check("  a plain left-click doesn't start it", CDTL3.testing == false)
+	xpcall(btn.__scripts.OnClick, ERRH, btn, "RightButton")
+	check("  right-click still locks and unlocks", g.unlockFrames ~= locked)
+	xpcall(btn.__scripts.OnClick, ERRH, btn, "RightButton")
+	GameTooltip.AddLine = nil
+end
+
+---------------------------------------------------------------- card 16: the first flight says whose timer it is
+print("[16 first flight " .. FLAVOR .. "]")
+do
+	local FL = CDTL3.Flights
+	local Pf = FL and FL.private
+	local function fly(duration)
+		Pf.pending = { key = "1-2", name = "Crossroads", duration = duration, estimated = true, len = 3000, delay = 0, at = GetTime() }
+		Pf.Takeoff()
+		RunOnUpdate(0.1, 5)
+		Pf.Land()
+		RunOnUpdate(0.1, 100)
+	end
+	check("no flight yet: nothing said", CDTL3.db.global.flightNoteShown == nil)
+	local n = #CHAT
+	fly(nil)
+	check("a flight with no countdown: nothing said, still waiting for the first counted one", not chatSince(n, "flight timer")
+		and CDTL3.db.global.flightNoteShown == nil)
+	n = #CHAT
+	fly(60)
+	local said = 0
+	for i = n + 1, #CHAT do
+		if tostring(CHAT[i]):find("CDTL3's flight timer", 1, true) then said = said + 1 end
+	end
+	check("first counted flight: one chat line names CDTL3", said == 1, tostring(said))
+	check("  and where to turn it off (the setting's real place)", chatSince(n, "Global tab, Flight timers")
+		and CDTL3:GetMainOptions().args.global.args.flights.name == "Flight timers")
+	check("  the destination in it", chatSince(n, "The countdown to Crossroads"))
+	check("  saved account-wide", CDTL3.db.global.flightNoteShown == true)
+	n = #CHAT
+	fly(60)
+	check("the next flight: nothing said", not chatSince(n, "flight timer"))
+end
+
+print(string.format("RESULT show %s: fails=%d lua errors=%d", FLAVOR, fails, #ERRORS - base))
