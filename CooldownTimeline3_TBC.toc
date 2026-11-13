@@ -29,4 +29,5 @@ API.lua
 CombatTimers.lua
 FlightData\TBC.lua
 Flights.lua
+Start.lua
 EditMode.lua

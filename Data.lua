@@ -3861,7 +3861,8 @@ private.customTextTimeTags = {
 		tag = "%[cd.time%]",
 		func = function(frame)
 					if frame then
-						return tostring(CDTL3:GetReadableTime(frame.data["currentCD"]))
+						-- a ~ in front of a time CDTL3 counts itself, when the player switched that on (Start.lua)
+						return CDTL3:EstimateMark(frame) .. tostring(CDTL3:GetReadableTime(frame.data["currentCD"]))
 					end
 					
 					return "Error"

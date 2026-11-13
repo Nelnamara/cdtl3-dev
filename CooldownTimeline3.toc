@@ -33,4 +33,5 @@ API.lua
 CombatTimers.lua
 FlightData\Forever.lua
 Flights.lua
+Start.lua
 EditMode.lua

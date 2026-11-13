@@ -1787,6 +1787,7 @@ private.IconUpdate = function(f, elapsed)
 					if d.link and not (GameTooltip:IsOwned(ic) and GameTooltip:IsShown()) then
 						GameTooltip_SetDefaultAnchor(GameTooltip, ic)
 						GameTooltip:SetHyperlink(d.link)
+						CDTL3:EstimateTooltip(f)
 						GameTooltip:Show()
 					end
 				else
@@ -1826,9 +1827,10 @@ private.IconUpdate = function(f, elapsed)
 					if d.link and not (GameTooltip:IsOwned(ic) and GameTooltip:IsShown()) then
 						GameTooltip_SetDefaultAnchor(GameTooltip, ic)
 						GameTooltip:SetHyperlink(d.link)
+						CDTL3:EstimateTooltip(f)
 						GameTooltip:Show()
-					end	
-				else	
+					end
+				else
 					if GameTooltip:IsOwned(ic) then	
 						GameTooltip:Hide()	
 					end	
