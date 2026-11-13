@@ -364,8 +364,9 @@ end
 ---------------------------------------------------------------- card 3: Reset Profile and Copy From ask first
 print("[card 3 profile confirms " .. FLAVOR .. "]")
 do
-	local function hasConfirm(o) return o and o.confirm == true and type(o.confirmText) == "string"
-		and o.confirmText:find("Every character on this profile loses its Filters lists", 1, true) ~= nil end
+	-- confirm answers with the text to show (another while sharing: profiles.lua)
+	local function hasConfirm(o) return o and type(o.confirm) == "function" and type(o.confirm()) == "string"
+		and o.confirm():find("Every character on this profile loses its Filters lists", 1, true) ~= nil end
 	local pa = CDTL3:GetFullOptions().args.profiles.args
 	check("Reset Profile asks first, and says every character loses its Filters lists", hasConfirm(pa.reset))
 	check("Copy From asks first, same warning", hasConfirm(pa.copyfrom))

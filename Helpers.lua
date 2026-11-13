@@ -2859,16 +2859,21 @@ local function ApplyShare(plan, mode)
 		if type(profile.tables) ~= "table" then
 			profile.tables = {}
 		end
-		local carried, kept = 0, {}
+		local carried, kept, lists = 0, {}, {}
 		for _, key in ipairs(IMPORT_TABLE_TYPES) do
 			local theirs = profile.tables[key]
 			if type(theirs) == "table" and next(theirs) then
 				carried = carried + 1
 				ClaimEntries(theirs)
+				lists[key] = theirs
 			elseif type(own) == "table" and type(own[key]) == "table" and next(own[key]) then
 				profile.tables[key] = own[key]
 				table.insert(kept, IMPORT_LIST_NAMES[key])
 			end
+		end
+		-- while sharing, the lists it carries go into the shared ones (Profiles.lua)
+		if CDTL3.Profiles then
+			CDTL3.Profiles.ImportLists(own, lists)
 		end
 		if carried == 0 then
 			CDTL3:Print("This string has no Filters lists (a Settings Only export leaves them empty): its settings were imported and this profile's Filters lists were kept.")
@@ -2882,11 +2887,17 @@ local function ApplyShare(plan, mode)
 		end
 
 	elseif mode == "CDDATA" then
-		local tables = ShareTables(data)
+		local tables, lists = ShareTables(data), {}
 		for _, key in ipairs(IMPORT_TABLE_TYPES) do
 			if type(tables[key]) == "table" then
-				profile.tables[key] = tables[key]
 				ClaimEntries(tables[key])
+				lists[key] = tables[key]
+			end
+		end
+		-- while sharing they go into the shared lists (Profiles.lua); otherwise each replaces this profile's
+		if not (CDTL3.Profiles and CDTL3.Profiles.ImportLists(profile.tables, lists)) then
+			for key, list in pairs(lists) do
+				profile.tables[key] = list
 			end
 		end
 	end
@@ -2948,7 +2959,7 @@ local function PreviewText(plan, mode)
 	local kind = meta and meta.kind
 	local defaults = CDTL3.db.defaults.profile
 	local lines, parts = {}, {}
-	local lists
+	local lists, carries
 
 	if kind == "LANE" then
 		parts[1] = "settings for lane "..meta.lane..' ("'..Plain(data.name, 40)..'")'
@@ -2979,9 +2990,13 @@ local function PreviewText(plan, mode)
 			local n = lists and type(lists[key]) == "table" and CountEntries(lists[key]) or 0
 			if n > 0 then
 				parts[#parts + 1] = Plural(n, SHARE_LIST_WORDS[key])
+				carries = true
 			end
 		end
 	end
+	-- while sharing, the lists it carries go into the ones every character uses (Profiles.lua)
+	local shared = carries and CDTL3:SharingEntries()
+	local sharedLine = "Sharing is on, so the Filters lists all your characters share change: each entry in the string replaces the one of the same name, and the others stay."
 
 	local made
 	if meta then
@@ -3023,12 +3038,19 @@ local function PreviewText(plan, mode)
 	local current = Plain(CDTL3.db:GetCurrentProfile(), 40)
 	if IntoNewProfile() then
 		lines[#lines + 1] = "Goes into a new profile, "..NewProfileName()..". This profile ("..current..") stays as it is."
+		if shared then
+			lines[#lines + 1] = sharedLine
+		end
 	elseif kind == "LANE" then
 		lines[#lines + 1] = "Replaces lane "..meta.lane.."'s settings in this profile ("..current.."), except its name, position and whether it's on."
 	elseif mode == "SETTINGS" then
 		lines[#lines + 1] = "Replaces this profile's settings ("..current.."). Its Filters lists stay."
 	elseif mode == "CDDATA" then
-		lines[#lines + 1] = "Replaces the Filters lists the string has in this profile ("..current.."). Settings stay."
+		lines[#lines + 1] = shared and sharedLine.." Settings stay."
+			or "Replaces the Filters lists the string has in this profile ("..current.."). Settings stay."
+	elseif shared then
+		lines[#lines + 1] = "Replaces this profile's settings ("..current..")."
+		lines[#lines + 1] = sharedLine
 	else
 		lines[#lines + 1] = "Replaces this profile's settings and the Filters lists the string has ("..current..")."
 	end
