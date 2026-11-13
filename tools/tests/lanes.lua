@@ -4,11 +4,14 @@
 --      stack, sOffset and frame levels (icon, bd, hl) over many layouts must match the old code,
 --      kept below word for word as the reference
 --   17 vertical lanes: the secondary marker moves along the long side, sized for the lane
---   13 the GCD marker while the GCD's timing is hidden (Retail, Forever): rides a StatusBar
+--   13 the GCD marker while the GCD's timing is hidden (Retail, Forever): rides a StatusBar fed the
+--      GCD spell's timer, or the last cast's on Forever (no 61304); no closure per frame, and
+--      nothing read on the hidden path while timings can be read
 --   16 Secondary Tracking switched on from the options sizes and shows the marker at once
 --   19 lane custom texts with live tags keep updating
 --   22 Override Autohide brings back an empty lane that faded out, and fades it again
---   24 Split Count saves whole numbers only, typed into the options window
+--   24 Split Count saves whole numbers only, typed into the options window; a fraction saved
+--      before that reads as the whole number the slider shows
 --   25 Edit Mode slider ranges cover the options window's
 dofile(HARNESS_DIR .. "/wow.lua")
 PLAYER.class = "MAGE"
@@ -494,29 +497,54 @@ CDTL3:RefreshLane(1)
 ---------------------------------------------------------------- 13. the GCD marker while the GCD is hidden
 if RETAILAPI then
 	print("[GCD marker while the GCD's timing is hidden " .. FLAVOR .. "]")
-	local gcdLeft = 0.9
+	-- Retail has the GCD spell (61304); WoW: Forever doesn't (wow.lua's GetSpellCooldown gives nil for
+	-- it there, as the game does), so there the marker reads the GCD from the player's last cast
+	local HAS_GCD_SPELL = FLAVOR ~= "forever"
+	local CAST = 880500
+	SPELLINFO[CAST] = { "Test Bolt", 1 }
+	KNOWN[CAST] = true
+	local gcdLeft, castLeft = 0.9, 0.7
+	local hidden = true		-- C_Secrets: cooldowns hidden (in combat)
+	C_Secrets.ShouldCooldownsBeSecret = function() return hidden end
+	C_Secrets.ShouldSpellCooldownBeSecret = function() return hidden end
+	local reads = 0			-- GCD spell / last cast reads by the hidden path
+	local realGetCD = C_Spell.GetSpellCooldown
+	C_Spell.GetSpellCooldown = function(id)
+		if id == 61304 or id == CAST then reads = reads + 1 end
+		return realGetCD(id)
+	end
 	C_Spell.GetSpellCooldownDuration = function(id)
-		if id == 61304 then
+		reads = reads + 1
+		if id == 61304 and HAS_GCD_SPELL then
 			return { GetRemainingDuration = function() return S(gcdLeft) end, GetTotalDuration = function() return S(1.2) end }
+		elseif id == CAST then
+			return { GetRemainingDuration = function() return S(castLeft) end, GetTotalDuration = function() return S(1.2) end }
 		end
 	end
 	local function hiddenGCD(on)
 		SPELLCD[8921] = { startTime = S(on and NOW or 0), duration = S(on and 1.2 or 0), isEnabled = true, isActive = on, isOnGCD = on, modRate = 1 }
-		SPELLCD[61304] = { startTime = S(on and NOW or 0), duration = S(on and 1.2 or 0), isEnabled = true, isActive = on, isOnGCD = on, modRate = 1 }
+		if HAS_GCD_SPELL then
+			SPELLCD[61304] = { startTime = S(on and NOW or 0), duration = S(on and 1.2 or 0), isEnabled = true, isActive = on, isOnGCD = on, modRate = 1 }
+		end
+		SPELLCD[CAST] = { startTime = S(on and NOW or 0), duration = S(on and 1.2 or 0), isEnabled = true, isActive = on, isOnGCD = on, modRate = 1 }
 	end
 	hiddenGCD(true)
+	FireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-gcd", CAST)
 	local before = #ERRORS
 	step(l1)
 	local rider = l1.stRider
 	p = point(l1.st)
 	check("in combat: the marker shows", l1.st:IsShown() and rider ~= nil)
+	local want = HAS_GCD_SPELL and gcdLeft or castLeft
+	check(HAS_GCD_SPELL and "Retail: the GCD spell (61304) comes first, over the last cast" or "Forever (no 61304): it rides the last cast's GCD",
+		rider ~= nil and IsS(rider:GetValue()) and Val(rider:GetValue()) == want, rider and tostring(Val(rider:GetValue())))
 	if rider then
 		local mn, mx = rider:GetMinMaxValues()
 		local rp = point(rider)
 		check("it sits on the fill edge of a StatusBar along the lane", p[1] == "LEFT" and p[2] == rider:GetStatusBarTexture() and p[3] == "RIGHT"
 			and rp[1] == "LEFT" and rp[2] == l1 and rider:GetWidth() == travel and rider:GetHeight() == 1 and rider.__orient == "HORIZONTAL",
 			string.format("%s/%s, bar %dx%d %s", tostring(p[1]), tostring(p[3]), rider:GetWidth(), rider:GetHeight(), tostring(rider.__orient)))
-		check("the bar runs 0 to the base GCD (as out of combat) and holds the hidden time", mn == 0 and mx == 1.5 and IsS(rider:GetValue()) and Val(rider:GetValue()) == gcdLeft,
+		check("the bar runs 0 to the base GCD (as out of combat) and holds the hidden time", mn == 0 and mx == 1.5 and IsS(rider:GetValue()) and Val(rider:GetValue()) == want,
 			string.format("%s..%s value %s", tostring(mn), tostring(mx), tostring(Val(rider:GetValue()))))
 		s1.vertical = true
 		CDTL3:RefreshLane(1)
@@ -534,14 +562,49 @@ if RETAILAPI then
 	s1.tracking.primaryTracking = "GCD"
 	step(l1)
 	local mn, mx = l1:GetMinMaxValues()
-	check("primary GCD tracking in combat: the lane's fill takes the hidden time", mx == 1.5 and IsS(l1:GetValue()) and Val(l1:GetValue()) == gcdLeft)
+	check("primary GCD tracking in combat: the lane's fill takes the hidden time", mx == 1.5 and IsS(l1:GetValue()) and Val(l1:GetValue()) == want)
+	-- every frame in combat: the hidden path hands pcall functions defined outside the caller, never a
+	-- function written inside it (a closure made on every call in the game's Lua 5.1; fengari's Lua
+	-- 5.3 reuses such closures, so the test looks at where each one is defined)
+	local realPcall = pcall
+	local calls, inner = 0, 0
+	pcall = function(fn, ...)
+		if type(fn) == "function" then
+			local info, caller = debug.getinfo(fn, "S"), debug.getinfo(2, "S")
+			if info and caller and tostring(info.source):find("Lanes.lua", 1, true) and info.source == caller.source then
+				calls = calls + 1
+				if info.linedefined > caller.linedefined and info.lastlinedefined <= caller.lastlinedefined then
+					inner = inner + 1
+				end
+			end
+		end
+		return realPcall(fn, ...)
+	end
+	step(l1, 20)
+	pcall = realPcall
+	check("in combat, 20 frames: every pcall on the hidden path takes a named function (no per-frame closure)", calls > 0 and inner == 0,
+		string.format("%d pcalls from Lanes.lua, %d of a function made inside its caller", calls, inner))
 	check("no hidden value compared or used in maths", #ERRORS == before, string.format("new lua errors %d", #ERRORS - before))
 	hiddenGCD(false)
 	step(l1)
 	mn, mx = l1:GetMinMaxValues()
 	check("GCD over: marker hidden, the fill back on a plain range", not l1.st:IsShown() and mx == 1 and not IsS(l1:GetValue()))
+	-- out of combat (timings readable), GCD not running: the hidden path isn't taken at all
+	hidden = false
+	SPELLCD[8921], SPELLCD[61304], SPELLCD[CAST] = nil, nil, nil
+	reads = 0
+	step(l1, 50)
+	check("out of combat, no GCD: 50 frames read no GCD spell or last cast (the hidden path is skipped)", reads == 0, "reads " .. reads)
+	readableGCD(0.75)
+	step(l1)
+	check("out of combat, GCD running: the readable timing still drives the marker", l1.st:IsShown() and point(l1.st)[2] == travel / 2 and reads == 0,
+		string.format("%s reads %d", tostring(point(l1.st)[2]), reads))
+	SPELLCD[8921] = nil
 	s1.tracking.primaryTracking = "NONE"
+	C_Spell.GetSpellCooldown = realGetCD
 	C_Spell.GetSpellCooldownDuration = nil
+	C_Secrets.ShouldCooldownsBeSecret, C_Secrets.ShouldSpellCooldownBeSecret = nil, nil
+	CDTL3.lastPlayerCast = nil
 end
 
 ---------------------------------------------------------------- 16. Secondary Tracking from the options
@@ -643,6 +706,27 @@ typed = typeSplitCount("2.4")
 check("Split (Time): typing 2.4 saves 2", typed and s1.mode.splitAbs.count == 2, string.format("found %s, saved %s", tostring(typed), tostring(s1.mode.splitAbs.count)))
 AceGUI.Create = realCreate
 xpcall(function() ACD:Close("CDTL3") end, ERRH)
+-- a fraction saved before the slider took whole numbers works as the whole number the slider shows
+local lane1Opts = laneOpts.args.lane1
+for _, c in ipairs({ { "SPLIT_ABS", "splitAbs", "sa", 1.5, 2, 45, 120 }, { "SPLIT", "split", "s", 2.5, 3, 50, 100 } }) do
+	local mode, key, pre, saved, whole, cur, total = c[1], c[2], c[3], c[4], c[5], c[6], c[7]
+	s1.mode.type = mode
+	local ss = s1.mode[key]
+	ss.count = whole
+	local want = CDTL3.CalcSplitPosition(cur, total, s1)
+	ss.count = saved
+	local got = CDTL3.CalcSplitPosition(cur, total, s1)
+	check(string.format("%s saved as %s: icons placed as with %d splits", mode, tostring(saved), whole), got == want and got < 1,
+		string.format("%s, want %s", tostring(got), tostring(want)))
+	CDTL3:RefreshLane(1)
+	local mt = s1.modeText
+	check(string.format("  marks for %d splits", whole), mt.text2.used == true and mt.text3.used == true and mt.text4.used == (whole == 3))
+	local o = Find(lane1Opts, pre .. "SplitCount")
+	check(string.format("  the slider shows %d", whole), o and o.get({}) == whole, o and tostring(o.get({})))
+	local p2, p3 = Find(lane1Opts, pre .. "Split2Position"), Find(lane1Opts, pre .. "Split3Position")
+	check("  Split 2 controls shown, Split 3 " .. (whole == 3 and "shown" or "hidden"), p2.hidden({}) == false and p3.hidden({}) == (whole ~= 3))
+	ss.count = 2
+end
 s1.mode.type = "LINEAR"
 CDTL3:RefreshLane(1)
 

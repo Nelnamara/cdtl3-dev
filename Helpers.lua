@@ -545,6 +545,15 @@ function CDTL3:Cleanup()
 	end
 end
 
+-- A Split (%) or Split (Time) lane's Split Count (ss = mode.split or mode.splitAbs) as the
+-- slider shows it: rounded to a whole number (nil if it isn't a number). Saves from before the
+-- slider took whole numbers only can hold a fraction (1.5), which matched no count and left the
+-- lane's positions broken.
+function CDTL3:SplitCount(ss)
+	local n = tonumber(ss["count"])
+	return n and math.floor(n + 0.5)
+end
+
 function CDTL3:ConvertTime(raw, style)
 	local t = ""
 	
@@ -1792,9 +1801,11 @@ local IMPORT_ANY_SCALAR = { previousVersion = true }
 local IMPORT_ENTRY_FIELDS = { usedBy = "table", color = "table", bCD = "number", customCDTime = "number" }
 
 -- Does value have the shape of its defaults? Where the defaults hold a table it must be a table
--- (checked key by key, all the way down), where they hold a number or text it must be one too,
--- and where they hold true/false anything but a table will do (it is only ever tested). Keys
--- the defaults don't name (Edit Mode layouts, the Filters entries) pass here.
+-- (checked key by key, all the way down), where they hold a number it must be one too, where
+-- they hold text a number will also do (a lane's mark texts are saved as ConvertTime gives
+-- them: a number under H:MM:SS for marks under a minute), and where they hold true/false
+-- anything but a table will do (it is only ever tested). Keys the defaults don't name (Edit
+-- Mode layouts, the Filters entries) pass here.
 local function FitsDefaults(value, default, key)
 	if type(default) == "table" then
 		if type(value) ~= "table" then
@@ -1810,6 +1821,10 @@ local function FitsDefaults(value, default, key)
 
 	if IMPORT_ANY_SCALAR[key] or type(default) == "boolean" then
 		return type(value) ~= "table"
+	end
+
+	if type(default) == "string" then
+		return type(value) == "string" or type(value) == "number"
 	end
 
 	return type(value) == type(default)

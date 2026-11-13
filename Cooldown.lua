@@ -1053,7 +1053,7 @@ private.CalcSplitPosition = function(current, total, s)
 		total = ss["max"]
 	end
 	
-	local splits = ss["count"]
+	local splits = CDTL3:SplitCount(ss)
 	
 	if current < total then
 		if splits == 1 then

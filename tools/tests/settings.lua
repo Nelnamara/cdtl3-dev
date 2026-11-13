@@ -1,7 +1,8 @@
 -- Settings and saved data (red team of 12 Nov 2026, cards 1-6, 9, 10, 14, 34): an "All Settings
 -- and Data" import never empties the Filters lists, a badly shaped string is refused before
--- anything is written, Clear Individual Settings and Filters selections act for this character
--- only, Reset Profile / Copy From ask first, built-in spell data is copied before it's saved,
+-- anything is written (a lane on H:MM:SS still round trips), Clear Individual Settings on an entry
+-- other characters use asks first and then clears it for all, Filters selections act for this
+-- character only, Reset Profile / Copy From ask first, built-in spell data is copied before it's saved,
 -- the unlock box follows the lock, Add New's Enabled box, Trigger IDs that aren't spells, and
 -- test mode frames. Real files, real AceDB / AceDBOptions / AceSerializer.
 dofile(HARNESS_DIR .. "/wow.lua")
@@ -223,6 +224,24 @@ do
 		local refused, errs = import(mode, export(mode))
 		check("round trip after the walk, " .. mode .. ": accepted, no Lua errors", not refused and errs == 0, tostring(errs))
 	end
+
+	-- a Linear (Time) or Split (Time) lane on H:MM:SS saves its marks as ConvertTime gives them: a
+	-- number for a mark under a minute, where the default is text. Its own export comes back in.
+	for _, mode in ipairs({ "LINEAR_ABS", "SPLIT_ABS" }) do
+		local l1 = CDTL3.db.profile.lanes.lane1	-- an import replaces the lanes table
+		l1.mode.type = mode
+		l1.mode.linearAbs.timeFormat, l1.mode.splitAbs.timeFormat, l1.mode.linearAbs.max = "H:MM:SS", "H:MM:SS", 180
+		xpcall(function() CDTL3:RefreshLane(1) end, ERRH)
+		local mark = l1.modeText.text2.text
+		check(mode .. " on H:MM:SS: its first mark is saved as a number", type(mark) == "number", type(mark) .. " " .. tostring(mark))
+		for _, m in ipairs({ "SETTINGS", "ALL" }) do
+			local refused, errs = import(m, export(m))
+			check("  its own " .. m .. " export imports: accepted, no Lua errors", not refused and errs == 0, string.format("refused=%s errors=%d", tostring(refused), errs))
+		end
+	end
+	local l1 = CDTL3.db.profile.lanes.lane1
+	l1.mode.type, l1.mode.linearAbs.timeFormat, l1.mode.splitAbs.timeFormat, l1.mode.linearAbs.max = "LINEAR", "XhYmZs", "XhYmZs", 120
+	xpcall(function() CDTL3:RefreshLane(1) end, ERRH)
 	if CDTL3.db.profile.global.unlockFrames then CDTL3:ToggleFrameLock(true) end
 end
 
@@ -236,21 +255,42 @@ do
 	local theirsSame = entry(3003, "Same Name", { OTHER }, { lane = 2 })
 	for _, e in ipairs({ shared, entry(3002, "Mine Spell", { ME }), theirsSame, entry(3004, "Same Name", { ME }) }) do table.insert(spells, e) end
 
+	-- an entry other characters use too: the button asks first, saying it resets them for everyone,
+	-- and on Confirm the entry goes (only dropping this character let the next cast claim it back)
+	local function warns(c)
+		return type(c) == "string" and c:find("Other characters on this profile use these settings", 1, true) ~= nil
+			and c:find("resets them for every character on this profile", 1, true) ~= nil
+	end
+	local function confirmOf(o) if type(o.confirm) == "function" then return o.confirm({}) end return o.confirm end
 	CDTL3.currentFilter["spells"] = "Shared Spell"; CDTL3.currentFilterHidden["spells"] = false
+	local c = confirmOf(cs)
+	check("shared entry: Clear asks first, warning it resets every character's settings", warns(c), tostring(c))
 	cs.func({})
-	check("shared entry kept for the other character", T().spells[1] == shared and #shared.usedBy == 1 and shared.usedBy[1] == OTHER,
-		table.concat(shared.usedBy, ","))
-	check("  its settings untouched (lane 3, Custom CD Time 15 s)", shared.lane == 3 and shared.customCDTime == 15000)
-	check("  no longer listed for me, selection back to << Select >>", not CDTL3:IsMyEntry(shared) and CDTL3.currentFilter["spells"] == "<< Select >>"
-		and CDTL3.currentFilterHidden["spells"] == true)
+	check("  on Confirm the entry goes for everyone", names(T().spells) == "Mine Spell,Same Name,Same Name", names(T().spells))
+	check("  selection back to << Select >>", CDTL3.currentFilter["spells"] == "<< Select >>" and CDTL3.currentFilterHidden["spells"] == true)
+	-- the next cast (as after a reload) starts it fresh: no old settings to claim back
+	SPELLINFO[3001], KNOWN[3001] = { "Shared Spell", 1 }, true
+	FireEvent("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-shared", 3001)
+	local back
+	for k = #T().spells, 1, -1 do
+		local e = T().spells[k]
+		if e.name == "Shared Spell" then back = e; table.remove(T().spells, k) end
+	end
+	check("  the next cast starts it fresh: lane 3 and the Custom CD Time don't come back", back == nil or (back.lane ~= 3 and back.customCDTime ~= 15000),
+		back and string.format("lane %s, Custom CD Time %s", tostring(back.lane), tostring(back.customCDTime)) or "no entry")
+	SPELLINFO[3001], KNOWN[3001] = nil, nil
 
 	CDTL3.currentFilter["spells"] = "Mine Spell"; CDTL3.currentFilterHidden["spells"] = false
+	c = confirmOf(cs)
+	check("an entry only I use: the usual confirm, no shared warning", c == true, tostring(c))
 	cs.func({})
-	check("an entry only I use is removed", names(T().spells) == "Same Name,Same Name,Shared Spell", names(T().spells))
+	check("  removed", names(T().spells) == "Same Name,Same Name", names(T().spells))
 
 	CDTL3.currentFilter["spells"] = "Same Name"; CDTL3.currentFilterHidden["spells"] = false
+	c = confirmOf(cs)
+	check("same name, another character's own copy: mine is only mine, no shared warning", c == true, tostring(c))
 	cs.func({})
-	check("same name used by another character: mine removed, theirs kept", #T().spells == 2 and T().spells[2] == theirsSame
+	check("  mine removed, theirs kept", #T().spells == 1 and T().spells[1] == theirsSame
 		and theirsSame.usedBy[1] == OTHER and theirsSame.lane == 2, names(T().spells))
 
 	local customs = clear(T().customs)
@@ -258,9 +298,14 @@ do
 	sharedCustom.usedBy = { OTHER, ME }
 	table.insert(customs, sharedCustom)
 	CDTL3.currentFilter["customs"] = "Shared Custom"
-	fopts.args.customs.args.saved.args.clearSettings.func({})
-	check("a Custom other characters use stays for them", T().customs[1] == sharedCustom and #sharedCustom.usedBy == 1 and sharedCustom.usedBy[1] == OTHER)
+	local ccs = fopts.args.customs.args.saved.args.clearSettings
+	c = confirmOf(ccs)
+	check("a Custom other characters use: asks first with the warning", warns(c), tostring(c))
+	ccs.func({})
+	check("  on Confirm it goes for everyone", #T().customs == 0, names(T().customs))
 	check("  Custom tab back to << Add New >>", CDTL3.currentFilter["customs"] == "<< Add New >>")
+	c = confirmOf(ccs)
+	check("  << Add New >>: Clear keeps its usual confirm", c == true, tostring(c))
 	clear(T().spells); clear(T().customs)
 end
 

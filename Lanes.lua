@@ -708,29 +708,64 @@ private.FrameElapsed = function(key, elapsed)
 	return elapsed
 end
 
--- GCD tracking while its timing is hidden: whether the game's GCD spell (61304) is cooling down is
--- never hidden, and its timer object's remaining time can be handed to a StatusBar (as
--- CombatTimers.lua does). Returns true and that remaining time (only ever given to a widget).
+-- GCD tracking while its timing is hidden (in combat on Retail and WoW: Forever). Whether a spell is
+-- cooling down and whether that is only the GCD are never hidden, and the spell's timer object's
+-- remaining time can be handed to a StatusBar (as CombatTimers.lua does). The source is the game's
+-- GCD spell (61304) where it exists, else the player's last successful cast while it is on the GCD:
+-- WoW: Forever has no 61304. CalcTracking runs this every frame, so it makes no closure or table.
 private.GCD_SPELL = 61304
+private.GCD_READ_SPELL = 8921	-- the spell CalcTracking reads the GCD from (Moonfire; any spell without a cooldown)
+
+-- for pcall: is spell id's cooldown hidden from addons right now?
+private.CooldownHidden = function(id)
+	if C_Secrets.ShouldSpellCooldownBeSecret then
+		return C_Secrets.ShouldSpellCooldownBeSecret(id) == true
+	end
+	return C_Secrets.ShouldCooldownsBeSecret() == true
+end
+
+-- for pcall: true and the remaining time (only ever given to a widget) while spell id is cooling down
+-- for the GCD (gcdSpell: id is the GCD spell itself, whose own cooldown is the GCD)
+private.GCDRemaining = function(id, gcdSpell)
+	local info = C_Spell.GetSpellCooldown(id)
+	if not (info and info["isActive"] == true and (gcdSpell or info["isOnGCD"] == true)) then
+		return false
+	end
+	local dur = C_Spell.GetSpellCooldownDuration(id, false)	-- false: the GCD counts
+	local kind = type(dur)
+	if kind ~= "table" and kind ~= "userdata" then
+		return false
+	end
+	return true, dur:GetRemainingDuration()
+end
+
+-- Returns true and the GCD's remaining time while the GCD runs with its timing hidden; false when
+-- the timing can be read (CalcTracking's own read then works) or no GCD is running.
 private.HiddenGCD = function()
-	if not (CDTL3.retailAPI and C_Spell and C_Spell.GetSpellCooldownDuration) then
+	if not (CDTL3.retailAPI and C_Spell and C_Spell.GetSpellCooldownDuration and C_Secrets) then
 		return false
 	end
 
-	local ok, running, remaining = pcall(function()
-		local info = C_Spell.GetSpellCooldown(private.GCD_SPELL)
-		if not (info and info["isActive"] == true) then
-			return false
-		end
-		local dur = C_Spell.GetSpellCooldownDuration(private.GCD_SPELL, false)	-- false: its cooldown is the GCD
-		local kind = type(dur)
-		if kind ~= "table" and kind ~= "userdata" then
-			return false
-		end
-		return true, dur:GetRemainingDuration()
-	end)
+	local ok, hidden = pcall(private.CooldownHidden, private.GCD_READ_SPELL)
+	if not (ok and hidden == true) then
+		return false
+	end
 
-	return (ok and running == true), remaining
+	local running, remaining
+	ok, running, remaining = pcall(private.GCDRemaining, private.GCD_SPELL, true)
+	if ok and running == true then
+		return true, remaining
+	end
+
+	local last = CDTL3.lastPlayerCast
+	if last then
+		ok, running, remaining = pcall(private.GCDRemaining, last, false)
+		if ok and running == true then
+			return true, remaining
+		end
+	end
+
+	return false
 end
 
 -- where the secondary marker starts: the lane's start along its long side
@@ -783,14 +818,15 @@ private.CalcTracking = function(f, s, t, elapsed)
 	local position = 0
 
 	if t == "GCD" then
-		local start, duration, enabled = CDTL3:GetSpellCooldown(8921)	-- Spell ID for Moonfire, but any spell without a cooldown can be used
-		local cooldownMS, gcdMS = GetSpellBaseCooldown(8921)			-- Spell ID for Moonfire, but any spell without a cooldown can be used
+		local start, duration, enabled = CDTL3:GetSpellCooldown(private.GCD_READ_SPELL)
+		local cooldownMS, gcdMS = GetSpellBaseCooldown(private.GCD_READ_SPELL)
 		
 		local timeLeft = (start + duration) - GetTime()
 		position = ( timeLeft / (gcdMS / 1000))
 
 		-- the read above comes back empty while the GCD's timing is hidden (in combat on Retail and
-		-- WoW: Forever): hand the GCD spell's own timer on, for a StatusBar to take
+		-- WoW: Forever): hand a GCD timer on, for a StatusBar to take (HiddenGCD returns at once
+		-- while the timing can be read)
 		if position <= 0 then
 			local running, remaining = private.HiddenGCD()
 			if running then
@@ -1170,15 +1206,16 @@ private.SetModeText = function(f, s)
 		st["text4"]["pos"] = s["mode"]["split"]["s3p"]
 		st["text5"]["text"] = "100%"
 		
-		if s["mode"]["split"]["count"] == 1 then
+		local count = CDTL3:SplitCount(s["mode"]["split"])
+		if count == 1 then
 			st["text2"]["used"] = true
 			st["text3"]["used"] = false
 			st["text4"]["used"] = false
-		elseif s["mode"]["split"]["count"] == 2 then
+		elseif count == 2 then
 			st["text2"]["used"] = true
 			st["text3"]["used"] = true
 			st["text4"]["used"] = false
-		elseif s["mode"]["split"]["count"] == 3 then
+		elseif count == 3 then
 			st["text2"]["used"] = true
 			st["text3"]["used"] = true
 			st["text4"]["used"] = true
@@ -1196,15 +1233,16 @@ private.SetModeText = function(f, s)
 		st["text4"]["pos"] = s["mode"]["splitAbs"]["s3p"]
 		st["text5"]["text"] = CDTL3:ConvertTime(max, tFormat)
 		
-		if s["mode"]["splitAbs"]["count"] == 1 then
+		local count = CDTL3:SplitCount(s["mode"]["splitAbs"])
+		if count == 1 then
 			st["text2"]["used"] = true
 			st["text3"]["used"] = false
 			st["text4"]["used"] = false
-		elseif s["mode"]["splitAbs"]["count"] == 2 then
+		elseif count == 2 then
 			st["text2"]["used"] = true
 			st["text3"]["used"] = true
 			st["text4"]["used"] = false
-		elseif s["mode"]["splitAbs"]["count"] == 3 then
+		elseif count == 3 then
 			st["text2"]["used"] = true
 			st["text3"]["used"] = true
 			st["text4"]["used"] = true

@@ -2316,6 +2316,8 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 		if not CDTL3.spellCastTimes then CDTL3.spellCastTimes = {} end
 		if not CDTL3.spellBaseCDs   then CDTL3.spellBaseCDs   = {} end
 		CDTL3.spellCastTimes[spellID] = GetTime()
+		-- the lanes' GCD tracking reads the GCD from it while the GCD's timing is hidden (Lanes.lua HiddenGCD)
+		CDTL3.lastPlayerCast = spellID
 
 		-- Ranged swing timer: Auto Shot (75) and wand Shoot (5019) fire this event on
 		-- every shot, so it works without the combat log. The ranged speed can be
