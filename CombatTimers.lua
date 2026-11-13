@@ -262,10 +262,30 @@ private.BuffWants = function(f, ct)
 	end
 	if rec then
 		ct.feed = rec
+		ct.lostAt = nil
+		return true
+	end
+	-- Riding with no feed. Blizzard's pool re-deals its bars (on show, on a full aura update), so the
+	-- buff can move to another bar, where its feed must run MIN_FEED again; and its bars don't update
+	-- while the UI is hidden (Alt+Z), so they read stale for a moment after it comes back. Either way
+	-- the ride holds still (no feed: the widgets keep their last values) for up to STALE. It used to
+	-- go to Ready, ready sound and all, then restart at the buff's full length.
+	local now = GetTime()
+	ct.lostAt = ct.lostAt or now
+	if now - ct.lostAt < private.STALE and (private.Moving(d["name"], now)
+			or now - (private.uiHiddenAt or -math.huge) < private.STALE) then
+		ct.feed = nil
 		return true
 	end
 	d["currentCD"] = 0	-- riding, and Blizzard stopped feeding the bar: the buff ended
 	return false
+end
+
+-- a fresh feed under the buff's name that isn't usable yet: its bar is new to it (still short of
+-- MIN_FEED), or the bar it had now shows another buff and its own bar hasn't been fed yet
+private.Moving = function(name, now)
+	local rec = name and private.mirror.byName[name]
+	return rec and private.Fresh(rec, now) or false
 end
 
 private.BuffTick = function(f, ct)
@@ -282,6 +302,7 @@ private.Enter = function(f, ct, kind)
 	ct.since = GetTime()
 	ct.seenActive = false
 	ct.onGCD = nil	-- a read left over from an earlier ride would send a fresh cast straight to Ready
+	ct.lostAt = nil
 	f.icon.ctRiding = true
 end
 
@@ -468,9 +489,10 @@ end
 -- variant "pct": SPLIT, x = remaining fraction 0-1 (EvaluateRemainingPercent's range)
 private.SplitCurve = function(s, variant, total)
 	local ss = variant == "abs" and s["mode"]["splitAbs"] or s["mode"]["split"]
-	local key = table.concat({ variant, tostring(s["mode"]["type"]), tostring(total), tostring(ss["max"]),
-		tostring(ss["count"]), tostring(ss["s1v"]), tostring(ss["s1p"]), tostring(ss["s2v"]), tostring(ss["s2p"]),
-		tostring(ss["s3v"]), tostring(ss["s3p"]) }, ":")
+	-- one concatenation, no table: a riding spell on a split lane looks its curve up every frame
+	local key = variant .. ":" .. tostring(s["mode"]["type"]) .. ":" .. tostring(total) .. ":" .. tostring(ss["max"])
+		.. ":" .. tostring(ss["count"]) .. ":" .. tostring(ss["s1v"]) .. ":" .. tostring(ss["s1p"]) .. ":" .. tostring(ss["s2v"])
+		.. ":" .. tostring(ss["s2p"]) .. ":" .. tostring(ss["s3v"]) .. ":" .. tostring(ss["s3p"])
 	local curve = private.curves[key]
 	if curve then
 		return curve
@@ -535,8 +557,9 @@ private.Prewarm = function()
 end
 
 -- LANE ICONS
--- the lane's travel: the same anchor and length IconUpdate uses
-private.Geometry = function(s)
+-- the lane's travel: the same anchor and length IconUpdate uses. Filled into geo when given (a
+-- riding icon passes its own, every frame), else a new table.
+private.Geometry = function(s, geo)
 	local vertical = s["vertical"] and true or false
 	local reversed = s["reversed"] and true or false
 	local anchor = "LEFT"
@@ -545,7 +568,9 @@ private.Geometry = function(s)
 	elseif reversed then
 		anchor = "RIGHT"
 	end
-	return { anchor = anchor, len = math.max(s["width"] - s["icons"]["size"], 1), vertical = vertical, reversed = reversed }
+	geo = geo or {}
+	geo.anchor, geo.len, geo.vertical, geo.reversed = anchor, math.max(s["width"] - s["icons"]["size"], 1), vertical, reversed
+	return geo
 end
 
 -- a transparent, 1 px StatusBar: only its fill edge is used
@@ -632,22 +657,26 @@ private.HideSegments = function(ct)
 end
 
 -- lays the segments out (again when the lane or its settings change); returns the last one, or nil
--- for a straight line
+-- for a straight line. The key is one concatenation of the settings it's built from, so a frame
+-- with nothing changed builds no tables (the knots are only worked out on a change).
 private.Segments = function(ct, lane, s, geo)
-	local knots = private.SplitKnots(s)
-	if not knots then
+	local ss = s["mode"]["splitAbs"]
+	local key = geo.anchor .. ":" .. geo.len .. ":" .. tostring(geo.vertical) .. ":" .. tostring(geo.reversed)
+		.. ":" .. tostring(ss["count"]) .. ":" .. tostring(ss["max"]) .. ":" .. tostring(ss["s1v"]) .. ":" .. tostring(ss["s1p"])
+		.. ":" .. tostring(ss["s2v"]) .. ":" .. tostring(ss["s2p"]) .. ":" .. tostring(ss["s3v"]) .. ":" .. tostring(ss["s3p"])
+	if ct.segBadKey == key then
 		return nil
 	end
-	local parts = { geo.anchor, geo.len, tostring(geo.vertical), tostring(geo.reversed) }
-	for _, k in ipairs(knots) do
-		parts[#parts + 1] = k[1] .. "/" .. k[2]
-	end
-	local key = table.concat(parts, ":")
 
-	local segs = ct.segs or {}
-	ct.segs = segs
-	local n = #knots - 1
 	if ct.segKey ~= key or ct.segLane ~= lane then
+		local knots = private.SplitKnots(s)
+		if not knots then
+			ct.segBadKey = key
+			return nil
+		end
+		local segs = ct.segs or {}
+		ct.segs = segs
+		local n = #knots - 1
 		for k = 1, n do
 			local seg = segs[k]
 			if not seg then
@@ -669,6 +698,7 @@ private.Segments = function(ct, lane, s, geo)
 		end
 		ct.segKey, ct.segLane, ct.segCount = key, lane, n
 	end
+	local segs, n = ct.segs, ct.segCount
 	for k = 1, n do
 		if not segs[k]:IsShown() then
 			segs[k]:Show()
@@ -679,6 +709,9 @@ end
 
 private.SetRiderValue = function(f, ct, rider, s, mode, max)
 	if ct.kind == "buff" then
+		if not ct.feed then
+			return	-- held while its feed moves (BuffWants): keep the last values
+		end
 		-- curves can't take a hidden value from addon code: Split (%) lanes, and Split (Time) lanes
 		-- whose split points don't increase, show buffs on a straight line
 		local top = ct.feed.max
@@ -722,7 +755,8 @@ end
 private.PlaceIcon = function(f, ct, s, mode, max)
 	local ic = f.icon
 	local lane = ic:GetParent()
-	local geo = private.Geometry(s)
+	local geo = private.Geometry(s, ct.geo)
+	ct.geo = geo
 
 	local bar = nil
 	if ct.kind == "buff" and mode == "SPLIT_ABS" then
@@ -732,8 +766,10 @@ private.PlaceIcon = function(f, ct, s, mode, max)
 		if ct.rider then
 			ct.rider:Hide()
 		end
-		for k = 1, ct.segCount do
-			ct.segs[k]:SetValue(ct.feed.value)
+		if ct.feed then	-- no feed: held while it moves (BuffWants), keep the last values
+			for k = 1, ct.segCount do
+				ct.segs[k]:SetValue(ct.feed.value)
+			end
 		end
 	else
 		private.HideSegments(ct)
@@ -765,22 +801,27 @@ function CT:PlaceIcon(f, s, mode, max)
 end
 
 -- BAR FRAMES: from BarUpdate in place of SetValue(iconPercent); false = set it the normal way
+private.DriveBar = function(f, ct)
+	local bar = f.bar.bar
+	ct.barDriven = true
+	if ct.kind == "buff" then
+		if ct.feed then	-- no feed: held while it moves (BuffWants), keep the last values
+			bar:SetMinMaxValues(0, ct.feed.max)
+			bar:SetValue(ct.feed.value)
+		end
+	else
+		bar:SetMinMaxValues(0, ct.dur:GetTotalDuration())
+		bar:SetValue(ct.dur:GetRemainingDuration())
+	end
+end
+
 function CT:DriveBar(f)
 	local ct = f.ct
 	if not (ct and ct.riding) then
 		return false
 	end
-	local ok, err = pcall(function()
-		local bar = f.bar.bar
-		ct.barDriven = true
-		if ct.kind == "buff" then
-			bar:SetMinMaxValues(0, ct.feed.max)
-			bar:SetValue(ct.feed.value)
-		else
-			bar:SetMinMaxValues(0, ct.dur:GetTotalDuration())
-			bar:SetValue(ct.dur:GetRemainingDuration())
-		end
-	end)
+	-- a named function, not a closure: this runs every frame for every riding bar
+	local ok, err = pcall(private.DriveBar, f, ct)
 	if ok then
 		return true
 	end
@@ -1404,6 +1445,10 @@ private.OnUpdate = function(elapsed)
 	if now ~= private.thisFrame then
 		private.prevFrame = private.thisFrame
 		private.thisFrame = now
+	end
+	-- the last time the UI was hidden (Alt+Z), for BuffWants; this frame has no parent, so it runs then
+	if not UIParent:IsShown() then
+		private.uiHiddenAt = now
 	end
 
 	private.tick = (private.tick or 0) + elapsed

@@ -34,6 +34,9 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
 - `fixes.lua`: checks for the fixes of each release.
 - `combattimers.lua`: CombatTimers.lua with faked timer, curve, text binding and Cooldown Manager APIs
   (`full`), or inert where the APIs are missing.
+- `rtengine.lua`: the 12 Nov red team fixes to cooldowns and Ready frames (a switched-off lane keeps its bars,
+  an early reset shows in Ready, Highlight Duration, Pinned Hide Time, a switched-off Ready frame, a new item
+  while its cooldown is hidden); `combattimers.lua` holds the combat timers ones (held feeds, per-frame garbage).
 - `fixes3013.lua`, `release310.lua`: checks for those releases (3.1.0: the welcome notice and the
   combat timers defaults).
 - `flights.lua`: Flights.lua under a stubbed taxi client (map slots, hops, `UnitOnTaxi`), against each

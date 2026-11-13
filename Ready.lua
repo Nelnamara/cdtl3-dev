@@ -86,7 +86,14 @@ private.ReadyUpdate = function(f, elapsed)
 		s = CDTL3.db.profile.ready["ready3"]
 	end
 	
-	f.forceHide = false
+	-- Pinned Hide Time (with Auto-hide Frames): out of combat, the frame hides pTime after combat
+	-- ends or its last icon arrives, pinned icons and all. Autohide only runs on an update, so a
+	-- change asks for one (the flag was set after the only Autohide call that reads it: never hid).
+	local forceHide = (not CDTL3.combat and f.combatTimer >= s["pTime"]) and true or false
+	if forceHide ~= f.forceHide then
+		f.forceHide = forceHide
+		f.mf.triggerUpdate = true
+	end
 
 	-- UPDATE
 	if f.mf.triggerUpdate then
@@ -226,8 +233,6 @@ private.ReadyUpdate = function(f, elapsed)
 		if not CDTL3.combat then
 			if f.combatTimer < s["pTime"] then
 				f.combatTimer = f.combatTimer + elapsed
-			else
-				f.forceHide = true
 			end
 		end
 	
