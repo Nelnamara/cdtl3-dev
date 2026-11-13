@@ -285,7 +285,7 @@ private.bossEventFrame:SetScript("OnEvent", function(_, event)
 	end
 
 	if CDTL3.db then
-		CDTL3:ApplyCombatVisibility()
+		CDTL3:ApplyCombatVisibility(true)
 	end
 end)
 
@@ -381,19 +381,33 @@ end
 -- Re-apply visibility on combat edges so Hide-out-of-combat reacts instantly (frames must
 -- appear the moment a pull starts) instead of waiting for the next update poll. The refresh
 -- functions run every frame through CDTL3:Autohide, where the actual rule lives.
-function CDTL3:ApplyCombatVisibility()
+-- bossOnly (encounter events and loading screens): only the frames whose Show is Boss fights only.
+function CDTL3:ApplyCombatVisibility(bossOnly)
 	if not private.AnyShowRule() then return end
+
+	local p = CDTL3.db.profile
+	local function wanted(group, key, n)
+		if not bossOnly then
+			return true
+		end
+		local s = p[group] and p[group][key .. n]
+		return s and s["showMode"] == "BOSS" or false
+	end
 
 	-- by frame number: a lane or bar frame switched off at login was never created, so list
 	-- positions don't match the numbers
 	for _, f in pairs(CDTL3.lanes) do
-		CDTL3:RefreshLane(f.number)
+		if wanted("lanes", "lane", f.number) then
+			CDTL3:RefreshLane(f.number)
+		end
 	end
 	for _, f in pairs(CDTL3.barFrames) do
-		CDTL3:RefreshBarFrame(f.number)
+		if wanted("barFrames", "frame", f.number) then
+			CDTL3:RefreshBarFrame(f.number)
+		end
 	end
 	for i = 1, 3 do
-		if _G["CDTL3_Ready_" .. i] then
+		if _G["CDTL3_Ready_" .. i] and wanted("ready", "ready", i) then
 			CDTL3:RefreshReady(i)
 		end
 	end
@@ -1123,7 +1137,8 @@ end
 
 function CDTL3:GetSpellSettings(name, type, specialCase, id)
 	--CDTL3:Print("TYPECHECK: "..type)
-	for _, e in pairs(CDTL3.db.profile.tables[type]) do
+	-- (no list for a timer type another addon registered, CDTL3:RegisterTimerType)
+	for _, e in pairs(CDTL3.db.profile.tables[type] or {}) do
 		if id then
 			if e["id"] == id then
 				return e
@@ -1546,7 +1561,8 @@ end
 -- and would use up the note before the case it's for, a 3-minute defensive that vanished.
 function CDTL3:NoteAutoIgnore(s, kind)
 	local g = CDTL3.db and CDTL3.db.global
-	if not g or g["autoIgnoreNoted"] or type(s) ~= "table" or not private.filterTabNames[kind] then
+	-- cooldown kinds only: a long buff (Well Fed, a flask) must not use the note up
+	if not g or g["autoIgnoreNoted"] or type(s) ~= "table" or not (kind == "spells" or kind == "petspells" or kind == "items") then
 		return
 	end
 	if (tonumber(s["bCD"]) or 0) <= 3000 then

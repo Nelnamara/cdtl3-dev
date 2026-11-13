@@ -189,6 +189,16 @@ D.box:Release(); D.box = nil
 AURAS = nil
 L1.width = 400
 
+-- the report's profile line: a per-character profile ("Name - Realm") stays out, other names stay in
+CDTL3.db:SetProfile(CDTL3.db.keys.char)
+text = CDTL3:BuildReport()
+check("the character's own profile prints as (this character's profile), no name or realm",
+	has(text, "Profile: (this character's profile)") and not has(text, "Tester - Realm"))
+CDTL3.db:SetProfile("Raid")
+text = CDTL3:BuildReport()
+check("another profile keeps its name", has(text, 'Profile: "Raid"'), tostring(text:match("Profile:[^\n]*")))
+CDTL3.db:SetProfile("Default")
+
 ---------------------------------------------------------------- card 38: performance controls
 print("[38 performance " .. FLAVOR .. "]")
 local def = CDTL3.db.defaults.profile

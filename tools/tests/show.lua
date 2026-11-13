@@ -319,6 +319,31 @@ do
 	FireEvent("PLAYER_REGEN_ENABLED")
 	check("  out of combat, no boss: hidden", lane:GetAlpha() == 0, alphas())
 
+	-- encounter events and loading screens refresh only the Boss fights only frames (global Hide out of combat alone: none)
+	do
+		local calls = { lane = 0, bar = 0, ready = 0 }
+		local rl, rb, rr = CDTL3.RefreshLane, CDTL3.RefreshBarFrame, CDTL3.RefreshReady
+		CDTL3.RefreshLane = function(...) calls.lane = calls.lane + 1; return rl(...) end
+		CDTL3.RefreshBarFrame = function(...) calls.bar = calls.bar + 1; return rb(...) end
+		CDTL3.RefreshReady = function(...) calls.ready = calls.ready + 1; return rr(...) end
+		g.hideOutOfCombat = true
+		FireEvent("ENCOUNTER_START", 1, "Test Boss", 14, 20)
+		check("  only lane 1 is Boss fights only: an encounter start refreshes that lane and no bar or ready frame",
+			calls.lane == 1 and calls.bar == 0 and calls.ready == 0, string.format("%d/%d/%d", calls.lane, calls.bar, calls.ready))
+		FireEvent("PLAYER_ENTERING_WORLD", false, false)
+		check("  a loading screen: the same", calls.lane == 2 and calls.bar == 0 and calls.ready == 0, string.format("%d/%d/%d", calls.lane, calls.bar, calls.ready))
+		L1.showMode = "GLOBAL"
+		calls.lane = 0
+		FireEvent("ENCOUNTER_END", 1, "Test Boss", 14, 20, 1)
+		check("  no frame on Boss fights only (global Hide out of combat alone): nothing refreshed", calls.lane == 0 and calls.bar == 0 and calls.ready == 0,
+			string.format("%d/%d/%d", calls.lane, calls.bar, calls.ready))
+		FireEvent("PLAYER_REGEN_ENABLED")
+		check("  a combat edge still refreshes every frame", calls.lane >= 1 and calls.bar >= 1 and calls.ready >= 1, string.format("%d/%d/%d", calls.lane, calls.bar, calls.ready))
+		CDTL3.RefreshLane, CDTL3.RefreshBarFrame, CDTL3.RefreshReady = rl, rb, rr
+		g.hideOutOfCombat = false
+		L1.showMode = "BOSS"
+	end
+
 	-- Dim instead of hide, on the bar frame and the ready frame
 	L1.showMode = "GLOBAL"
 	B1.showMode, B1.dimInsteadOfHide, B1.dimAlpha = "COMBAT", true, 0.4

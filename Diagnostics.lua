@@ -341,7 +341,13 @@ private.Diff = function(cur, def, path, out)
 end
 
 private.Settings = function(out)
-	Add(out, "Profile: " .. Plain(CDTL3.db:GetCurrentProfile()))
+	-- a per-character profile is named "Name - Realm": a bug report keeps the name out
+	local profile = CDTL3.db:GetCurrentProfile()
+	if profile == CDTL3.db.keys.char then
+		Add(out, "Profile: (this character's profile)")
+	else
+		Add(out, "Profile: " .. Plain(profile))
+	end
 	local lines = {}
 	private.Diff(CDTL3.db.profile, CDTL3.db.defaults and CDTL3.db.defaults.profile or {}, nil, lines)
 	if #lines == 0 then

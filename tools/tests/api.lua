@@ -181,6 +181,41 @@ b.ct = { riding = true }
 check("GetLane: a riding timer's times are nil", API.GetLane(2).timers[1].expires == nil and API.GetLane(2).timers[1].duration == nil)
 b.ct = nil
 
+-- a Filters rule that hides a spell (Show only the ticked spells): left out of the API like an ignored one
+CDTL3.db.char["onlyTickedSpells"] = true
+list[1]["pickedBy"] = { ME }
+check("rule: the unticked Beta Spell is out of GetTimers, GetTimer, IsReady and GetLane", (function()
+	for _, t in ipairs(API.GetTimers()) do if t.id == 922 then return false end end
+	return API.GetTimer("spells", 922) == nil and API.IsReady("spells", 922) == nil and #API.GetLane(2).timers == 0
+end)())
+check("rule: the ticked Alpha Spell is still there", API.GetTimer("spells", 921) ~= nil)
+CDTL3.db.char["onlyTickedSpells"] = nil
+check("rule off: Beta Spell is back", API.GetTimer("spells", 922) ~= nil and #API.GetLane(2).timers == 1)
+
+---------------------------------------------------------------- 32b. a timer whose icon is in holding
+print("[32b held icon " .. FLAVOR .. "]")
+do
+	-- Lane set to Hide: the icon waits in holding, the bar shows, and no Ready frame ever gets it
+	local pname = function(x) return x:GetParent():GetName() end
+	a.data.lane = 0
+	cast(921, 30)
+	RunOnUpdate(0.02, 10)
+	a = live("Alpha Spell")
+	local nS, nR, nE = #got.Started, #got.Ready, #got.Ended
+	a.data.lane = 0
+	CDTL3:SendToLane(a)
+	check("held: Started sent, the icon is in holding", #got.Started == nS + 1 and pname(a.icon) == "CDTL3_Active_Icon_Holding", tostring(pname(a.icon)))
+	SPELLCD[921] = nil
+	a.data.currentCD = -1
+	RunOnUpdate(0.02, 5)
+	check("held: Ready sent when it is ready", #got.Ready == nR + 1 and last("Ready").data.id == 921, tostring(#got.Ready - nR))
+	check("held: Ended sent when it ends", #got.Ended == nE + 1 and last("Ended").data.id == 921, tostring(#got.Ended - nE))
+	RunOnUpdate(0.02, 1200)
+	local function ofAlpha(list, from) local n = 0 for i = from + 1, #list do if list[i].data.id == 921 then n = n + 1 end end return n end
+	check("held: exactly once each for Alpha Spell", ofAlpha(got.Ready, nR) == 1 and ofAlpha(got.Ended, nE) == 1, ofAlpha(got.Ready, nR) .. "/" .. ofAlpha(got.Ended, nE))
+	a.data.lane = 1
+end
+
 ---------------------------------------------------------------- 42. /cdtl3 help
 print("[42 help " .. FLAVOR .. "]")
 local printed = {}
