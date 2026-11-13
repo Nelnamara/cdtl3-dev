@@ -6446,6 +6446,7 @@ private.GetLaneSet = function(i)
 	private.AddCopyArgs(options.args.general.args, "lanes", i, L["Lane"])
 	private.AddShowArgs(options.args.general.args, function() return lane end, function() CDTL3:RefreshLane(i) end)
 	private.AddShareLaneArgs(options.args.general.args, i)
+	CDTL3:AddResourceBarArgs(options.args.general.args, i, lane)	-- ResourceBars.lua
 
 	return options
 end
@@ -6958,6 +6959,7 @@ private.GetReadySet = function(i)
 
 	private.AddCopyArgs(options.args.general.args, "ready", i, L["Ready Frame"])
 	private.AddReadyTestArgs(options.args.general.args, ready)
+	CDTL3:AddReadyBoardArgs(options.args.general.args, ready, i)	-- ReadyBoard.lua
 	private.AddShowArgs(options.args.general.args, function() return ready end, function() CDTL3:RefreshReady(i) end)
 
 	return options
@@ -7419,6 +7421,11 @@ function CDTL3:GetFullOptions()
 		private.ConfirmProfileWipes(CDTL3.profile)
 		options.args.profiles = CDTL3.profile
 	end
+
+	-- the Fight Timeline tab (FightTimeline.lua)
+	local fightTimeline = CDTL3:GetFightTimelineOptions()
+	fightTimeline.order = 2006
+	options.args.fightTimeline = fightTimeline
 
 	private.AddMediaNotes(options)
 

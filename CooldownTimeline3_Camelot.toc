@@ -31,6 +31,9 @@ Ready.lua
 Cooldown.lua
 API.lua
 CombatTimers.lua
+ResourceBars.lua
+FightTimeline.lua
+ReadyBoard.lua
 FlightData\Forever.lua
 Flights.lua
 EditMode.lua
