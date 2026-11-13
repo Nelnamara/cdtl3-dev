@@ -123,8 +123,13 @@ local function WithOverrides(base, overrides)
 	return copy
 end
 
+-- Show (each lane, bar frame and ready frame): "GLOBAL" follows Global > Hide out of combat, or
+-- "ALWAYS", "COMBAT" (only in combat), "BOSS" (boss fights only). Dim instead of hide keeps the
+-- frame at dimAlpha while its Show rule would hide it (CDTL3:Autohide, Helpers.lua). The same
+-- three settings are in barFrameDefaults and readyDefaults.
 local laneDefaults = {
 	enabled = true,
+	showMode = "GLOBAL", dimInsteadOfHide = false, dimAlpha = 0.3,
 	name = "Lane 1",
 	reversed = false,
 	vertical = false,
@@ -497,6 +502,7 @@ local laneDefaults = {
 
 local barFrameDefaults = {
 	enabled = true,
+	showMode = "GLOBAL", dimInsteadOfHide = false, dimAlpha = 0.3,
 	name = "Bar Frame 1",
 	grow = "UP",
 	horizontal = false,
@@ -627,6 +633,7 @@ local barFrameDefaults = {
 
 local readyDefaults = {
 	enabled = true,
+	showMode = "GLOBAL", dimInsteadOfHide = false, dimAlpha = 0.3,
 	name = "Ready 1",
 	grow = "DOWN",
 	padding = 0,
@@ -760,6 +767,8 @@ local defaults = {
 			autohide = false,
 			enableTooltip = false,
 			zoom = 1,
+			-- Ready tab: silences every ready sound (the frames', the spells' own, spoken names)
+			muteReadySounds = false,
 			
 			detectSharedCD = false,
 			hideIgnored = true,
@@ -1128,6 +1137,7 @@ function CDTL3:BuildMinimapButton()
 		GameTooltip:AddLine("|cFF54a3ffCDTL3|r |cffffffff(CooldownTimeline)|r")
 		GameTooltip:AddLine("Left-click: Open settings", 1, 1, 1)
 		GameTooltip:AddLine("Right-click: Lock/unlock", 1, 1, 1)
+		GameTooltip:AddLine(CDTL3.testing and "Shift-click: Stop preview" or "Shift-click: Preview with sample icons", 1, 1, 1)
 		GameTooltip:AddLine("Drag: Reposition", 0.7, 0.7, 0.7)
 		GameTooltip:Show()
 	end)
@@ -1136,6 +1146,8 @@ function CDTL3:BuildMinimapButton()
 	btn:SetScript("OnClick", function(_, button)
 		if button == "RightButton" then
 			CDTL3:ToggleFrameLock()
+		elseif IsShiftKeyDown and IsShiftKeyDown() then
+			CDTL3:TogglePreview()
 		else
 			CDTL3:ChatCommand("")
 		end
@@ -1571,6 +1583,24 @@ private.CreateFirstRunFrame = function()
 	f:Show()
 end
 
+-- The "Frames currently unlocked" box. Until frames have been locked once (db.global.lockedOnce,
+-- set by ToggleFrameLock, account-wide) it says what to do: drag the frames, then click Lock, and,
+-- where CDTL3's frames are in Edit Mode (LibEditMode loaded), that Edit Mode can place them too.
+-- After that first lock it keeps its plain wording. Set when the box is made and each time it shows.
+private.UnlockBoxText = function(f)
+	local lockedOnce = CDTL3.db and CDTL3.db.global and CDTL3.db.global.lockedOnce
+	if lockedOnce then
+		f.text:SetText("CDTL3\nFrames currently unlocked\nDrag and drop to move")
+		f:SetSize(180, 70)
+	elseif LibStub("LibEditMode", true) then
+		f.text:SetText("CDTL3\nFrames currently unlocked\nDrag the frames where you want them,\nthen click Lock.\nEdit Mode can place them too.")
+		f:SetSize(230, 110)
+	else
+		f.text:SetText("CDTL3\nFrames currently unlocked\nDrag the frames where you want them,\nthen click Lock.")
+		f:SetSize(230, 96)
+	end
+end
+
 private.CreateUnlockFrame = function()
 	local f = CreateFrame("Frame", "CDTL3_Unlock_Frame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	
@@ -1605,9 +1635,10 @@ private.CreateUnlockFrame = function()
 	f.text:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 12)
 	f.text:SetShadowColor( 0, 0, 0, 1 )
 	f.text:SetShadowOffset(1.5, -1)
-	f.text:SetText("CDTL3\nFrames currently unlocked\nDrag and drop to move")
 	f.text:SetPoint("TOP", 0, -5)
-	
+	private.UnlockBoxText(f)
+	f:SetScript("OnShow", private.UnlockBoxText)
+
 	local b = CreateFrame("Button", "CDTL3_Unlock_Frame_Button", f, "UIPanelButtonTemplate", BackdropTemplateMixin and "BackdropTemplate" or nil)
 	b:SetSize(80 ,25) -- width, height
 	b:SetText("Lock")
@@ -1641,6 +1672,46 @@ function CDTL3:EnableTesting()
 	end
 end
 
+-- Preview with sample icons (Global tab button, minimap Shift-click): test mode plus one set of
+-- sample icons from the Test Panel's settings. Stop preview clears them (the panel's Clear) and
+-- closes the panel. Test mode shows the frames whatever Hide out of combat or Show say.
+function CDTL3:StartPreview()
+	if not CDTL3.testing then
+		CDTL3:EnableTesting()
+	end
+	CDTL3:GenerateTestCooldowns()
+	CDTL3:ApplyCombatVisibility()
+end
+
+function CDTL3:StopPreview()
+	local f = CDTL3.testingFrame
+	CDTL3.testingFrame = nil
+	if f then
+		f:Hide()	-- AceGUI's frame closes on hide: OnClose releases it and ends test mode
+		if CDTL3.testing then
+			CDTL3.GUI:Release(f)
+		end
+	end
+	CDTL3.testing = false
+
+	for _, cd in ipairs(CDTL3.cooldowns) do
+		if cd.data["type"] == "testing" and cd.icon:GetParent():GetName() ~= "CDTL3_Active_Icon_Holding" then
+			CDTL3:SendToHolding(cd)
+			CDTL3:SendToBarHolding(cd)
+		end
+	end
+	CDTL3:ApplyCombatVisibility()
+end
+
+function CDTL3:TogglePreview()
+	if CDTL3.testing then
+		CDTL3:StopPreview()
+	else
+		CDTL3:StartPreview()
+	end
+	LibStub("AceConfigRegistry-3.0"):NotifyChange("CDTL3")
+end
+
 function CDTL3:CreateTestingFrame()
 	if CDTL3.testing then
 		--local name = "CDTL3_Testing_Frame"
@@ -1660,7 +1731,10 @@ function CDTL3:CreateTestingFrame()
 		f:SetCallback("OnClose", function(widget)
 				CDTL3.GUI:Release(widget)
 				CDTL3.testing = false
+				CDTL3.testingFrame = nil
+				LibStub("AceConfigRegistry-3.0"):NotifyChange("CDTL3")	-- the Preview button's label
 			end)
+		CDTL3.testingFrame = f
 		
 		local lblMain = CDTL3.GUI:Create("Label")
 		lblMain:SetText("Here you can create a series of test Cooldowns to assist with configuration\n\n")

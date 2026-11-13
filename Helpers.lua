@@ -213,6 +213,76 @@ function CDTL3:AuraExists(unit, aura)
 	return nil, true
 end
 
+-- Boss fights only (Show): in a boss encounter (ENCOUNTER_START until ENCOUNTER_END), or while the
+-- game says one is in progress or shows a boss unit frame. The checks run inside pcall: a value the
+-- game hides would make the comparison throw, and that reads as "no boss".
+function CDTL3:InBossFight()
+	if CDTL3.inEncounter then
+		return true
+	end
+
+	local ok, yes = pcall(function()
+		if IsEncounterInProgress and IsEncounterInProgress() == true then
+			return true
+		end
+		return UnitExists("boss1") == true
+	end)
+	return ok and yes or false
+end
+
+-- Does this frame's Show rule hide it right now? s = the lane / bar frame / ready frame settings
+-- (nil: the global setting). Unlock, debug, test mode and flights are Autohide's to weigh.
+function CDTL3:ShowRuleHides(s)
+	local mode = s and s["showMode"] or "GLOBAL"
+	if mode == "ALWAYS" then
+		return false
+	elseif mode == "COMBAT" then
+		return not CDTL3.combat
+	elseif mode == "BOSS" then
+		return not CDTL3:InBossFight()
+	end
+
+	return CDTL3.db.profile.global["hideOutOfCombat"] and not CDTL3.combat or false
+end
+
+-- Is any frame hidden by a Show rule that changes with combat or a boss fight?
+private.AnyShowRule = function()
+	local p = CDTL3.db.profile
+	if p.global["hideOutOfCombat"] then
+		return true
+	end
+
+	for _, group in ipairs({ { p.lanes, "lane" }, { p.barFrames, "frame" }, { p.ready, "ready" } }) do
+		for i = 1, 3 do
+			local s = group[1][group[2] .. i]
+			if s and (s["showMode"] == "COMBAT" or s["showMode"] == "BOSS") then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
+-- Boss fights only reacts the moment a boss is pulled or ends. Registered in pcalls: a client that
+-- doesn't know an event refuses it and the others still register. A zone change clears the flag
+-- (a fight still going after a /reload is caught by IsEncounterInProgress or boss1).
+private.bossEventFrame = CreateFrame("Frame")
+for _, e in ipairs({ "ENCOUNTER_START", "ENCOUNTER_END", "INSTANCE_ENCOUNTER_ENGAGE_UNIT", "PLAYER_ENTERING_WORLD" }) do
+	pcall(private.bossEventFrame.RegisterEvent, private.bossEventFrame, e)
+end
+private.bossEventFrame:SetScript("OnEvent", function(_, event)
+	if event == "ENCOUNTER_START" then
+		CDTL3.inEncounter = true
+	elseif event == "ENCOUNTER_END" or event == "PLAYER_ENTERING_WORLD" then
+		CDTL3.inEncounter = false
+	end
+
+	if CDTL3.db then
+		CDTL3:ApplyCombatVisibility()
+	end
+end)
+
 function CDTL3:Autohide(f, s)
 	local fAlpha = 1
 	if s then
@@ -221,14 +291,34 @@ function CDTL3:Autohide(f, s)
 
 	--CDTL3:Print(fAlpha)
 
-	-- Hide out of combat: every frame fades while you're out of combat, while detection keeps
-	-- running (a cooldown started on the last pull is still tracked and shown on the next one).
-	-- Unlock, Edit Mode (which unlocks the frames), debug and test mode all win over it.
-	-- A flight in progress (Flights.lua) keeps the frames showing it, since nobody is in combat on a flight.
+	-- Hide out of combat / Show: a frame fades while its Show rule says so (CDTL3:ShowRuleHides),
+	-- while detection keeps running (a cooldown started on the last pull is still tracked and shown
+	-- on the next one). Unlock, Edit Mode (which unlocks the frames), debug and test mode all win
+	-- over it. A flight in progress (Flights.lua) keeps the frames showing it, since nobody is in
+	-- combat on a flight. Dim instead of hide holds the frame at its dim alpha instead (an empty
+	-- frame still goes with Auto-hide Frames).
 	local gl = CDTL3.db.profile.global
-	if gl["hideOutOfCombat"] and not CDTL3.combat and not CDTL3.testing
+	if CDTL3:ShowRuleHides(s) and not CDTL3.testing
 			and not gl["unlockFrames"] and not gl["debugMode"]
 			and not (CDTL3.Flights and CDTL3.Flights:Holds(f)) then
+		if s and s["dimInsteadOfHide"] then
+			local target = s["dimAlpha"] or 0.3
+			if gl["autohide"] and not f.overrideAutohide and (f.childCount == 0 or f.forceHide) then
+				target = 0
+			end
+			if f:GetAlpha() ~= target then
+				-- set at once: a fade still running would finish at its own end alpha
+				if f.animateOut and f.animateOut:IsPlaying() then
+					f.animateOut:Stop()
+				end
+				if f.animateIn and f.animateIn:IsPlaying() then
+					f.animateIn:Stop()
+				end
+				f:SetAlpha(target)
+			end
+			return
+		end
+
 		if f:GetAlpha() ~= 0 then
 			if f.animateOut then
 				if not f.animateOut:IsPlaying() then
@@ -286,7 +376,7 @@ end
 -- appear the moment a pull starts) instead of waiting for the next update poll. The refresh
 -- functions run every frame through CDTL3:Autohide, where the actual rule lives.
 function CDTL3:ApplyCombatVisibility()
-	if not CDTL3.db.profile.global["hideOutOfCombat"] then return end
+	if not private.AnyShowRule() then return end
 
 	-- by frame number: a lane or bar frame switched off at login was never created, so list
 	-- positions don't match the numbers
@@ -1695,6 +1785,7 @@ function CDTL3:ToggleFrameLock(quiet)
 	
 	if unlockFrames then
 		CDTL3.db.profile.global["unlockFrames"] = false
+		CDTL3.db.global.lockedOnce = true	-- the unlock box drops its how-to wording from now on
 		CDTL3.unlockFrame:Hide()
 
 		for _, f in pairs(CDTL3.lanes) do

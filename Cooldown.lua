@@ -769,8 +769,12 @@ function CDTL3:RefreshIcon(cd)
 	end
 		
 	-- HIGHLIGHT BORDER
-	if cd.data["highlight"] then
-		if s["icons"]["highlight"]["border"]["style"] ~= "None" then
+	-- Flash when ready (Filters): while it waits in a Ready frame the icon flashes with the Flash
+	-- Icon highlight, whatever that frame's own highlight settings are
+	local readyFlash = cd.data["readyLit"] and not cd.data["highlight"]
+		and (p == "CDTL3_Ready_1_MF" or p == "CDTL3_Ready_2_MF" or p == "CDTL3_Ready_3_MF")
+	if cd.data["highlight"] or readyFlash then
+		if readyFlash or s["icons"]["highlight"]["border"]["style"] ~= "None" then
 			if not f.hl then
 				f.hl = CreateFrame("Frame", f:GetName().."_BD", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 				f.hl:SetParent(f)
@@ -787,8 +791,8 @@ function CDTL3:RefreshIcon(cd)
 			f.hl:SetFrameLevel(f:GetFrameLevel() + 2)
 
 			CDTL3:RemoveHighlights(f, s)
-			
-			local style = s["icons"]["highlight"]["style"]
+
+			local style = readyFlash and "FLASH" or s["icons"]["highlight"]["style"]
 			-- The action-button glow isn't available on every client (e.g. Forever):
 			-- fall back to the plain border highlight there.
 			if style == "GLOW" and ActionButton_ShowOverlayGlow then
@@ -1899,6 +1903,76 @@ function CDTL3:MoveToLane(f)
 	end
 end
 
+-- Say a spell's name (Filters: Say its name when ready). Every client CDTL3 runs on documents
+-- C_VoiceChat.SpeakText(voiceID, text, rate, volume, overlap) (destination was dropped in 12.0.0),
+-- with the voice, rate and volume from the game's own text to speech settings, as Blizzard's
+-- TextToSpeech_Speak does. The option hides where the call is missing.
+function CDTL3:CanSpeak()
+	return (C_VoiceChat and C_VoiceChat.SpeakText and C_TTSSettings and C_TTSSettings.GetVoiceOptionID) and true or false
+end
+
+function CDTL3:SpeakText(text)
+	if not CDTL3:CanSpeak() or type(text) ~= "string" or text == "" then
+		return false
+	end
+
+	return pcall(function()
+		local voiceID = C_TTSSettings.GetVoiceOptionID((Enum and Enum.TtsVoiceType and Enum.TtsVoiceType.Standard) or 0)
+		if voiceID == nil and C_VoiceChat.GetTtsVoices then
+			local voices = C_VoiceChat.GetTtsVoices()
+			voiceID = voices and voices[1] and voices[1].voiceID
+		end
+		if voiceID == nil then
+			error("no text to speech voice")
+		end
+
+		local rate = C_TTSSettings.GetSpeechRate and C_TTSSettings.GetSpeechRate() or 0
+		local volume = C_TTSSettings.GetSpeechVolume and C_TTSSettings.GetSpeechVolume() or 100
+		C_VoiceChat.SpeakText(voiceID, text, rate, volume, false)
+	end)
+end
+
+-- The saved Filters entry of a live cooldown (nil for test icons, flights and anything unsaved)
+private.SavedEntry = function(d)
+	local t = d["type"]
+	if not (t and CDTL3.db.profile.tables[t]) then
+		return nil
+	end
+
+	if t == "items" then
+		return CDTL3:GetSpellSettings(d["itemName"] or d["name"], t, true)
+	end
+	return CDTL3:GetSpellSettings(d["name"], t)
+end
+
+-- Arriving in a Ready frame (s): the entry's own Ready sound if it has one (Filters: Own ready
+-- sound), else the frame's Highlight or Normal Sound as before; its spoken name; and Flash when
+-- ready for RefreshIcon. Mute ready sounds (Ready tab) silences the sounds and the name.
+private.ReadyAlert = function(f, s)
+	local e = private.SavedEntry(f.data)
+	f.data["readyLit"] = (e and e["readyFlash"]) and true or nil
+
+	if CDTL3.db.profile.global["muteReadySounds"] then
+		return
+	end
+
+	local sound
+	if e and e["ownSound"] then
+		sound = e["sound"] or "None"
+	elseif f.data["highlight"] then
+		sound = s["hSound"]
+	else
+		sound = s["nSound"]
+	end
+	if sound and sound ~= "None" then
+		PlaySoundFile(CDTL3.LSM:Fetch("sound", sound), "SFX")
+	end
+
+	if e and e["sayName"] then
+		CDTL3:SpeakText(f.data["type"] == "items" and f.data["itemName"] or f.data["name"])
+	end
+end
+
 -- A switched-off Ready frame takes nothing (no sound, no icon waiting in the hidden frame). An icon
 -- arriving is shown: one hidden on its lane for being over Max Time (Hide time surplus) used to stay
 -- hidden in the Ready frame after an early reset (Cold Snap, Preparation, Readiness). A highlighted
@@ -1915,15 +1989,7 @@ function CDTL3:SendToReady(f)
 			s = CDTL3.db.profile.ready["ready1"]
 			ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
 			
-			if f.data["highlight"] then
-				if s["hSound"] ~= "None" then
-					PlaySoundFile(CDTL3.LSM:Fetch("sound", s["hSound"]), "SFX")
-				end
-			else
-				if s["nSound"] ~= "None" then
-					PlaySoundFile(CDTL3.LSM:Fetch("sound", s["nSound"]), "SFX")
-				end
-			end
+			private.ReadyAlert(f, s)
 			
 			CDTL3_Ready_1.combatTimer = 0
 			CDTL3_Ready_1_MF.triggerUpdate = true
@@ -1939,15 +2005,7 @@ function CDTL3:SendToReady(f)
 			s = CDTL3.db.profile.ready["ready2"]
 			ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
 			
-			if f.data["highlight"] then
-				if s["hSound"] ~= "None" then
-					PlaySoundFile(CDTL3.LSM:Fetch("sound", s["hSound"]), "SFX")
-				end
-			else
-				if s["nSound"] ~= "None" then
-					PlaySoundFile(CDTL3.LSM:Fetch("sound", s["nSound"]), "SFX")
-				end
-			end
+			private.ReadyAlert(f, s)
 			
 			CDTL3_Ready_2.combatTimer = 0
 			CDTL3_Ready_2_MF.triggerUpdate = true
@@ -1963,15 +2021,7 @@ function CDTL3:SendToReady(f)
 			s = CDTL3.db.profile.ready["ready3"]
 			ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
 			
-			if f.data["highlight"] then
-				if s["hSound"] ~= "None" then
-					PlaySoundFile(CDTL3.LSM:Fetch("sound", s["hSound"]), "SFX")
-				end
-			else
-				if s["nSound"] ~= "None" then
-					PlaySoundFile(CDTL3.LSM:Fetch("sound", s["nSound"]), "SFX")
-				end
-			end
+			private.ReadyAlert(f, s)
 			
 			CDTL3_Ready_3.combatTimer = 0
 			CDTL3_Ready_3_MF.triggerUpdate = true
