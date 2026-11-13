@@ -16,6 +16,10 @@ function CDTL3:ApplyEntryDefaults(s, type)
 	local d = CDTL3.db.profile.global[type]
 
 	s["lane"] = d["defaultLane"]
+	-- a kept starter setup (Start.lua) sends a new spell to the lane for its length
+	if CDTL3.Start then
+		s["lane"] = CDTL3.Start.NewEntryLane(s, type) or s["lane"]
+	end
 	s["barFrame"] = d["defaultBar"]
 	s["readyFrame"] = d["defaultReady"]
 	s["enabled"] = d["showByDefault"]
@@ -2627,7 +2631,7 @@ end
 -- The Import box shows CDTL3:ImportPreview's text with Accept / Cancel before ImportHandler
 -- writes anything.
 local SHARE_HEADER, SHARE_FORMAT = "!CDTL3:2!", 2
-local SHARE_KINDS = { ALL = "All Settings and Data", SETTINGS = "CDTL3 Settings Only", CDDATA = "Cooldown Data Only", LANE = "One lane" }
+local SHARE_KINDS = { ALL = "All Settings and Data", SETTINGS = "CDTL3 Settings Only", CDDATA = "Cooldown Data Only", LANE = "One lane", LOOK = "A saved look" }
 local SHARE_CLIENTS = { Retail = "Retail", Forever = "WoW: Forever", Mists = "MoP Classic", TBC = "TBC Anniversary", Era = "Classic Era" }
 -- lane settings a lane string leaves out: where the lane sits belongs to the player's own screen
 local SHARE_LANE_SKIP = { enabled = true, posX = true, posY = true, relativeTo = true, editMode = true }
@@ -2705,11 +2709,12 @@ end
 
 -- The text for the Export box (mode = ALL, SETTINGS or CDDATA) or a lane's Copy this lane box
 -- (mode = LANE, lane = 1-3)
-function CDTL3:ExportString(mode, lane)
-	if mode ~= "LANE" and mode ~= "CDDATA" and mode ~= "SETTINGS" then
+function CDTL3:ExportString(mode, lane, look)
+	if mode ~= "LANE" and mode ~= "CDDATA" and mode ~= "SETTINGS" and mode ~= "LOOK" then
 		mode = "ALL"
 	end
-	local wrapper = { kind = mode, client = ShareClient(), toc = CDTL3.tocversion, version = CDTL3.version, data = ExportData(mode, lane) }
+	local wrapper = { kind = mode, client = ShareClient(), toc = CDTL3.tocversion, version = CDTL3.version,
+		data = mode == "LOOK" and CDTL3:TableCopy(look or {}) or ExportData(mode, lane) }
 	if mode == "LANE" then
 		wrapper.lane = lane
 	end
@@ -2752,6 +2757,19 @@ local function ReadShare(importString)
 	} }
 end
 
+-- A pasted look string (Quick Style > Import a look) -> the look, or nil and what's wrong
+function CDTL3:ReadLookString(text)
+	local plan = ReadShare(text)
+	if not plan or not plan.meta or plan.meta.kind ~= "LOOK" then
+		return nil, L["That isn't a CDTL3 look string."]
+	end
+	local look = CDTL3:CleanLook(plan.data)
+	if not look then
+		return nil, L["That look string is damaged."]
+	end
+	return look
+end
+
 -- a cooldown-data export is the tables map itself; a full/settings export nests it
 local function ShareTables(data)
 	return type(data.tables) == "table" and data.tables or data
@@ -2761,6 +2779,10 @@ end
 -- nothing is written, so a bad string changes nothing.
 local function CheckShare(plan, mode)
 	local data, defaults = plan.data, CDTL3.db.defaults.profile
+
+	if plan.meta and plan.meta.kind == "LOOK" then
+		return L["That is a saved look: paste it under Quick Style > Import a look."]
+	end
 
 	if plan.meta and plan.meta.kind == "LANE" then
 		if not FitsDefaults(data, defaults.lanes["lane"..plan.meta.lane]) then

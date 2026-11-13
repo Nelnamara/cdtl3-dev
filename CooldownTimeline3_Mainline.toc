@@ -38,4 +38,5 @@ ReadyBoard.lua
 FlightData\Retail.lua
 Flights.lua
 Group.lua
+Start.lua
 EditMode.lua

@@ -34,4 +34,5 @@ ReadyBoard.lua
 FlightData\TBC.lua
 Flights.lua
 Group.lua
+Start.lua
 EditMode.lua

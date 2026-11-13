@@ -388,6 +388,8 @@ private.AddMediaNotes = function(group, seen)
 	end
 end
 
+CDTL3.AddMediaNotes = private.AddMediaNotes	-- Start.lua's Simple tab has a sound dropdown too
+
 -- The Filters entry being edited: the saved entry, or the in-progress custom when adding one
 private.FilterEntry = function(t)
 	if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then

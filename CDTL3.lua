@@ -824,6 +824,10 @@ local defaults = {
 				flag1 = 120, flag2 = 180, flag3 = 300,
 				point = "CENTER", x = 0, y = -150,
 			},
+			-- Start.lua: a ~ before a time CDTL3 counts itself (off: nothing changes), and the starter
+			-- setup the player kept in Quick Style ("" = none)
+			estimateTilde = false,
+			setupKey = "",
 
 			exportMode = "SETTINGS",
 			importMode = "SETTINGS",
@@ -1173,9 +1177,18 @@ function CDTL3:BuildMinimapButton()
 	btn:SetScript("OnEnter", function(s)
 		GameTooltip:SetOwner(s, "ANCHOR_LEFT")
 		GameTooltip:AddLine("|cFF54a3ffCDTL3|r |cffffffff(CooldownTimeline)|r")
+		-- where things stand: frames locked or not, combat timers (Retail and Forever only)
+		local unlocked = CDTL3.db.profile.global["unlockFrames"]
+		GameTooltip:AddLine(string.format(L["Frames: %s"], "|cffffd100" .. (unlocked and L["unlocked"] or L["locked"]) .. "|r"), 1, 1, 1)
+		local CT = CDTL3.CombatTimers
+		if CT and CT:Available() then
+			GameTooltip:AddLine(string.format(L["Combat timers: %s"], CT:Enabled() and L["on"] or L["off"]), 1, 1, 1)
+		end
+		GameTooltip:AddLine(" ")
 		GameTooltip:AddLine(L["Left-click: Open settings"], 1, 1, 1)
 		GameTooltip:AddLine(L["Right-click: Lock/unlock"], 1, 1, 1)
 		GameTooltip:AddLine(CDTL3.testing and L["Shift-click: Stop preview"] or L["Shift-click: Preview with sample icons"], 1, 1, 1)
+		GameTooltip:AddLine(L["Ctrl-click: Help"], 1, 1, 1)
 		GameTooltip:AddLine(L["Drag: Reposition"], 0.7, 0.7, 0.7)
 		GameTooltip:Show()
 	end)
@@ -1186,6 +1199,8 @@ function CDTL3:BuildMinimapButton()
 			CDTL3:ToggleFrameLock()
 		elseif IsShiftKeyDown and IsShiftKeyDown() then
 			CDTL3:TogglePreview()
+		elseif IsControlKeyDown and IsControlKeyDown() then
+			CDTL3:ChatCommand("help window")
 		else
 			CDTL3:ChatCommand("")
 		end
@@ -1274,7 +1289,12 @@ function CDTL3:OnEnable()
 	-- (Retail, Forever); a first run opens it everywhere, as before.
 	local CT = CDTL3.CombatTimers
 	local notice = CDTL3:IsNewerVersion() and CT and CT:Available()
-	if CDTL3.db.profile.global["firstRun"] or notice then
+	if CDTL3.Start and CDTL3.Start:TourDue() then
+		-- a first install gets the three-step tour (Start.lua); what's new is for existing players
+		C_Timer.After(10, function()
+			CDTL3.Start:StartTour()
+		end)
+	elseif CDTL3.db.profile.global["firstRun"] or notice then
 		C_Timer.After(10, function()
 			private.CreateFirstRunFrame()
 		end)
@@ -1301,6 +1321,8 @@ private.helpLines = {
 	{ "perf", L["show CPU, memory and frame counts"] },
 	{ "help", L["show this list"] },
 }
+
+CDTL3.helpLines = private.helpLines	-- the Help tab lists the same commands (Start.lua)
 
 function CDTL3:PrintHelp()
 	CDTL3:Print(L["commands (/cdtl3 <command>):"])
@@ -1346,6 +1368,9 @@ function CDTL3:ChatCommand(input)
 		CDTL3:ToggleDebug()
 	elseif input:trim() == "help" or input:trim() == "?" then
 		CDTL3:PrintHelp()
+	elseif input:trim() == "help window" then
+		LibStub("AceConfigDialog-3.0"):Open("CDTL3")
+		LibStub("AceConfigDialog-3.0"):SelectGroup("CDTL3", "help")
 	elseif input:trim() == "auras" then
 		CDTL3:DiagnoseAuras()
 	elseif input:trim() == "report" then
