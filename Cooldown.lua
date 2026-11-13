@@ -571,6 +571,7 @@ function CDTL3:RefreshIcon(cd)
 	
 	f:ClearAllPoints()
 	f:SetPoint("CENTER", 0, 0)
+	f.placeNow = true	-- slid back into place on its next update, whatever the Update rate
 	f:SetSize(s["icons"]["size"], s["icons"]["size"])
 	
 	-- Set the icon texture
@@ -931,6 +932,85 @@ private.UpdateBarDynamicColor = function(ba, s, d)
 	end
 end
 
+-- UPDATE RATE (Global > Update rate): which frames move icons, fill bars and redo texts. Timers, Ready
+-- and sounds run every frame whatever it is set to. At Full (0) every frame is a visual frame; at 30 or
+-- 15 a second only frames at least that far apart are. Decided once per frame (GetTime() doesn't change
+-- within one), so every icon and bar moves on the same frames.
+private.visualAt = nil
+private.visualDue = true
+private.lastVisual = nil
+private.throttled = false
+private.VisualDue = function()
+	local rate = CDTL3.db.profile.global["updateRate"]
+	if not rate or rate <= 0 then
+		private.throttled = false
+		return true
+	end
+	private.throttled = true
+	local now = GetTime()
+	if now ~= private.visualAt then
+		private.visualAt = now
+		local last = private.lastVisual
+		-- a little slack so 30 a second at 60 fps is every other frame, not every third
+		if not last or now - last >= 1 / rate - 0.002 or now < last then
+			private.lastVisual = now
+			private.visualDue = true
+		else
+			private.visualDue = false
+		end
+	end
+	return private.visualDue
+end
+
+-- a lane faded to nothing: alpha 0 and not fading in
+private.LaneFaded = function(lane)
+	if lane:GetAlpha() ~= 0 then
+		return false
+	end
+	local fadeIn = lane.animateIn
+	return not (fadeIn and fadeIn:IsPlaying())
+end
+
+-- An icon on a lane: whether to slide it and redo its texts this frame, and whether its texts must be
+-- redone now. Forced on the first frame after it (re)starts on a lane (SendToLane resets updateCount)
+-- and after RefreshIcon re-centred it, so it never shows out of place. Pause while hidden: while its
+-- lane is faded to nothing it skips them, and catches up, texts too, on the first frame the lane shows.
+private.IconVisual = function(f, ic, s)
+	local due = private.VisualDue()
+	if s["pauseHidden"] and private.LaneFaded(ic:GetParent()) then
+		ic.visualPaused = true
+		return false, false
+	end
+	local force = (ic.visualPaused or f.updateCount == 0) and true or false
+	local place = ic.placeNow
+	ic.visualPaused = nil
+	ic.placeNow = nil
+	return (due or force or place) and true or false, force
+end
+
+-- Below Full a text's poll counts in time, not frames (the frames it would skip are skipped): it is due
+-- once as long has passed as its poll takes at 60 frames a second.
+private.TextDueByTime = function(f, tf, s)
+	local interval = nil
+	if s["dtags"] then
+		interval = private.dynamicTextPollRate / 60
+	end
+	if s["ttags"] then
+		local timeRate = private.timeTextPollRate
+		if f.data["currentCD"] > 10 then
+			timeRate = timeRate * 3
+		end
+		if not interval or timeRate / 60 < interval then
+			interval = timeRate / 60
+		end
+	end
+	if not interval then
+		return false
+	end
+	local last = tf.cdtlTextAt
+	return not last or GetTime() - last >= interval - 0.002
+end
+
 private.BarUpdate = function(f, elapsed)
 	local d = f.data
 	local ba = f.bar
@@ -999,17 +1079,20 @@ private.BarUpdate = function(f, elapsed)
 				end
 			end
 			
-			if not (riding and CT:DriveBar(f)) then
-				local iconPercent = private.CalcLinearPosition(pCurrent, pBase)
-				ba.bar:SetValue(iconPercent)
-			end
+			-- the fill, its colour and the texts follow the Update rate (and the first frame after a restart)
+			if private.VisualDue() or f.updateCount == 0 then
+				if not (riding and CT:DriveBar(f)) then
+					local iconPercent = private.CalcLinearPosition(pCurrent, pBase)
+					ba.bar:SetValue(iconPercent)
+				end
 
-			private.UpdateBarDynamicColor(ba, s, d)
+				private.UpdateBarDynamicColor(ba, s, d)
 
-			if ba:GetAlpha() ~= 0 and ba.txt then
-				private.UpdateText(f, ba.txt.text1, s["bar"]["text1"], s["bar"]["text1"]["text"])
-				private.UpdateText(f, ba.txt.text2, s["bar"]["text2"], s["bar"]["text2"]["text"])
-				private.UpdateText(f, ba.txt.text3, s["bar"]["text3"], s["bar"]["text3"]["text"])
+				if ba:GetAlpha() ~= 0 and ba.txt then
+					private.UpdateText(f, ba.txt.text1, s["bar"]["text1"], s["bar"]["text1"]["text"])
+					private.UpdateText(f, ba.txt.text2, s["bar"]["text2"], s["bar"]["text2"]["text"])
+					private.UpdateText(f, ba.txt.text3, s["bar"]["text3"], s["bar"]["text3"]["text"])
+				end
 			end
 		else
 			CDTL3:SendToBarHolding(f)
@@ -1645,9 +1728,12 @@ private.IconUpdate = function(f, elapsed)
 				end
 			end
 			
+			-- the slide and the texts follow the Update rate and Pause while hidden (IconVisual)
+			local visual, force = private.IconVisual(f, ic, s)
+
 			-- a riding icon follows its rider's fill edge instead (CombatTimers.lua)
 			local CT = CDTL3.CombatTimers
-			if not (ic.ctRiding and CT and CT:PlaceIcon(f, s, mode, max)) then
+			if visual and not (ic.ctRiding and CT and CT:PlaceIcon(f, s, mode, max)) then
 				local iconPosition = (s["width"] - s["icons"]["size"]) * iconPercent
 
 				local anchor = "LEFT"
@@ -1673,11 +1759,11 @@ private.IconUpdate = function(f, elapsed)
 				end
 			end
 
-			if ic:GetAlpha() ~= 0 then
+			if visual and ic:GetAlpha() ~= 0 then
 				if ic.txt then
-					private.UpdateText(f, ic.txt.text1, s["icons"]["text1"], s["icons"]["text1"]["text"])
-					private.UpdateText(f, ic.txt.text2, s["icons"]["text2"], s["icons"]["text2"]["text"])
-					private.UpdateText(f, ic.txt.text3, s["icons"]["text3"], s["icons"]["text3"]["text"])
+					private.UpdateText(f, ic.txt.text1, s["icons"]["text1"], s["icons"]["text1"]["text"], force)
+					private.UpdateText(f, ic.txt.text2, s["icons"]["text2"], s["icons"]["text2"]["text"], force)
+					private.UpdateText(f, ic.txt.text3, s["icons"]["text3"], s["icons"]["text3"]["text"], force)
 				end
 			end
 			
@@ -2079,7 +2165,8 @@ private.ShowHide = function(f)
 	end
 end
 
-private.UpdateText = function(f, tf, s, iString)
+-- force: redo a text with tags now (an icon back from Pause while hidden, or just restarted)
+private.UpdateText = function(f, tf, s, iString, force)
 	-- combat timers (CombatTimers.lua): an estimated buff's text is dimmed, and a riding
 	-- cooldown's [cd.time]-only text follows the game's timer
 	local CT = CDTL3.CombatTimers
@@ -2098,21 +2185,31 @@ private.UpdateText = function(f, tf, s, iString)
 		-- dynamic tags poll at their rate, time tags faster in the last 10s; whenever
 		-- either is due the whole text is converted (all tag families in one pass)
 		local due = false
-		if s["dtags"] and f.updateCount % private.dynamicTextPollRate == 0 then
+		if private.throttled then
+			due = private.TextDueByTime(f, tf, s)
+		else
+			if s["dtags"] and f.updateCount % private.dynamicTextPollRate == 0 then
+				due = true
+			end
+			
+			if s["ttags"] then
+				local timeRate = private.timeTextPollRate
+				if f.data["currentCD"] > 10 then
+					timeRate = timeRate * 3
+				end
+				if f.updateCount % timeRate == 0 then
+					due = true
+				end
+			end
+		end
+		if force and (s["dtags"] or s["ttags"]) then
 			due = true
 		end
 		
-		if s["ttags"] then
-			local timeRate = private.timeTextPollRate
-			if f.data["currentCD"] > 10 then
-				timeRate = timeRate * 3
-			end
-			if f.updateCount % timeRate == 0 then
-				due = true
-			end
-		end
-		
 		if due then
+			if private.throttled then
+				tf.cdtlTextAt = GetTime()
+			end
 			tf:SetText(CDTL3:ConvertAllTextTags(s["text"], f))
 		end
 	end

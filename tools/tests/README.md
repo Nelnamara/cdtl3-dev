@@ -75,6 +75,12 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
   Filters entries listed for the importing character on a shared Default profile, the "(missing)" note
   on every font / bar texture / sound dropdown with CDTL3's media fallbacks, CDTL3's own media in
   LibSharedMedia, and Masque groups per timer type (a stub Masque).
+- `diag.lua`: diagnostics and performance (feature panel cards 35, 36, 38): Diagnostics.lua in every TOC, the
+  failure log fed by each hidden-value read (counts, repeats on one line, the last 200 kept, nothing printed or
+  hidden), `/cdtl3 log` and `/cdtl3 report` (each part, no hidden value or GUID, a broken part), the Update rate
+  (Full slides every frame where the formula says; 30 and 15 a second slide, fill and redo texts less often)
+  with Ready and its sound on the same frame at every rate, Pause while hidden, and `/cdtl3 perf`. `show` as the
+  last argument prints a sample report. `combattimers.lua` checks a riding icon at 15 a second.
 - The `/cdtl3 probe` test build and its `probe.lua` harness live on branch `cdm-probe`.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).

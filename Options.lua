@@ -1021,6 +1021,25 @@ function CDTL3:GetMainOptions()
 								CDTL3:RefreshAllIcons()
 							end,
 					},
+					spacer680 = {
+						name = "\n\n",
+						type = "description",
+						order = 680,
+					},
+					updateRate = {
+						name = "Update rate",
+						desc = "How often icons slide, bars fill and texts change; lower saves some CPU, and timers, Ready and sounds stay exact",
+						order = 681,
+						type = "select",
+						values = { [0] = "Full", [30] = "30 per second", [15] = "15 per second" },
+						sorting = { 0, 30, 15 },
+						get = function(info)
+								return CDTL3.db.profile.global["updateRate"] or 0
+							end,
+						set = function(info, val)
+								CDTL3.db.profile.global["updateRate"] = val
+							end,
+					},
 					spacer700 = {
 						name = "\n\n",
 						type = "description",
@@ -5275,6 +5294,18 @@ private.GetLaneSet = function(i)
 						set = function(info, val)
 								lane["tracking"]["overrideAutohide"] = val
 								CDTL3:RefreshLane(i)
+							end,
+					},
+					pauseHidden = {
+						name = "Pause while hidden",
+						desc = "While this lane is faded out, its icons stop sliding and updating their texts; timers, Ready and sounds keep running",
+						order = 601.5,
+						type = "toggle",
+						get = function(info, index)
+								return lane["pauseHidden"]
+							end,
+						set = function(info, val)
+								lane["pauseHidden"] = val
 							end,
 					},
 					spacer602 = {

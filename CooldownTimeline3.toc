@@ -15,6 +15,7 @@ embeds.xml
 Libs\LibEditMode\embed.xml
 
 CDTL3.lua
+Diagnostics.lua
 Data.lua
 Options.lua
 Helpers.lua
