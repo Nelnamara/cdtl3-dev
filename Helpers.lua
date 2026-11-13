@@ -288,11 +288,13 @@ end
 function CDTL3:ApplyCombatVisibility()
 	if not CDTL3.db.profile.global["hideOutOfCombat"] then return end
 
-	for k in pairs(CDTL3.lanes) do
-		CDTL3:RefreshLane(k)
+	-- by frame number: a lane or bar frame switched off at login was never created, so list
+	-- positions don't match the numbers
+	for _, f in pairs(CDTL3.lanes) do
+		CDTL3:RefreshLane(f.number)
 	end
-	for k in pairs(CDTL3.barFrames) do
-		CDTL3:RefreshBarFrame(k)
+	for _, f in pairs(CDTL3.barFrames) do
+		CDTL3:RefreshBarFrame(f.number)
 	end
 	for i = 1, 3 do
 		if _G["CDTL3_Ready_" .. i] then

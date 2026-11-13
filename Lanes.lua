@@ -127,7 +127,12 @@ function CDTL3:RefreshLane(i)
 
 	if s["tracking"]["secondaryTracking"] ~= "NONE" then
 		f.st:ClearAllPoints()
-		f.st:SetSize(s["tracking"]["stWidth"], s["tracking"]["stHeight"])
+		-- a vertical lane swaps its width and height, and its marker does the same
+		if s["vertical"] then
+			f.st:SetSize(s["tracking"]["stHeight"], s["tracking"]["stWidth"])
+		else
+			f.st:SetSize(s["tracking"]["stWidth"], s["tracking"]["stHeight"])
+		end
 		CDTL3:SetBarTexture(f.st.bg, s["tracking"]["stTexture"])
 		f.st.bg:SetAllPoints(true)
 		f.st.bg:SetVertexColor(
@@ -520,63 +525,65 @@ private.CalcStacking = function(f, s, count)
 						table.insert(indicies, currentIndex)
 					end
 				end
+			end
+
+			-- once every icon has its stack: place and layer each stack (this ran once per icon
+			-- before, redoing every stack each time for the same end result)
+			for i = 1, currentIndex, 1 do
+				local currentStack = {}
+				local stackCount = 0
+				-- Count how many we have in the i'nth stack
+				for k, v in pairs(indicies) do
+					if v == i then
+						stackCount = stackCount + 1
+						table.insert(currentStack, kids[k])
+					end
+				end
 				
-				for i = 1, currentIndex, 1 do
-					local currentStack = {}
-					local stackCount = 0
-					-- Count how many we have in the i'nth stack
-					for k, v in pairs(indicies) do
-						if v == i then
-							stackCount = stackCount + 1
-							table.insert(currentStack, kids[k])
+				table.sort(currentStack, function(a, b)
+						if a.currentCD == b.currentCD then
+							return a.uid < b.uid
+						end
+				
+						return a.currentCD > b.currentCD
+					end)
+				
+				-- Then set the correct data for the i'nth stack
+				for k, icon in pairs(currentStack) do
+					icon.stack = i
+					local iconOffset = 0
+					local stackOffset = 0
+					if iconSize * stackCount > height then
+						local maxHeight = height - iconSize
+						iconOffset = (maxHeight / (stackCount - 1)) * (k - 1)
+						
+						stackOffset = maxHeight / 2
+					else
+						iconOffset = iconSize * (k - 1)
+						stackOffset = (iconSize * (stackCount - 1)) / 2
+					end
+					
+					if grow == "DOWN" then
+						iconOffset = -iconOffset
+					elseif grow == "CENTER" then
+						if stackCount == 1 then
+							iconOffset = 0
+						else
+							iconOffset = iconOffset - stackOffset
 						end
 					end
 					
-					table.sort(currentStack, function(a, b)
-							if a.currentCD == b.currentCD then
-								return a.uid < b.uid
-							end
+					icon.sOffset = iconOffset
 					
-							return a.currentCD > b.currentCD
-						end)
+					local levelMultiplier = 5
+					local baseLevel = k * levelMultiplier
 					
-					-- Then set the correct data for the i'nth stack
-					for k, icon in pairs(currentStack) do
-						icon.stack = i
-						local iconOffset = 0
-						local stackOffset = 0
-						if iconSize * stackCount > height then
-							local maxHeight = height - iconSize
-							iconOffset = (maxHeight / (stackCount - 1)) * (k - 1)
-							
-							stackOffset = maxHeight / 2
-						else
-							iconOffset = iconSize * (k - 1)
-							stackOffset = (iconSize * (stackCount - 1)) / 2
-						end
-						
-						if grow == "DOWN" then
-							iconOffset = -iconOffset
-						elseif grow == "CENTER" then
-							if stackCount == 1 then
-								iconOffset = 0
-							else
-								iconOffset = iconOffset - stackOffset
-							end
-						end
-						
-						icon.sOffset = iconOffset
-						
-						local levelMultiplier = 5
-						local baseLevel = k * levelMultiplier
-						
-						icon:SetFrameLevel(baseLevel)
-						if icon.bd then
-							icon.bd:SetFrameLevel(baseLevel + 1)
-						end
-						if icon.hl then
-							icon.hl:SetFrameLevel(baseLevel + 2)
-						end
+					icon:SetFrameLevel(baseLevel)
+					if icon.bd then
+						icon.bd:SetFrameLevel(baseLevel + 1)
+					end
+					if icon.hl then
+						icon.hl:SetFrameLevel(baseLevel + 2)
 					end
 				end
 			end
@@ -700,6 +707,77 @@ private.FrameElapsed = function(key, elapsed)
 	return elapsed
 end
 
+-- GCD tracking while its timing is hidden: whether the game's GCD spell (61304) is cooling down is
+-- never hidden, and its timer object's remaining time can be handed to a StatusBar (as
+-- CombatTimers.lua does). Returns true and that remaining time (only ever given to a widget).
+private.GCD_SPELL = 61304
+private.HiddenGCD = function()
+	if not (CDTL3.retailAPI and C_Spell and C_Spell.GetSpellCooldownDuration) then
+		return false
+	end
+
+	local ok, running, remaining = pcall(function()
+		local info = C_Spell.GetSpellCooldown(private.GCD_SPELL)
+		if not (info and info["isActive"] == true) then
+			return false
+		end
+		local dur = C_Spell.GetSpellCooldownDuration(private.GCD_SPELL, false)	-- false: its cooldown is the GCD
+		local kind = type(dur)
+		if kind ~= "table" and kind ~= "userdata" then
+			return false
+		end
+		return true, dur:GetRemainingDuration()
+	end)
+
+	return (ok and running == true), remaining
+end
+
+-- where the secondary marker starts: the lane's start along its long side
+private.OPPOSITE = { LEFT = "RIGHT", RIGHT = "LEFT", BOTTOM = "TOP", TOP = "BOTTOM" }
+private.MarkerAnchor = function(s)
+	if s["vertical"] then
+		return s["tracking"]["secondaryReversed"] and "TOP" or "BOTTOM"
+	end
+	return s["tracking"]["secondaryReversed"] and "RIGHT" or "LEFT"
+end
+
+-- the secondary marker on a value it can't read: a transparent StatusBar along the marker's travel
+-- takes the value, and the marker sits on the edge of its fill
+private.RideMarker = function(f, s, value, max)
+	local rider = f.stRider
+	if not rider then
+		rider = CreateFrame("StatusBar", nil, f)
+		rider:SetStatusBarTexture([[Interface\Buttons\WHITE8X8]])
+		rider:SetStatusBarColor(0, 0, 0, 0)
+		local tex = rider:GetStatusBarTexture()
+		if tex then
+			tex:SetAlpha(0)
+		end
+		rider:EnableMouse(false)
+		f.stRider = rider
+	end
+
+	local anchor = private.MarkerAnchor(s)
+	local len = math.max(s["width"] - s["tracking"]["stWidth"], 1)
+	rider:ClearAllPoints()
+	rider:SetPoint(anchor, f, anchor, 0, 0)
+	if s["vertical"] then
+		rider:SetOrientation("VERTICAL")
+		rider:SetSize(1, len)
+	else
+		rider:SetOrientation("HORIZONTAL")
+		rider:SetSize(len, 1)
+	end
+	rider:SetReverseFill(s["tracking"]["secondaryReversed"] and true or false)
+	rider:SetMinMaxValues(0, max)
+	rider:SetValue(value)
+	rider:Show()
+
+	f.st:ClearAllPoints()
+	f.st:SetPoint(anchor, rider:GetStatusBarTexture(), private.OPPOSITE[anchor], 0, 0)
+	f.st:Show()
+end
+
 private.CalcTracking = function(f, s, t, elapsed)	
 	local position = 0
 
@@ -709,7 +787,16 @@ private.CalcTracking = function(f, s, t, elapsed)
 		
 		local timeLeft = (start + duration) - GetTime()
 		position = ( timeLeft / (gcdMS / 1000))
-		
+
+		-- the read above comes back empty while the GCD's timing is hidden (in combat on Retail and
+		-- WoW: Forever): hand the GCD spell's own timer on, for a StatusBar to take
+		if position <= 0 then
+			local running, remaining = private.HiddenGCD()
+			if running then
+				return 0, remaining, gcdMS / 1000, true
+			end
+		end
+
 	elseif t == "HEALTH" then
 		local hpMax = UnitHealthMax("player")
 		local hpCurrent = UnitHealth("player")
@@ -842,7 +929,8 @@ private.CreateLane = function(laneNumber)
 	f.childCount = 0
 	f.validChildren = {}
 	f.overrideAutohide = false
-	
+	f.overrideApplied = false
+
 	f.currentCount = 0
 	f.previousCount = 0
 	f.triggerUpdate = false
@@ -926,13 +1014,13 @@ private.LaneUpdate = function(f, elapsed)
 		f.triggerUpdate = false
 	end
 	
-	-- TEXT UPDATE
-	--private.UpdateText(f, s)
-	
-	if f:GetAlpha() ~= 0 then
-		-- TEXT UPDATE
-		--private.UpdateText(f, s)
-	
+	-- Override Autohide: a faded-out lane keeps tracking what brings it back (health, power, stealth)
+	local watching = s["enabled"] and s["tracking"]["overrideAutohide"]
+
+	if f:GetAlpha() ~= 0 or watching then
+		-- TEXT UPDATE (live tags; each tag family converts at its own poll rate)
+		private.UpdateText(f, s)
+
 		-- STACKING CALC
 		if f.updateCount % private.stackingPollRate == 0 then
 			private.CalcStacking(f, s, f.childCount)
@@ -940,8 +1028,8 @@ private.LaneUpdate = function(f, elapsed)
 	
 		-- PRIMARY TRACKING
 		if s["tracking"]["primaryTracking"] ~= "NONE" then
-			local tValue, secretCurrent, secretMax = private.CalcTracking(f, s, s["tracking"]["primaryTracking"], elapsed)
-			if secretCurrent then
+			local tValue, secretCurrent, secretMax, rides = private.CalcTracking(f, s, s["tracking"]["primaryTracking"], elapsed)
+			if rides or secretCurrent then
 				f:SetMinMaxValues(0, secretMax)
 				f:SetValue(secretCurrent)
 				f.secretRange = true
@@ -963,21 +1051,28 @@ private.LaneUpdate = function(f, elapsed)
 		
 		-- SECONDARY TRACKING
 		if s["tracking"]["secondaryTracking"] ~= "NONE" then
-			local tValue, secretCurrent = private.CalcTracking(f, s, s["tracking"]["secondaryTracking"], elapsed)
-			
-			-- the marker is positioned by arithmetic, so it can't follow a secret value
-			if not secretCurrent and tValue < 1 and tValue > 0 then
+			local tValue, secretCurrent, secretMax, rides = private.CalcTracking(f, s, s["tracking"]["secondaryTracking"], elapsed)
+
+			-- the marker is positioned by arithmetic, so it can't follow a secret value, except the
+			-- GCD's, which it rides on a StatusBar
+			if rides then
+				private.RideMarker(f, s, secretCurrent, secretMax)
+			elseif not secretCurrent and tValue < 1 and tValue > 0 then
 				local tPosition = (s["width"] - s["tracking"]["stWidth"]) * tValue
-				
+
 				f.st:ClearAllPoints()
 
-				local anchor = "LEFT"
-				if s["tracking"]["secondaryReversed"] then
-					anchor = "RIGHT"
+				-- along the lane's long side: across on a horizontal lane, up on a vertical one
+				local anchor = private.MarkerAnchor(s)
+				if anchor == "RIGHT" or anchor == "TOP" then
 					tPosition = -tPosition
 				end
-				
-				f.st:SetPoint(anchor, tPosition, 0)
+
+				if s["vertical"] then
+					f.st:SetPoint(anchor, 0, tPosition)
+				else
+					f.st:SetPoint(anchor, tPosition, 0)
+				end
 				f.st:Show()
 			else
 				f.st:Hide()
@@ -995,7 +1090,15 @@ private.LaneUpdate = function(f, elapsed)
 			s["posY"] = yOfs
 		end
 	end
-	
+
+	-- Override Autohide: show or fade the lane as soon as what it watches changes
+	if f.overrideAutohide ~= f.overrideApplied then
+		f.overrideApplied = f.overrideAutohide
+		if s["enabled"] then
+			CDTL3:Autohide(f, s)
+		end
+	end
+
 	-- UPDATE COUNT
 	f.updateCount = f.updateCount + 1
 	if f.updateCount > 12000 then
