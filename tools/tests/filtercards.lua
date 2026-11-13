@@ -217,6 +217,16 @@ do
 	n = #CHAT
 	CDTL3:NoteAutoIgnore({ name = "Mid", bCD = 60000 }, "spells")
 	check("  nothing to say when the rule wouldn't ignore it", not chatSince(n, "won't show") and not CDTL3.db.global.autoIgnoreNoted)
+	-- a long buff, debuff or offensive (Well Fed, a flask) never uses the once-only note up
+	CDTL3.db.global.autoIgnoreNoted = nil
+	n = #CHAT
+	for _, kind in ipairs({ "buffs", "debuffs", "offensives" }) do
+		CDTL3:NoteAutoIgnore({ name = "Well Fed", bCD = 7200000 }, kind)
+	end
+	check("a long buff, debuff or offensive: no note, and the note is not used up", not chatSince(n, "won't show")
+		and not CDTL3.db.global.autoIgnoreNoted)
+	CDTL3:NoteAutoIgnore({ name = "Hearthstone", itemName = "Hearthstone", bCD = 7200000 }, "petspells")
+	check("a pet spell over the threshold still gets the note", chatSince(n, "Hearthstone won't show"))
 	CDTL3.db.global.autoIgnoreNoted = true
 	wipeLive()
 	SPELLCD[2139] = nil

@@ -57,6 +57,11 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 		baseCD = cdData["bCD"] / 1000,
 		currentCD = cdData["bCD"] / 1000,
 		endTime = cdData["endTime"],
+		-- a timer from another addon (CDTL3:StartTimer, API.lua)
+		owner = cdData["owner"],
+		class = cdData["class"],
+		timerEnd = cdData["timerEnd"],
+		pendingCD = cdData["pendingCD"],
 		overrideCD = false,
 	}
 
@@ -889,9 +894,11 @@ private.GetBarFGColor = function(s, d)
 		end
 
 		fgColor = schoolColor
-	elseif CDTL3.player["class"] then
-		if s["bar"]["fgClassColor"] then
-			fgColor = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
+	else
+		-- a timer from another addon can name the class it belongs to
+		local class = (d and d["class"]) or CDTL3.player["class"]
+		if class and s["bar"]["fgClassColor"] then
+			fgColor = CDTL3.db.profile.global["classColors"][class] or fgColor
 		end
 	end
 
@@ -1600,6 +1607,10 @@ private.CooldownUpdate = function(f, elapsed)
 				CDTL3.Flights:Hold(f)
 			end
 
+		-- TIMERS FROM OTHER ADDONS (API.lua): counted against their end time
+		elseif d["timerEnd"] then
+			d["currentCD"] = d["timerEnd"] - GetTime()
+
 		-- RUNES
 		elseif d["type"] == "runes" then
 			d["currentCD"] = d["currentCD"] - elapsed
@@ -1621,6 +1632,9 @@ private.CooldownUpdate = function(f, elapsed)
 		if baVisible then
 			private.BarUpdate(f, elapsed)
 		end
+
+		-- an icon parked in holding (lane set to Hide, bar only) has no Ready frame to end in
+		CDTL3:FireTimerIfHeldOver(f)
 	elseif CT and f.ct and f.ct.riding then
 		-- moved off its lane and bar frame: stop riding
 		CT:Update(f, elapsed)
@@ -1964,7 +1978,9 @@ function CDTL3:SendToLane(f)
 	
 	-- restart the poll counter so the next update re-syncs with the game immediately
 	f.updateCount = 0
-	f.data["currentCD"] = f.data["baseCD"]
+	-- (a timer from another addon starts partway through: pendingCD is what is left)
+	f.data["currentCD"] = f.data["pendingCD"] or f.data["baseCD"]
+	f.data["pendingCD"] = nil
 	CDTL3:FireTimer("CDTL3_TimerStarted", f)
 end
 

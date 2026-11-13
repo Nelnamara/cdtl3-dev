@@ -3191,6 +3191,7 @@ function CDTL3:GetCustomIconTagDescription()
 	text = text.."    'cd.name.s' - Cooldown name in a short format\n"
 	text = text.."    'cd.time' - Time remaining for the icon class\n"
 	text = text.."    'cd.type' - Icon type (SPELL, ITEM, etc.)\n"
+	text = text.."    'cd.owner' - Whose timer it is (the short name of a group member, for timers other addons start)\n"
 	text = text.."    'cd.stacks' - Stack count\n"
 	
 	--CDTL3:Print(text)
@@ -3347,7 +3348,21 @@ private.customTextTags = {
 				end,
 	},
 	
-	-- TESTING --
+	-- OWNER (timers another addon starts) --
+		{	name = "Cooldown Owner",
+			cat = "CD",
+			desc = "Show whose timer this is (a timer another addon started, such as a group cooldown); empty for your own",
+			tag = "%[cd.owner%]",
+			func = function(frame)
+						if frame then
+							return frame.data["owner"] and (tostring(frame.data["owner"]):match("^[^-]+") or "") or ""
+						end
+
+						return "Error"
+					end,
+		},
+
+		-- TESTING --
 	--[[{	name = "Icon Stack",
 		cat = "CD",
 		desc = "Show the stack number of this icon",

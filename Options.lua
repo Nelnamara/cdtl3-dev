@@ -1538,6 +1538,28 @@ function CDTL3:GetMainOptions()
 end
 
 function CDTL3:GetFilterOptions()
+	local options = private.BuildFilterOptions()
+
+	-- a timer type another addon registered has no saved list, Ignore Threshold or Set All: only
+	-- Enabled and the default lane, bar frame and Ready frame apply
+	local defaultsArgs = options.args.defaults.args
+	for _, k in ipairs({ "clearAll", "showByDefault", "ignoreThreshold", "setDefaultLane", "setDefaultBar", "setDefaultReady" }) do
+		local hidden = defaultsArgs[k].hidden
+		defaultsArgs[k].hidden = function(info)
+			if CDTL3.timerTypes and CDTL3.timerTypes[string.lower(CDTL3.currentFilter["default"] or "")] then
+				return true
+			end
+			if type(hidden) == "function" then
+				return hidden(info)
+			end
+			return hidden
+		end
+	end
+
+	return options
+end
+
+private.BuildFilterOptions = function()
 	local options = {
 		name = "Filters",
 		type = "group",
@@ -1572,7 +1594,13 @@ function CDTL3:GetFilterOptions()
 										choices["OTHER"] = "Other"
 									end]]--
 									
-								if CDTL3.player["class"] == "DEATHKNIGHT" then
+								-- timer types other addons registered (CDTL3:RegisterTimerType)
+									for key, t in pairs(CDTL3.timerTypes or {}) do
+										CDTL3:TimerTypeSettings(key)
+										choices[string.upper(key)] = t.name
+									end
+
+									if CDTL3.player["class"] == "DEATHKNIGHT" then
 									choices["RUNES"] = "Runes"
 								end
 								
