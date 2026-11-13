@@ -1523,6 +1523,9 @@ function CDTL3:GetFilterOptions()
 								end
 								
 								CDTL3.db.profile.tables["items"] = cleanTable
+
+								-- the Items tab may still have a cleared item selected
+								CDTL3:ResetStaleFilters()
 							end
 					},
 					spacer200 = {
@@ -2976,7 +2979,8 @@ private.GetFilterSet = function(t, o)
 						if CDTL3.currentFilter[t] == "<< Add New >>" then
 							local spellName, icon, originalIcon = CDTL3:GetSpellInfo(val)
 
-							if spellName then
+							-- Retail and Forever give "" (not nil) for an ID that isn't a spell
+							if spellName and spellName ~= "" then
 								CDTL3.custom["id"] = tonumber(val)
 								CDTL3.custom["name"] = spellName
 								CDTL3.custom["icon"] = icon
@@ -3499,17 +3503,21 @@ private.GetFilterSet = function(t, o)
 								s = CDTL3.currentFilter[t]
 							end
 							
-							-- items are selected by item name in this tab
+							-- items are selected by item name in this tab; only this character's
+							-- entry (the one Filters lists). An entry other characters also use
+							-- only loses this character from usedBy, as Defaults > Clear Settings does.
 							local index = nil
 							for k, spell in pairs(CDTL3.db.profile.tables[t]) do
 								local n = (t == "items") and spell["itemName"] or spell["name"]
-								if n == s then
+								if n == s and CDTL3:IsMyEntry(spell) then
 									index = k
 								end
 							end
-							
+
 							if index then
-								table.remove(CDTL3.db.profile.tables[t], index)
+								if not private.KeepAfterClear(CDTL3.db.profile.tables[t][index]) then
+									table.remove(CDTL3.db.profile.tables[t], index)
+								end
 
 								-- back to this tab's own placeholder: the custom editor for
 								-- Custom, otherwise "nothing selected" with the details hidden
@@ -3600,8 +3608,9 @@ private.GetFilterSet = function(t, o)
 					end,
 				get = function(info, index)
 						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
-							if CDTL3.custom["enabled"] then
-								return CDTL3.custom["enabled"]
+							-- an unticked box is false, not "not set yet" (that showed it ticked)
+							if CDTL3.custom["enabled"] ~= nil then
+								return CDTL3.custom["enabled"] and true or false
 							else
 								return CDTL3.db.profile.global["customs"]["showByDefault"]
 							end
@@ -6954,8 +6963,42 @@ function CDTL3:GetFullOptions()
 
 	if CDTL3.profile then
 		CDTL3.profile.order = 2005
+		private.ConfirmProfileWipes(CDTL3.profile)
 		options.args.profiles = CDTL3.profile
 	end
 
 	return options
+end
+
+-- Reset Profile and Copy From replace the whole profile, Filters lists included, for every
+-- character on it, so they ask first (stock Ace3 asks only before Delete). AceDBOptions hands
+-- every addon the same args table, so CDTL3 changes only its own copy of it.
+private.ConfirmProfileWipes = function(profile)
+	if profile.args == private.profileArgs then
+		return
+	end
+
+	local args = {}
+	for k, v in pairs(profile.args) do
+		args[k] = v
+	end
+
+	local texts = {
+		reset = "Reset this profile to the default settings?\n\nEvery character on this profile loses its Filters lists: saved spells, items and auras, Customs and Custom CD Times.",
+		copyfrom = "Copy the chosen profile over this one?\n\nEvery character on this profile loses its Filters lists (saved spells, items and auras, Customs and Custom CD Times) and gets the chosen profile's instead.",
+	}
+	for key, text in pairs(texts) do
+		if args[key] then
+			local copy = {}
+			for k, v in pairs(args[key]) do
+				copy[k] = v
+			end
+			copy.confirm = true
+			copy.confirmText = text
+			args[key] = copy
+		end
+	end
+
+	profile.args = args
+	private.profileArgs = args
 end

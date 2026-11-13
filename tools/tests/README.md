@@ -42,6 +42,11 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
   off and Forget; then flights off the taxi map (a chat option, a loss of control): the one route from
   the takeoff point (the druids' 63 → 22 where it exists), learning from the landing point, a wrong
   route corrected, names, reload, each side's Nighthaven point, no position.
+- `settings.lua`: settings and saved data (red team of 12 Nov 2026): imports keep the Filters lists a
+  string leaves empty and refuse a badly shaped string before writing anything (then a set pass over
+  every option and a round trip in each mode), Clear Individual Settings and stale Filters selections,
+  the Reset Profile / Copy From confirms, built-in spell data copied before it's saved, the unlock box,
+  Custom › Add New (Enabled, Trigger ID) and test mode frames.
 - The `/cdtl3 probe` test build and its `probe.lua` harness live on branch `cdm-probe`.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).
