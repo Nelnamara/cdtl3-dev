@@ -17,6 +17,8 @@ Helpers.lua
 Media.lua
 Presets.lua
 Holders.lua
+Anchors.lua
+Profiles.lua
 Lanes.lua
 BarFrames.lua
 Ready.lua

@@ -2791,6 +2791,7 @@ private.GetBarFrameSet = function(i)
 	}
 	
 	private.AddBorderArgs(options.args.appearance.args, 400, function() return frame["border"] end, function() CDTL3:RefreshBarFrame(i) end)
+	CDTL3:AddAnchorArgs(options.args.appearance.args, 115, function() return frame end, function() CDTL3:RefreshBarFrame(i) end, "bar frame")
 	private.AddBorderArgs(options.args.bars.args, 400, function() return frame["bar"]["border"] end, function() CDTL3:RefreshAllBars() end)
 
 	private.AddCopyArgs(options.args.general.args, "barFrames", i, "Bar Frame")
@@ -5996,6 +5997,7 @@ private.GetLaneSet = function(i)
 	}
 	
 	private.AddBorderArgs(options.args.appearance.args, 700, function() return lane["border"] end, function() CDTL3:RefreshLane(i) end, 703)
+	CDTL3:AddAnchorArgs(options.args.appearance.args, 402, function() return lane end, function() CDTL3:RefreshLane(i) end, "lane")
 	private.AddBorderArgs(options.args.icons.args, 300, function() return lane["icons"]["border"] end, function() CDTL3:RefreshAllIcons() end)
 
 	private.AddCopyArgs(options.args.general.args, "lanes", i, "Lane")
@@ -6506,6 +6508,7 @@ private.GetReadySet = function(i)
 	}
 	
 	private.AddBorderArgs(options.args.appearance.args, 400, function() return ready["border"] end, function() CDTL3:RefreshReady(i) end)
+	CDTL3:AddAnchorArgs(options.args.appearance.args, 115, function() return ready end, function() CDTL3:RefreshReady(i) end, "ready frame")
 	private.AddBorderArgs(options.args.icons.args, 300, function() return ready["icons"]["border"] end, function() CDTL3:RefreshAllIcons() end)
 
 	private.AddCopyArgs(options.args.general.args, "ready", i, "Ready Frame")

@@ -58,8 +58,8 @@ function CDTL3:RefreshLane(i)
 	
 	f.name = s["name"]
 	
-	f:ClearAllPoints()
-	f:SetPoint(s["relativeTo"], s["posX"], s["posY"])
+	-- the screen position, or on the frame it is anchored to (Anchors.lua)
+	CDTL3:PlaceFrame(f, s, "lanes")
 	
 	-- FOREGROUND
 	f:SetMinMaxValues(0, 1)
@@ -971,7 +971,7 @@ private.CreateLane = function(laneNumber)
 	-- DRAG AND DROP MOVEMENT
 	f:RegisterForDrag("LeftButton")
 	f:SetScript("OnDragStart", f.StartMoving)
-	f:SetScript("OnDragStop", f.StopMovingOrSizing)
+	f:SetScript("OnDragStop", function(self) CDTL3:FrameDragStop(self, "lanes") end)
 	
 	CDTL3:RefreshLane(laneNumber)
 	table.insert(CDTL3.lanes, f)
@@ -1082,8 +1082,8 @@ private.LaneUpdate = function(f, elapsed)
 			f.st:Hide()
 		end
 		
-		-- FRAME (UN)LOCKING
-		if CDTL3.db.profile.global["unlockFrames"] then
+		-- FRAME (UN)LOCKING (a lane on another frame keeps its screen position; a drag sets its offset)
+		if CDTL3.db.profile.global["unlockFrames"] and not f.cdtl3AnchoredTo then
 			local _, _, relativeTo, xOfs, yOfs = f:GetPoint()
 			
 			s["relativeTo"] = relativeTo
