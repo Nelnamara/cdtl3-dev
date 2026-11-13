@@ -13,6 +13,12 @@ CDTL3 = {
 }
 CDTL3.retailAPI = TOC >= 110000 or CDTL3.isForever
 
+-- Data.lua and Helpers.lua take their text from AceLocale (Locales/); a missing key reads as itself
+local English = setmetatable({}, { __index = function(_, k) return k end })
+LibStub = function() return { GetLocale = function() return English end } end
+-- Helpers.lua makes an event frame as it loads: any frame will do, every method does nothing
+CreateFrame = function() return setmetatable({}, { __index = function() return function() end end }) end
+
 dofile(SRC .. "/Data.lua")
 dofile(SRC .. "/Helpers.lua")
 

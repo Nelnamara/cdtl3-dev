@@ -283,6 +283,10 @@ do
 	check("  sample icons spread over the lanes", per[1] > 0 and per[2] > 0 and per[3] > 0, table.concat(per, "/"))
 	check("  the Healer chip is the one in use", _G["CDTL3_Setup_Chip_healer"]:IsEnabled() == false and _G["CDTL3_Setup_Chip_tank"]:IsEnabled() == true)
 	check("  nothing is kept yet", g.setupKey == "healer" and S.pending ~= nil)
+	check("  Healer turns the Mana gauge on for its big-cooldowns lane only (the look shows mana)", lane(1).gauge.enabled == true and lane(2).gauge.enabled == false
+		and lane(3).gauge.enabled == false and _G["CDTL3_Lane_1"].cdtl3Gauge and _G["CDTL3_Lane_1"].cdtl3Gauge:IsShown())
+	check("  the preview is saved with the profile while it waits, so a reload can undo it", type(g.setupUndo) == "table" and g.setupUndo.setupKey == "" and g.setupUndo.lanes[1].gauge == false
+		and #g.setupUndo.entries == 3 and g.setupUndo.profile == CDTL3.db:GetCurrentProfile())
 
 	local chip = _G["CDTL3_Setup_Chip_starter"]
 	xpcall(chip.__scripts.OnClick, ERRH, chip)
@@ -297,11 +301,13 @@ do
 	check("  banner and labels gone, the preview it started stopped, nothing kept", not _G["CDTL3_Setup_Banner"]:IsShown() and CDTL3.testing == false
 		and g.setupKey == "" and S.pending == nil)
 	check("  a chat line says so", chatSince(n, "Put your old lanes back."))
+	check("  the gauge Healer turned on is off again, and nothing is left saved", lane(1).gauge.enabled == false and g.setupUndo == nil)
 
 	S.PreviewSetup("tank")
 	S.PreviewSetup("healer")
 	S.KeepSetup()
 	check("Keep: saved, banner gone, preview stopped", g.setupKey == "healer" and not _G["CDTL3_Setup_Banner"]:IsShown() and CDTL3.testing == false and big.lane == 1 and short.lane == 2)
+	check("  and nothing is left to undo at the next login", g.setupUndo == nil)
 	local a = CDTL3:ApplyEntryDefaults({ bCD = 15000 }, "spells")
 	local b = CDTL3:ApplyEntryDefaults({ bCD = 90000 }, "spells")
 	local c = CDTL3:ApplyEntryDefaults({ bCD = 15000 }, "buffs")
@@ -312,6 +318,7 @@ do
 	-- put everything back
 	S.PreviewSetup("starter"); S.UndoSetup()
 	g.setupKey = ""
+	lane(1).gauge.enabled = false
 	lane(1).mode.linear.max, lane(2).mode.linear.max, lane(3).mode.linear.max = 120, 120, 120
 	for k = 1, 3 do for _, m in ipairs({ "linearAbs", "split", "splitAbs" }) do lane(k).mode[m].max = 120 end end
 	g.buffs.ignoreThreshold = thr0
