@@ -874,6 +874,9 @@ function CDTL3:RefreshIcon(cd)
 	else
 		CDTL3:DebugOff(f)
 	end
+
+	-- Caster lane names (Group.lua)
+	CDTL3:CasterRefreshIcon(cd)
 end
 
 -- Spell schools only come from the combat log. Where it isn't available (CDTL3:NoCombatLog,
@@ -1667,7 +1670,11 @@ private.IconUpdate = function(f, elapsed)
 	local ic = f.icon
 	ic.currentCD = d["currentCD"]
 	ic.pinned = d["pinned"]
-	
+	-- an effect on a target (Group.lua) draws its strip on the spell's icon while one is live
+	if CDTL3.effectsLive then
+		CDTL3:EffectStripTick(f)
+	end
+
 	local p = ic:GetParent():GetName()
 	if p == "CDTL3_Lane_1" or p == "CDTL3_Lane_2" or p == "CDTL3_Lane_3" then
 		if d["currentCD"] > 0 then

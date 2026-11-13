@@ -145,6 +145,8 @@ local laneDefaults = {
 	alpha = 1,
 	-- Pause while hidden: icons skip their visual updates while the lane is faded to nothing (Cooldown.lua)
 	pauseHidden = false,
+	-- Caster lane (Group.lua): each owned timer's icon gets its caster's name under it
+	casterLane = false,
 
 	iconOffset = 0,
 
