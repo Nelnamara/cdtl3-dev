@@ -136,22 +136,37 @@ do
 	check("tooltip: frames locked or not", text:find("Frames: |cffffd100" .. (unlocked and "unlocked" or "locked"), 1, true) ~= nil, text)
 	local CT = CDTL3.CombatTimers
 	check("  combat timers line only where they run (" .. tostring(CT and CT:Available()) .. ")", (text:find("Combat timers: ", 1, true) ~= nil) == (CT and CT:Available() or false), text)
-	check("  left-click, right-click, Shift-click, Ctrl-click, drag", text:find("Left-click: Open settings", 1, true) and text:find("Right-click: Lock/unlock", 1, true)
-		and text:find("Shift-click: Preview with sample icons", 1, true) and text:find("Ctrl-click: Help", 1, true) and text:find("Drag: Reposition", 1, true) and true)
+	check("  left-click, right-click, Shift-click, Alt-click, drag", text:find("Left-click: Open settings", 1, true) and text:find("Right-click: Lock/unlock", 1, true)
+		and text:find("Shift-click: Preview with sample icons", 1, true) and text:find("Alt-click: Help", 1, true) and text:find("Drag: Reposition", 1, true) and true)
 	g.unlockFrames = not unlocked
 	check("  the lock word follows the lock", tip():find("Frames: |cffffd100" .. (unlocked and "locked" or "unlocked"), 1, true) ~= nil)
 	g.unlockFrames = unlocked
 	GameTooltip.AddLine = nil
 
-	local realCtrl = IsControlKeyDown
+	-- Ctrl-click does not open Help (on a Mac it arrives as a right-click); Alt-click does
+	local ACD = LibStub("AceConfigDialog-3.0")
+	local realCtrl, realAlt = IsControlKeyDown, IsAltKeyDown
+	local before = ACD:GetStatusTable("CDTL3")
+	local wasHelp = before and before.groups and before.groups.selected == "help"
 	IsControlKeyDown = function() return true end
 	xpcall(btn.__scripts.OnClick, ERRH, btn, "LeftButton")
 	IsControlKeyDown = realCtrl
-	local ACD = LibStub("AceConfigDialog-3.0")
 	local st = ACD:GetStatusTable("CDTL3")
-	check("Ctrl-click opens the window on the Help tab", st and st.groups and st.groups.selected == "help", st and st.groups and tostring(st.groups.selected))
+	check("Ctrl-click no longer opens the Help tab", not wasHelp and not (st and st.groups and st.groups.selected == "help"), st and st.groups and tostring(st.groups.selected))
+	IsAltKeyDown = function() return true end
+	xpcall(btn.__scripts.OnClick, ERRH, btn, "LeftButton")
+	IsAltKeyDown = realAlt
+	st = ACD:GetStatusTable("CDTL3")
+	check("Alt-click opens the window on the Help tab", st and st.groups and st.groups.selected == "help", st and st.groups and tostring(st.groups.selected))
 
 	local help = CDTL3:GetFullOptions().args.help
+	do
+		local clash = nil
+		for k, tab in pairs(CDTL3:GetFullOptions().args) do
+			if k ~= "help" and type(tab) == "table" and tab.order == help.order then clash = k end
+		end
+		check("the Help tab has an order no other tab uses", clash == nil, tostring(help.order) .. " clashes with " .. tostring(clash))
+	end
 	local lines2 = CDTL3.helpLines
 	local rows, runs = 0, 0
 	for k in pairs(help.args) do
@@ -398,6 +413,16 @@ do
 	CDTL3.db.profile.global.importMode = "SETTINGS"
 	check("the Import tab refuses a look string and says where it goes", chatSince(n, "Quick Style") and CDTL3.db.profile.lanes.lane1.border.size == before2)
 	check("  its preview says no", CDTL3:ImportPreview(text) == false)
+	check("  and prints one line, pointing to Quick Style > Import a look", #CHAT - n == 1 and tostring(CHAT[#CHAT]):find("Import a look", 1, true) ~= nil, (#CHAT - n) .. " lines")
+
+	-- look names carry no colour, link or texture escapes
+	local esc = CDTL3:ReadLookString(CDTL3:ExportString("LOOK", nil, { name = "|cffff0000Red|r |Hx|hL|h |Ti|tX", fg = "Solid" }))
+	check("a look name is stripped of |c |r |H |h |T |t escapes", esc and not esc.name:find("|", 1, true) and esc.name == "Red xL iX", esc and esc.name)
+	check("  a name that is only escapes is refused", CDTL3:ReadLookString(CDTL3:ExportString("LOOK", nil, { name = "|cffff0000|r", fg = "Solid" })) == nil)
+
+	-- the old Quick Style list and Apply Style button stay visible, the look cards below them
+	check("Quick Style keeps its Style list, description and Apply Style button visible", not style.preset.hidden and not style.apply.hidden and not style.intro.hidden and not style.presetDesc.hidden)
+	check("  the look cards sit below them", style.card1.order > style.apply.order)
 
 	-- apply to one frame, then everything
 	for k = 1, 3 do lanes(k).border.size = 7 end

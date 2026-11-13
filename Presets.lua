@@ -364,7 +364,12 @@ function CDTL3:CleanLook(t)
 	if type(t) ~= "table" or type(t.name) ~= "string" or t.name:match("^%s*$") or #t.name > 40 then
 		return nil
 	end
-	local out = { name = t.name }
+	-- no colour, link or texture escapes in a name (a colour code and its eight digits go whole)
+	local name = t.name:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|[crHhTt]", "")
+	if name:match("^%s*$") then
+		return nil
+	end
+	local out = { name = name }
 	for _, k in ipairs(private.LOOK_TEXT) do
 		if t[k] ~= nil then
 			if type(t[k]) ~= "string" or #t[k] > 64 then

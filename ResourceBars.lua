@@ -44,8 +44,18 @@ private.GaugeRead = function(g)
 		pct = nil	-- hidden: the bar fills, the percent stays blank
 	end
 
-	-- a class with no mana shows nothing (the alpha, not Hide: the ticks keep running)
-	local alpha = (pct == -1) and 0 or 1
+	-- A class with no mana shows nothing (the alpha, not Hide: the ticks keep running). Whether there is
+	-- a mana pool is learned whenever the numbers are readable and kept while they are hidden; until
+	-- then the class decides (these four never have mana).
+	if pct ~= nil then
+		private.hasMana = (pct ~= -1)
+	elseif private.hasMana == nil then
+		local _, class = UnitClass("player")
+		if class == "WARRIOR" or class == "ROGUE" or class == "DEATHKNIGHT" or class == "DEMONHUNTER" then
+			private.hasMana = false
+		end
+	end
+	local alpha = (private.hasMana == false) and 0 or 1
 	if g.cdtl3Alpha ~= alpha then
 		g.cdtl3Alpha = alpha
 		g:SetAlpha(alpha)
@@ -155,6 +165,9 @@ end
 
 -- Stagger's number is a percent of max health (for pcall: the values can be hidden)
 private.StaggerAtLeast = function(stagger, max, pct)
+	if stagger == nil then	-- no value at all (this runs in a pcall, so a hidden one just fails here)
+		stagger = 0
+	end
 	return stagger * 100 >= pct * max
 end
 
@@ -199,7 +212,7 @@ private.ThresholdTick = function(f)
 	local hot = nil
 	if tr["primaryTracking"] == "STAGGER" then
 		if UnitStagger then
-			local ok, over = pcall(private.StaggerAtLeast, UnitStagger("player") or 0, UnitHealthMax("player"), tonumber(th["value"]) or 0)
+			local ok, over = pcall(private.StaggerAtLeast, UnitStagger("player"), UnitHealthMax("player"), tonumber(th["value"]) or 0)
 			if ok and over == true then
 				hot = true
 			end

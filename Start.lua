@@ -203,7 +203,8 @@ end
 
 -- A preview is saved with the profile while it waits for Keep or Undo, so a reload can't make it
 -- count as kept: the next login puts the old lanes back (S.ResolveStale).
-function private.Persist(snap)
+function private.Persist(snap, p)
+	p = p or Profile()
 	local saved = { profile = CDTL3.db:GetCurrentProfile(), setupKey = snap.setupKey, lanes = {}, defaults = {},
 		thresholds = {}, entries = {} }
 	for n, was in pairs(snap.lanes) do
@@ -222,12 +223,14 @@ function private.Persist(snap)
 	for i, e in ipairs(snap.saved) do
 		saved.entries[i] = { t = e.t, k = e.k, lane = e.lane }
 	end
-	Profile().global["setupUndo"] = saved
+	p.global["setupUndo"] = saved
 end
 
-function private.ClearPersisted()
-	if CDTL3.db and Profile().global["setupUndo"] ~= nil then
-		Profile().global["setupUndo"] = nil
+-- p = the profile the preview started in (a preview belongs to it, whatever profile is active now)
+function private.ClearPersisted(p)
+	p = p or (CDTL3.db and Profile())
+	if p and p.global and p.global["setupUndo"] ~= nil then
+		p.global["setupUndo"] = nil
 	end
 end
 
@@ -239,8 +242,8 @@ local function MoveCooldown(cd, lane)
 end
 
 -- the saved values only (no frames yet at login)
-function private.RestoreValues(snap)
-	local p = Profile()
+function private.RestoreValues(snap, p)
+	p = p or Profile()
 	for n = 1, 3 do
 		local lane, was = p.lanes["lane" .. n], snap.lanes[n]
 		lane.enabled = was.enabled
@@ -262,8 +265,12 @@ function private.RestoreValues(snap)
 	end
 end
 
-function private.Restore(snap)
-	private.RestoreValues(snap)
+function private.Restore(snap, p)
+	p = p or Profile()
+	private.RestoreValues(snap, p)
+	if p ~= Profile() then
+		return	-- not the active profile: its values are back, there are no frames of it to move
+	end
 	for cd, lane in pairs(snap.cooldowns) do
 		MoveCooldown(cd, lane)
 	end
@@ -317,7 +324,9 @@ function private.Apply(setup)
 		end
 	end
 	for _, t in ipairs(private.TYPES) do
-		p.global[t]["defaultLane"] = S.LaneFor(setup, t, math.huge)
+		if p.global[t]["defaultLane"] ~= 0 then	-- a type set to Hide stays hidden
+			p.global[t]["defaultLane"] = S.LaneFor(setup, t, math.huge)
+		end
 	end
 	if setup.buffThreshold then
 		p.global.buffs["ignoreThreshold"] = setup.buffThreshold
@@ -325,11 +334,13 @@ function private.Apply(setup)
 	p.global["setupKey"] = setup.key
 
 	for _, item in ipairs(MyLists()) do
-		item.entry["lane"] = S.LaneFor(setup, item.type, (tonumber(item.entry["bCD"]) or 0) / 1000) or item.entry["lane"]
+		if item.entry["lane"] ~= 0 then	-- an entry set to Hide stays hidden
+			item.entry["lane"] = S.LaneFor(setup, item.type, (tonumber(item.entry["bCD"]) or 0) / 1000) or item.entry["lane"]
+		end
 	end
 	for _, cd in ipairs(CDTL3.cooldowns) do
 		local d = cd.data
-		if d["type"] ~= "testing" then
+		if d["type"] ~= "testing" and d["lane"] ~= 0 then
 			MoveCooldown(cd, S.LaneFor(setup, d["type"], d["baseCD"]))
 		end
 	end
@@ -455,11 +466,14 @@ function S.PreviewSetup(key)
 		return false
 	end
 
+	if S.pending and S.pending.profile ~= Profile() then
+		S.UndoSetup()	-- a preview from another profile is undone there first
+	end
 	if S.pending then
-		private.Restore(S.pending.snapshot)
+		private.Restore(S.pending.snapshot, S.pending.profile)
 	else
-		S.pending = { snapshot = private.Snapshot(), startedPreview = not CDTL3.testing }
-		private.Persist(S.pending.snapshot)
+		S.pending = { snapshot = private.Snapshot(), startedPreview = not CDTL3.testing, profile = Profile() }
+		private.Persist(S.pending.snapshot, S.pending.profile)
 	end
 	S.pending.key = key
 
@@ -481,7 +495,7 @@ function S.KeepSetup()
 		return false
 	end
 	S.pending = nil
-	private.ClearPersisted()
+	private.ClearPersisted(pending.profile)
 	private.HideBanner()
 	if pending.startedPreview and CDTL3.testing then
 		CDTL3:StopPreview()
@@ -497,14 +511,23 @@ function S.UndoSetup()
 		return false
 	end
 	S.pending = nil
-	private.ClearPersisted()
+	private.ClearPersisted(pending.profile)
 	private.HideBanner()
-	private.Restore(pending.snapshot)
+	private.Restore(pending.snapshot, pending.profile)
 	if pending.startedPreview and CDTL3.testing then
 		CDTL3:StopPreview()
 	end
 	CDTL3:Print(L["Put your old lanes back."])
 	return true
+end
+
+-- A preview belongs to the profile it started in: when the profile is about to change (Profiles tab,
+-- spec swap, zone profile) it is undone there first, then the switch goes on. AceDB fires this
+-- before it moves, while the old profile is still the active one.
+function S.OnProfileShutdown()
+	if S.pending then
+		S.UndoSetup()
+	end
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -522,6 +545,9 @@ do
 			CDTL3.db.global.tourPending = true
 		end
 		pcall(S.ResolveStale)	-- a setup tried before the reload and never kept is undone
+		if CDTL3.db then
+			CDTL3.db.RegisterCallback(S, "OnProfileShutdown", function() S.OnProfileShutdown() end)
+		end
 		return result
 	end
 end
@@ -1091,7 +1117,7 @@ function private.HelpTab()
 				end,
 		}
 	end
-	return { name = L["Help"], type = "group", order = 2006, args = args }
+	return { name = L["Help"], type = "group", order = 2007, args = args }
 end
 
 function private.SetupArgs(args)
@@ -1120,12 +1146,7 @@ function private.Extend(options)
 
 	local style = options.args.style
 	if style then
-		-- the Style list and Apply Style button give way to the look cards
-		for _, k in ipairs({ "intro", "preset", "presetDesc", "apply" }) do
-			if style.args[k] then
-				style.args[k].hidden = true
-			end
-		end
+		-- the Style list and Apply Style button stay; the look cards sit below them
 		private.SetupArgs(style.args)
 		private.BuildCards(style.args)
 	end
