@@ -8,6 +8,7 @@
 ## OptionalDeps: Masque
 
 embeds.xml
+Locales\Locales.xml
 
 CDTL3.lua
 Diagnostics.lua

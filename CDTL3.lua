@@ -10,6 +10,7 @@ CDTL3 = LibStub("AceAddon-3.0"):NewAddon("CDTL3", "AceConsole-3.0", "AceEvent-3.
 CDTL3.Masque = LibStub("Masque", true)
 CDTL3.LSM = LibStub("LibSharedMedia-3.0")
 CDTL3.GUI = LibStub("AceGUI-3.0")
+local L = LibStub("AceLocale-3.0"):GetLocale("CDTL3")
 
 local _, _, _, tocversion = GetBuildInfo()
 CDTL3.tocversion = tocversion
@@ -1080,14 +1081,14 @@ function CDTL3:OnInitialize()
 		type = "group",
 		args = {
 			about = {
-				name = "CDTL3 is configured in its own movable window.\n\n",
+				name = L["CDTL3 is configured in its own movable window."] .. "\n\n",
 				type = "description",
 				fontSize = "medium",
 				order = 1,
 			},
 			open = {
-				name = "Open CDTL3 Settings",
-				desc = "Opens the CDTL3 configuration window (same as /cdtl3)",
+				name = L["Open CDTL3 Settings"],
+				desc = L["Opens the CDTL3 configuration window (same as /cdtl3)"],
 				type = "execute",
 				width = 1.5,
 				order = 2,
@@ -1145,10 +1146,10 @@ function CDTL3:BuildMinimapButton()
 	btn:SetScript("OnEnter", function(s)
 		GameTooltip:SetOwner(s, "ANCHOR_LEFT")
 		GameTooltip:AddLine("|cFF54a3ffCDTL3|r |cffffffff(CooldownTimeline)|r")
-		GameTooltip:AddLine("Left-click: Open settings", 1, 1, 1)
-		GameTooltip:AddLine("Right-click: Lock/unlock", 1, 1, 1)
-		GameTooltip:AddLine(CDTL3.testing and "Shift-click: Stop preview" or "Shift-click: Preview with sample icons", 1, 1, 1)
-		GameTooltip:AddLine("Drag: Reposition", 0.7, 0.7, 0.7)
+		GameTooltip:AddLine(L["Left-click: Open settings"], 1, 1, 1)
+		GameTooltip:AddLine(L["Right-click: Lock/unlock"], 1, 1, 1)
+		GameTooltip:AddLine(CDTL3.testing and L["Shift-click: Stop preview"] or L["Shift-click: Preview with sample icons"], 1, 1, 1)
+		GameTooltip:AddLine(L["Drag: Reposition"], 0.7, 0.7, 0.7)
 		GameTooltip:Show()
 	end)
 	btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1199,8 +1200,8 @@ function CDTL3:OnEnable()
 	private.CreateUnlockFrame()
 	private.CreateDebugFrame()
 	
-	CDTL3:Print("Loaded version: "..CDTL3.version)
-	CDTL3:Print("Type /cdtl3 or /cooldowntimeline3 for options")
+	CDTL3:Print(string.format(L["Loaded version: %s"], CDTL3.version))
+	CDTL3:Print(L["Type /cdtl3 or /cooldowntimeline3 for options"])
 	
 	CDTL3.tracking["manaTime"] = GetTime()
 	CDTL3.tracking["manaPrevious"] = 0
@@ -1255,27 +1256,27 @@ end
 
 -- /cdtl3 help: every subcommand, one line each (kept next to ChatCommand: add a line here with each new one)
 private.helpLines = {
-	{ "", "open the settings window" },
-	{ "lanes", "open the Lanes tab" },
-	{ "ready", "open the Ready tab" },
-	{ "bars", "open the Bar Frames tab" },
-	{ "filters", "open the Filters tab" },
-	{ "profiles", "open the Profiles tab" },
-	{ "lock / unlock", "lock or unlock the frames for moving" },
-	{ "test", "show test timers" },
-	{ "debug", "toggle the debug window" },
-	{ "auras", "report the player's auras as CDTL3 sees them (readable or hidden)" },
-	{ "oaf", "report the spells whose cooldown starts when the effect is used" },
-	{ "combattimers [on|off]", "show or switch the combat timers (Retail and Forever)" },
-	{ "minimap", "show or hide the minimap button" },
-	{ "report", "open a copyable bug-report box" },
-	{ "log", "show the error log" },
-	{ "perf", "show CPU, memory and frame counts" },
-	{ "help", "show this list" },
+	{ "", L["open the settings window"] },
+	{ "lanes", L["open the Lanes tab"] },
+	{ "ready", L["open the Ready tab"] },
+	{ "bars", L["open the Bar Frames tab"] },
+	{ "filters", L["open the Filters tab"] },
+	{ "profiles", L["open the Profiles tab"] },
+	{ "lock / unlock", L["lock or unlock the frames for moving"] },
+	{ "test", L["show test timers"] },
+	{ "debug", L["toggle the debug window"] },
+	{ "auras", L["report the player's auras as CDTL3 sees them (readable or hidden)"] },
+	{ "oaf", L["report the spells whose cooldown starts when the effect is used"] },
+	{ "combattimers [on|off]", L["show or switch the combat timers (Retail and Forever)"] },
+	{ "minimap", L["show or hide the minimap button"] },
+	{ "report", L["open a copyable bug-report box"] },
+	{ "log", L["show the error log"] },
+	{ "perf", L["show CPU, memory and frame counts"] },
+	{ "help", L["show this list"] },
 }
 
 function CDTL3:PrintHelp()
-	CDTL3:Print("commands (/cdtl3 <command>):")
+	CDTL3:Print(L["commands (/cdtl3 <command>):"])
 	for _, l in ipairs(private.helpLines) do
 		CDTL3:Print(string.format("  /cdtl3 %s - %s", l[1], l[2]))
 	end
@@ -1304,13 +1305,13 @@ function CDTL3:ChatCommand(input)
 		if CDTL3.db.profile.global["unlockFrames"] then
 			CDTL3:ToggleFrameLock()
 		else
-			CDTL3:Print("Frames are already locked")
+			CDTL3:Print(L["Frames are already locked"])
 		end
 	elseif input:trim() == "unlock" then
 		if not CDTL3.db.profile.global["unlockFrames"] then
 			CDTL3:ToggleFrameLock()
 		else
-			CDTL3:Print("Frames are already unlocked")
+			CDTL3:Print(L["Frames are already unlocked"])
 		end
 	elseif input:trim() == "test" then
 		CDTL3:EnableTesting()
@@ -1331,7 +1332,7 @@ function CDTL3:ChatCommand(input)
 		if CDTL3.minimapBtn then
 			CDTL3.minimapBtn:SetShown(not CDTL3.db.global.minimapHide)
 		end
-		CDTL3:Print("Minimap button " .. (CDTL3.db.global.minimapHide and "hidden" or "shown"))
+		CDTL3:Print(CDTL3.db.global.minimapHide and L["Minimap button hidden"] or L["Minimap button shown"])
 	elseif input:trim() == "oaf" then
 		-- Diagnostic for "cooldown starts when the effect is used" spells (Nature's Swiftness etc.):
 		-- prints every link of the chain so one paste shows which one is wrong on a live client.
@@ -1364,7 +1365,7 @@ function CDTL3:ChatCommand(input)
 		local arg = input:trim():sub(13):trim():lower()
 		local CT = CDTL3.CombatTimers
 		if not (CT and CT:Available()) then
-			CDTL3:Print("Combat timers: not available on this client")
+			CDTL3:Print(L["Combat timers: not available on this client"])
 		else
 			if arg == "on" then
 				CT:SetEnabled(true)

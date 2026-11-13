@@ -15,6 +15,7 @@
 	layout positions, are kept as they were for when Anchor to goes back to Screen.
 ]]--
 
+local L = LibStub("AceLocale-3.0"):GetLocale("CDTL3")
 local A = {}
 CDTL3.Anchors = A
 
@@ -141,7 +142,7 @@ A.Wait = function(f, s, kind, name)
 	local key = tostring(f:GetName()).."|"..name
 	if not A.told[key] then
 		A.told[key] = true
-		CDTL3:Print(tostring(s["name"]).." can't find the frame \""..name.."\" yet, so it stays at its screen position and moves there once that frame appears.")
+		CDTL3:Print(string.format(L["%s can't find the frame \"%s\" yet, so it stays at its screen position and moves there once that frame appears."], tostring(s["name"]), name))
 	end
 
 	A.ScheduleRetry()
@@ -300,8 +301,8 @@ function CDTL3:AddAnchorArgs(args, first, settings, refresh, what)
 		order = first,
 	}
 	args["anchorTo"] = {
-		name = "Anchor to",
-		desc = "What this "..what.." sits on: the screen, or another frame (only CDTL3's own frames ever move)",
+		name = L["Anchor to"],
+		desc = string.format(L["What this %s sits on: the screen, or another frame (only CDTL3's own frames ever move)"], what),
 		order = first + 1,
 		type = "select",
 		values = function()
@@ -324,8 +325,8 @@ function CDTL3:AddAnchorArgs(args, first, settings, refresh, what)
 			end,
 	}
 	args["anchorFrame"] = {
-		name = "Frame name",
-		desc = "The other frame's name, as /fstack shows it when you point at it (for example ElvUF_Player)",
+		name = L["Frame name"],
+		desc = L["The other frame's name, as /fstack shows it when you point at it (for example ElvUF_Player)"],
 		order = first + 2,
 		type = "input",
 		hidden = function(info) return anchor()["to"] ~= "NAMED" end,
@@ -336,8 +337,8 @@ function CDTL3:AddAnchorArgs(args, first, settings, refresh, what)
 			end,
 	}
 	args["anchorSide"] = {
-		name = "Side",
-		desc = "Which side of the other frame this "..what.." sits on",
+		name = L["Side"],
+		desc = string.format(L["Which side of the other frame this %s sits on"], what),
 		order = first + 3,
 		type = "select",
 		values = { ABOVE = "Above", BELOW = "Below", LEFT = "Left", RIGHT = "Right", CENTER = "Centred on it" },
@@ -350,8 +351,8 @@ function CDTL3:AddAnchorArgs(args, first, settings, refresh, what)
 			end,
 	}
 	args["anchorX"] = {
-		name = "X offset",
-		desc = "Moves it right from that side of the other frame (left below 0)",
+		name = L["X offset"],
+		desc = L["Moves it right from that side of the other frame (left below 0)"],
 		order = first + 4,
 		type = "range",
 		min = -A.OFFSET_LIMIT,
@@ -365,8 +366,8 @@ function CDTL3:AddAnchorArgs(args, first, settings, refresh, what)
 			end,
 	}
 	args["anchorY"] = {
-		name = "Y offset",
-		desc = "Moves it up from that side of the other frame (down below 0)",
+		name = L["Y offset"],
+		desc = L["Moves it up from that side of the other frame (down below 0)"],
 		order = first + 5,
 		type = "range",
 		min = -A.OFFSET_LIMIT,

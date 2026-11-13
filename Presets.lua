@@ -2,6 +2,7 @@
 	Cooldown Timeline 3 - appearance presets and "copy settings from"
 ]]--
 
+local L = LibStub("AceLocale-3.0"):GetLocale("CDTL3")
 local private = {}
 
 -- One-pixel border for the Minimal preset (a plain white edge file tinted by the border colour)
@@ -126,14 +127,14 @@ end
 CDTL3.presets = {
 	{
 		key = "classic",
-		name = "CDTL3 Classic",
-		desc = "The look CDTL3 ships with",
+		name = L["CDTL3 Classic"],
+		desc = L["The look CDTL3 ships with"],
 		classic = true,
 	},
 	{
 		key = "minimal",
-		name = "Minimal",
-		desc = "Flat bars, dark backgrounds, one-pixel borders, class colours",
+		name = L["Minimal"],
+		desc = L["Flat bars, dark backgrounds, one-pixel borders, class colours"],
 		fg = "Solid",
 		bg = "Solid",
 		bgColor = { r = 0.05, g = 0.05, b = 0.05, a = 0.75 },
@@ -146,8 +147,8 @@ CDTL3.presets = {
 	},
 	{
 		key = "modern",
-		name = "Blizzard Modern",
-		desc = "Blizzard's current unit-frame and cast bar art, tooltip borders, the game font",
+		name = L["Blizzard Modern"],
+		desc = L["Blizzard's current unit-frame and cast bar art, tooltip borders, the game font"],
 		needsAtlas = "Blizzard Modern: Cast",
 		laneFg = "Blizzard Modern: Health (tintable)",
 		barFg = "Blizzard Modern: Cast",
@@ -162,8 +163,8 @@ CDTL3.presets = {
 	},
 	{
 		key = "class",
-		name = "Class Colours",
-		desc = "Only switches lane and bar fills to your class colour",
+		name = L["Class Colours"],
+		desc = L["Only switches lane and bar fills to your class colour"],
 		classColor = true,
 	},
 }
@@ -285,7 +286,7 @@ function CDTL3:ApplyPreset(key)
 	end
 
 	CDTL3:RefreshConfig()
-	CDTL3:Print("Applied the "..preset.name.." style.")
+	CDTL3:Print(string.format(L["Applied the %s style."], preset.name))
 end
 
 -- CDTL3 Classic: put back each container's shipped value for exactly the fields the other
