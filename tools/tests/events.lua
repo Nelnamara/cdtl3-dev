@@ -97,8 +97,9 @@ local function walk(t, path)
 	for k, v in pairs(t) do
 		if type(v) == "table" then
 			if k == "fgTextureColor" and type(v.disabled) == "function" then
-				local info = debug.getinfo(v.disabled, "S")
-				if info.linedefined > 2000 and info.linedefined < 2600 then
+				-- the bar's own Color picker (not the transition Indicator Color), found by its name so
+				-- added lines elsewhere in Options.lua can't move it out of a line range
+				if v.name == "Color" then
 					found = found + 1
 					local dis = v.disabled({})
 					check("bar colour picker disabled=" .. tostring(dis) .. " (" .. path .. ")", dis == not RETAILAPI)
