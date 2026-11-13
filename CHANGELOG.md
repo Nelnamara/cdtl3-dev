@@ -1,5 +1,49 @@
 # CooldownTimeline 3
 
+## Unreleased
+
+**Filters**
+- **Says why a spell or buff isn't showing** — pick an entry and a line says what's hiding it (ignored for being over the Ignore Threshold, longer than the lane's Max Time, its lane switched off…) with a *Show anyway* button. The first time a long cooldown is ignored automatically, one chat line says so
+- **My spells** — Filters › Spells lists your spellbook's cooldowns with ticks, so you can pick spells before you've ever cast them, plus *Show only the ticked spells*
+- **Hide spells I don't know** and **Only for this spec** — spells you've talented out of leave the lane, and a spell can be kept to one spec (Retail and MoP)
+- **Pull from Cooldown Manager** (Retail and WoW: Forever) — one button in Filters › Buffs sets up every buff in the Cooldown Manager's Tracked Bars
+
+**Ready sounds and showing**
+- **A ready sound per spell** — each entry can have its own sound, flash when ready, and say its name out loud (text to speech). The Ready tab gets *Mute ready sounds* and a *Play sound* button
+- **Show per lane, bar frame and Ready frame** — *Always*, *Only in combat* or *Boss fights only*, with *Dim instead of hide*. The default follows the Global tab's *Hide out of combat*, as before
+- **Preview with sample icons** — a button at the top of the Global tab (or Shift-click the minimap button) shows sample icons, then *Stop preview*
+- **Placing frames** — the "Frames unlocked" box says to drag the frames and then click Lock (and that Edit Mode can place them too) until your first lock. Your first flight says the countdown is CDTL3's and where to turn it off
+
+**Placing and profiles**
+- **Anchor to** — a lane, bar frame or Ready frame can follow the player frame, the Cooldown Manager or any frame by name, with an offset. Only CDTL3's own frames move
+- **Share my Custom timers and spell settings with all my characters** (Profiles tab, off by default), **New characters start on** (the Default profile, the last one used, or one you choose), and **Profiles by zone** (raids, dungeons, PvP, open world)
+
+**Sharing**
+- **Share strings with a preview** — an import first says what's in it ("3 lanes, 41 spells, made on 3.1.1 Retail"), warns about spells your client doesn't have, and can go into a new profile. Imported spells show in your Filters at once. Each lane has *Copy this lane*. Older strings still import
+- **Masque** gets a group per timer type (spells, items, buffs…), keeping your current skin
+- **A missing font, bar texture or sound** shows "(missing)" in its menu and uses CDTL3's own instead of going silent
+
+**For bug reports and other addons**
+- `/cdtl3 report` opens a ready-to-copy bug report, `/cdtl3 log` shows what failed quietly, `/cdtl3 perf` shows memory and frame counts, and `/cdtl3 help` lists every command
+- **Update rate** (Global tab) and **Pause while hidden** (per lane) for slower machines; timers and Ready stay on time
+- Other addons can listen for a timer starting, getting ready and ending, and read what's tracked: see [Extending CDTL3](https://github.com/Nelnamara/cdtl3-dev/blob/main/docs/EXTENDING.md)
+
+**Fixes**
+- **Importing a "Settings only" string as "All settings and data" no longer empties your Filters lists**, and a damaged string is refused before it can change anything
+- **Clearing a spell's settings, Reset Profile and Copy From now ask first** when other characters on the profile use them, instead of wiping them silently
+- **Cooldowns on a switched-off lane** no longer lose their bar for the last 2 minutes
+- **An early reset** (Cold Snap, Preparation, Readiness) now shows the Ready icon along with the sound, and a switched-off Ready frame no longer plays one
+- **Ready › Highlight Duration and Pinned Hide Time** now do what they say
+- **The "Frames unlocked" box** follows the lock when you switch profile, and its Lock button always locks
+- **Custom › Add New**: *Enabled* can be unticked, and a mistyped Trigger ID is refused (Retail and WoW: Forever)
+- **In combat on Retail and WoW: Forever**: the GCD marker shows, a Tracked Bars buff no longer jumps to Ready after Alt+Z, and a new trinket or potion no longer shows a frozen 16:40 bar
+- **Lanes**: Secondary Tracking shows as soon as you turn it on, the secondary marker on vertical lanes moves along the lane, lane texts with live tags update, Override Autohide brings back an empty lane, every lane and bar frame comes back at the pull with *Hide out of combat*, and Split Count takes whole numbers
+- **Edit Mode** sliders reach the same sizes as the options window; lane width now goes to 1000 and bar width to 600 in both
+- **Grouped stacking** does far less work and looks the same; a lone icon in a short stack stays in the lane
+- **TBC Anniversary**: flights that don't start from the flight map no longer count down under internal names
+- **Test mode** no longer lists test cooldowns twice
+- **Classic clients** read buffs and the combat log through Blizzard's current names, ahead of the old ones being removed
+
 ## v3.1.1
 
 **Flight timers (every client, on by default)**
