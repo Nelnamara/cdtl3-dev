@@ -73,7 +73,7 @@ end
 
 -- COPY SETTINGS
 -- Everything except what identifies the target: its name, whether it's shown, and where it is
-private.KEEP_ON_COPY = { name = true, enabled = true, posX = true, posY = true, relativeTo = true, editMode = true }
+private.KEEP_ON_COPY = { name = true, enabled = true, posX = true, posY = true, relativeTo = true, editMode = true, anchor = true }
 
 function CDTL3:CopyFrameSettings(group, from, to)
 	local p = CDTL3.db.profile[group]

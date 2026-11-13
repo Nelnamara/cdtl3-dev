@@ -70,7 +70,7 @@ private.CreateReady = function(frameNumber)
 	-- DRAG AND DROP MOVEMENT
 	f:RegisterForDrag("LeftButton")
 	f:SetScript("OnDragStart", f.StartMoving)
-	f:SetScript("OnDragStop", f.StopMovingOrSizing)
+	f:SetScript("OnDragStop", function(self) CDTL3:FrameDragStop(self, "ready") end)
 	
 	CDTL3:RefreshReady(frameNumber)
 	table.insert(CDTL3.readyFrames, f)
@@ -236,8 +236,8 @@ private.ReadyUpdate = function(f, elapsed)
 			end
 		end
 	
-		-- FRAME (UN)LOCKING
-		if CDTL3.db.profile.global["unlockFrames"] then
+		-- FRAME (UN)LOCKING (a frame on another frame keeps its screen position; a drag sets its offset)
+		if CDTL3.db.profile.global["unlockFrames"] and not f.cdtl3AnchoredTo then
 			local _, _, relativeTo, xOfs, yOfs = f:GetPoint()
 			
 			s["relativeTo"] = relativeTo
@@ -267,8 +267,8 @@ function CDTL3:RefreshReady(i)
 	
 	f.name = s["name"]
 
-	f:ClearAllPoints()
-	f:SetPoint(s["relativeTo"], s["posX"], s["posY"])
+	-- the screen position, or on the frame it is anchored to (Anchors.lua)
+	CDTL3:PlaceFrame(f, s, "ready")
 	f:SetSize(s["icons"]["size"], s["icons"]["size"])
 	
 	f.mf:ClearAllPoints()

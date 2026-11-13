@@ -47,6 +47,11 @@ private.OnMoved = function(frame, layoutName, point, x, y)
 	end
 
 	local s = private.Settings(info)
+	-- anchored to another frame (Anchors.lua): the move sets its offset from that frame, and this
+	-- layout's screen position stays for when Anchor to goes back to Screen
+	if CDTL3:AnchorMoved(frame, s, info.group, point, x, y, info.default) then
+		return
+	end
 	if layoutName then
 		s["editMode"] = s["editMode"] or {}
 		s["editMode"][layoutName] = { point = point, x = x, y = y }
@@ -119,6 +124,7 @@ private.Register = function(frame, kind, number)
 
 	local d = CDTL3.db.defaults.profile[kind.group][info.key]
 	local default = { point = d["relativeTo"], x = d["posX"], y = d["posY"] }
+	info.default = default
 	LEM:AddFrame(frame, private.OnMoved, default, "CDTL3: "..kind.label.." "..number)
 
 	-- Edit Mode's slider stops at its ends, so every size the options window's sliders reach must fit:

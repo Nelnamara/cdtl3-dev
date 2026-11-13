@@ -139,6 +139,8 @@ local laneDefaults = {
 	width = 400,
 	height = 44,
 	relativeTo = "CENTER",
+	-- Anchor to (Anchors.lua): SCREEN keeps the x/y position above; PLAYER, COOLDOWNS or NAMED (frame) place it on another frame's side
+	anchor = { to = "SCREEN", frame = "", side = "ABOVE", x = 0, y = 0 },
 	alpha = 1,
 	-- Pause while hidden: icons skip their visual updates while the lane is faded to nothing (Cooldown.lua)
 	pauseHidden = false,
@@ -515,6 +517,7 @@ local barFrameDefaults = {
 	width = 180,
 	height = 25,
 	relativeTo = "CENTER",
+	anchor = { to = "SCREEN", frame = "", side = "ABOVE", x = 0, y = 0 },
 	alpha = 1,
 
 	transition = {
@@ -649,6 +652,7 @@ local readyDefaults = {
 	posX = -300,
 	posY = -75,
 	relativeTo = "CENTER",
+	anchor = { to = "SCREEN", frame = "", side = "ABOVE", x = 0, y = 0 },
 	alpha = 1,
 
 	bgTexture = "CDTL3 Smooth",

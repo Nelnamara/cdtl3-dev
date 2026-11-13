@@ -81,6 +81,13 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
   (Full slides every frame where the formula says; 30 and 15 a second slide, fill and redo texts less often)
   with Ready and its sound on the same frame at every rate, Pause while hidden, and `/cdtl3 perf`. `show` as the
   last argument prints a sample report. `combattimers.lua` checks a riding icon at 15 a second.
+- `anchors.lua`: Anchor to (feature panel card 21): Screen placed as before, the player frame, the Cooldown
+  Manager and a frame by name with side and offsets, the other frame only read (a recording proxy), a missing
+  frame waiting then anchoring (timer, ADDON_LOADED), unusable frames falling back, unlock-and-drag and Edit Mode
+  setting the offset with screen and layout positions kept, the options, Copy Settings, a profile switch.
+- `profiles.lua`: Profiles tab extras (card 39): the profile a new character starts on, shared Filters entries
+  (round trips, other profiles joining and getting them back, Copy From, Reset Profile and imports while shared, a
+  logout saving each table once, a reload), profiles by zone and with spec profiles, a deleted profile.
 - The `/cdtl3 probe` test build and its `probe.lua` harness live on branch `cdm-probe`.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).
