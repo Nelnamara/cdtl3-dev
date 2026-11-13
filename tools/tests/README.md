@@ -50,6 +50,10 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
   every option and a round trip in each mode), Clear Individual Settings and stale Filters selections,
   the Reset Profile / Copy From confirms, built-in spell data copied before it's saved, the unlock box,
   Custom › Add New (Enabled, Trigger ID) and test mode frames.
+- `lanes.lua`: lane fixes from the 12 Nov red team: Grouped stacking checked icon by icon against the
+  old code (kept in the file as the reference) over 864 layouts, the secondary marker on vertical lanes
+  and on a hidden GCD, Secondary Tracking from the options, live lane texts, Hide out of combat by
+  frame number, Override Autohide on an empty lane, whole Split Counts, Edit Mode ranges.
 - The `/cdtl3 probe` test build and its `probe.lua` harness live on branch `cdm-probe`.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).

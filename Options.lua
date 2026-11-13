@@ -4521,6 +4521,7 @@ private.GetLaneSet = function(i)
 						end,
 						min = 1,
 						max = 3,
+						step = 1,
 						bigStep = 1,
 						get = function(info, index)
 								return lane["mode"]["split"]["count"]
@@ -4728,6 +4729,7 @@ private.GetLaneSet = function(i)
 						end,
 						min = 1,
 						max = 3,
+						step = 1,
 						bigStep = 1,
 						get = function(info, index)
 								return lane["mode"]["splitAbs"]["count"]
@@ -4982,6 +4984,7 @@ private.GetLaneSet = function(i)
 							end,
 						set = function(info, val)
 								lane["tracking"]["secondaryTracking"] = val
+								CDTL3:RefreshLane(i)
 							end,
 					},
 					secondaryReversed = {
