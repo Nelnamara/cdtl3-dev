@@ -87,6 +87,31 @@ function CDTL3:CopyFrameSettings(group, from, to)
 	CDTL3:RefreshConfig()
 end
 
+-- Every value of one lane / bar frame / ready frame, defaults included (a lane's share string,
+-- Helpers.lua ExportString), as a fresh table
+function CDTL3:GetFrameSettings(group, n)
+	local g = private.GROUPS[group]
+	local live = g and CDTL3.db.profile[group][g.prefix..n]
+	if not live then
+		return nil
+	end
+
+	return DeepCopy(Effective(live, private.Defaults(group, g.prefix..n)))
+end
+
+-- Write such values into one of them, keeping what Copy From keeps (its name, whether it's on
+-- and where it sits). No refresh: the caller (an import) refreshes once.
+function CDTL3:WriteFrameSettings(group, n, values)
+	local g = private.GROUPS[group]
+	local dst = g and CDTL3.db.profile[group][g.prefix..n]
+	if not dst or type(values) ~= "table" then
+		return false
+	end
+
+	WriteInto(dst, values, private.KEEP_ON_COPY)
+	return true
+end
+
 -- PRESETS
 -- A preset only touches looks: textures, colours, borders, fonts. Sizes, positions, modes and
 -- what is tracked are left alone. Fields left out keep the current value.

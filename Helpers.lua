@@ -2506,8 +2506,8 @@ function CDTL3:TableCopy(orig)
     return copy
 end
 
--- Import a string made by the Import/Export tab. Every stage is checked and the data's
--- shape is validated BEFORE anything is written, so a bad string changes nothing.
+-- Import a string made by the Import/Export tab (or a lane's Copy this lane). Every stage is
+-- checked and the data's shape is validated BEFORE anything is written, so a bad string changes nothing.
 -- Imported data is copied INTO AceDB's existing profile tables: replacing the
 -- CDTL3.db.profile reference only changed the in-memory view, so the import was lost on
 -- /reload. Defaults are re-applied afterwards for keys an older export doesn't have.
@@ -2575,44 +2575,234 @@ local function ReplaceContents(target, source)
 	end
 end
 
-function CDTL3:ImportHandler(importString)
-	local function Fail(what)
-		CDTL3:Print("There was an error importing the data!")
-		CDTL3:Print("  -"..what)
-		return nil
+-- SHARE STRINGS (feature panel card 34)
+-- Exports start with "!CDTL3:2!" and wrap what they carry with where it was made:
+-- { kind = ALL / SETTINGS / CDDATA / LANE, client, toc, version, data [, lane] }. A string
+-- without the header is an older export (the data itself) and imports exactly as before.
+-- The Import box shows CDTL3:ImportPreview's text with Accept / Cancel before ImportHandler
+-- writes anything.
+local SHARE_HEADER, SHARE_FORMAT = "!CDTL3:2!", 2
+local SHARE_KINDS = { ALL = "All Settings and Data", SETTINGS = "CDTL3 Settings Only", CDDATA = "Cooldown Data Only", LANE = "One lane" }
+local SHARE_CLIENTS = { Retail = "Retail", Forever = "WoW: Forever", Mists = "MoP Classic", TBC = "TBC Anniversary", Era = "Classic Era" }
+-- lane settings a lane string leaves out: where the lane sits belongs to the player's own screen
+local SHARE_LANE_SKIP = { enabled = true, posX = true, posY = true, relativeTo = true, editMode = true }
+local SHARE_LIST_WORDS = {
+	spells = { "spell", "spells" }, petspells = { "pet spell", "pet spells" }, items = { "item", "items" },
+	buffs = { "buff", "buffs" }, debuffs = { "debuff", "debuffs" }, offensives = { "offensive", "offensives" },
+	runes = { "rune", "runes" }, customs = { "custom timer", "custom timers" }, detected = { "detected spell", "detected spells" },
+}
+-- the Filters lists whose entries are spell IDs, which another client may not have
+local SHARE_SPELL_LISTS = { "spells", "petspells", "buffs", "debuffs", "offensives" }
+
+local function ShareClient()
+	if CDTL3.isForever then
+		return "Forever"
 	end
+	local toc = CDTL3.tocversion or 0
+	if toc >= 110000 then
+		return "Retail"
+	elseif toc >= 50000 then
+		return "Mists"
+	elseif toc >= 20000 then
+		return "TBC"
+	end
+	return "Era"
+end
 
-	-- DEFLATE + SERIALIZE (any stage can fail on a truncated / mistyped string)
+local function EncodeShare(t)
 	local LibDeflate = LibStub:GetLibrary("LibDeflate")
-	local LibAceSerializer = LibStub:GetLibrary("AceSerializer-3.0")
+	local serialized = LibStub:GetLibrary("AceSerializer-3.0"):Serialize(t)
+	return LibDeflate:EncodeForPrint(LibDeflate:CompressDeflate(serialized))
+end
 
-	local ok, unprintable = pcall(LibDeflate.DecodeForPrint, LibDeflate, importString or "")
+-- DEFLATE + SERIALIZE back (any stage can fail on a truncated / mistyped string)
+local function DecodeShare(text)
+	local LibDeflate = LibStub:GetLibrary("LibDeflate")
+	local ok, unprintable = pcall(LibDeflate.DecodeForPrint, LibDeflate, text)
 	if not ok or not unprintable then
-		return Fail("All data (was invalid import string)")
+		return nil
 	end
 	local inflated
 	ok, inflated = pcall(LibDeflate.DecompressDeflate, LibDeflate, unprintable)
 	if not ok or not inflated then
-		return Fail("All data (was invalid import string)")
+		return nil
 	end
-	local success, data = LibAceSerializer:Deserialize(inflated)
+	local success, data = LibStub:GetLibrary("AceSerializer-3.0"):Deserialize(inflated)
 	if not success or type(data) ~= "table" then
-		return Fail("All data (was invalid import string)")
+		return nil
+	end
+	return data
+end
+
+-- What an export carries: Cooldown Data Only = the Filters lists, CDTL3 Settings Only = the
+-- profile with every Filters list emptied, All Settings and Data = the whole profile, a lane =
+-- every value of that lane (defaults included, so it fits any lane) except where it sits
+local function ExportData(mode, lane)
+	if mode == "LANE" then
+		local values = CDTL3:GetFrameSettings("lanes", lane) or {}
+		for k in pairs(SHARE_LANE_SKIP) do
+			values[k] = nil
+		end
+		return values
+	elseif mode == "CDDATA" then
+		return CDTL3:TableCopy(CDTL3.db.profile.tables)
 	end
 
-	local profile = CDTL3.db.profile
-	local importMode = CDTL3.db.profile.global["importMode"]
-	local defaults = CDTL3.db.defaults.profile
+	local t = CDTL3:TableCopy(CDTL3.db.profile)
+	if mode == "SETTINGS" then
+		t.tables = t.tables or {}
+		for _, key in ipairs(IMPORT_TABLE_TYPES) do
+			t.tables[key] = {}
+		end
+	end
+	return t
+end
 
-	if importMode == "ALL" then
+-- The text for the Export box (mode = ALL, SETTINGS or CDDATA) or a lane's Copy this lane box
+-- (mode = LANE, lane = 1-3)
+function CDTL3:ExportString(mode, lane)
+	if mode ~= "LANE" and mode ~= "CDDATA" and mode ~= "SETTINGS" then
+		mode = "ALL"
+	end
+	local wrapper = { kind = mode, client = ShareClient(), toc = CDTL3.tocversion, version = CDTL3.version, data = ExportData(mode, lane) }
+	if mode == "LANE" then
+		wrapper.lane = lane
+	end
+
+	return SHARE_HEADER..EncodeShare(wrapper)
+end
+
+-- A pasted string -> { data, meta } (meta is nil for an older string), or nil and what's wrong
+local function ReadShare(importString)
+	local text = tostring(importString or ""):gsub("^%s+", "")
+	if text:sub(1, 7) ~= "!CDTL3:" then
+		local data = DecodeShare(text)
+		if not data then
+			return nil, "All data (was invalid import string)"
+		end
+		return { data = data }
+	end
+
+	local fmt, body = text:match("^!CDTL3:(%d+)!(.*)$")
+	if not fmt then
+		return nil, "All data (was invalid import string)"
+	end
+	if tonumber(fmt) > SHARE_FORMAT then
+		return nil, "All data (made by a newer CDTL3: update CDTL3, then import it)"
+	end
+	local wrapper = DecodeShare(body)
+	if not wrapper or type(wrapper.data) ~= "table" or not SHARE_KINDS[wrapper.kind] then
+		return nil, "All data (was invalid import string)"
+	end
+	if wrapper.kind == "LANE" and not (wrapper.lane == 1 or wrapper.lane == 2 or wrapper.lane == 3) then
+		return nil, "Lane settings (was invalid import string)"
+	end
+
+	local version = wrapper.version
+	return { data = wrapper.data, meta = {
+		kind = wrapper.kind,
+		lane = wrapper.lane,
+		client = type(wrapper.client) == "string" and wrapper.client or nil,
+		version = (type(version) == "string" or type(version) == "number") and tostring(version) or nil,
+	} }
+end
+
+-- a cooldown-data export is the tables map itself; a full/settings export nests it
+local function ShareTables(data)
+	return type(data.tables) == "table" and data.tables or data
+end
+
+-- Is the string usable in this import mode? nil when it is, else what's wrong. Checks only:
+-- nothing is written, so a bad string changes nothing.
+local function CheckShare(plan, mode)
+	local data, defaults = plan.data, CDTL3.db.defaults.profile
+
+	if plan.meta and plan.meta.kind == "LANE" then
+		if not FitsDefaults(data, defaults.lanes["lane"..plan.meta.lane]) then
+			return "Lane settings (malformed)"
+		end
+		return nil
+	end
+
+	if mode == "ALL" then
 		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
 			if type(data[key]) ~= "table" then
-				return Fail("All data (not a full CDTL3 export)")
+				return "All data (not a full CDTL3 export)"
 			end
 		end
 		if not FitsDefaults(data, defaults) or (data.tables ~= nil and not FitsFilterLists(data.tables)) then
-			return Fail("All data (malformed)")
+			return "All data (malformed)"
 		end
+
+	elseif mode == "SETTINGS" then
+		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
+			if type(data[key]) ~= "table" then
+				return "Settings data (not a CDTL3 settings export)"
+			end
+		end
+		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
+			if not FitsDefaults(data[key], defaults[key], key) then
+				return "Settings data (malformed)"
+			end
+		end
+
+	elseif mode == "CDDATA" then
+		local tables = ShareTables(data)
+		if not FitsFilterLists(tables) then
+			return "Cooldown data (malformed)"
+		end
+		local found = 0
+		for _, key in ipairs(IMPORT_TABLE_TYPES) do
+			if type(tables[key]) == "table" and next(tables[key]) then
+				found = found + 1
+			end
+		end
+		if found == 0 then
+			-- e.g. a "Settings Only" export, whose cooldown lists are deliberately empty
+			return "Cooldown data (the string contains no cooldown data)"
+		end
+	end
+
+	return nil
+end
+
+-- Every entry an import brings in is this character's too, kept for its other characters, so
+-- it is listed in this character's Filters at once instead of after its first cast or trigger
+local function ClaimEntries(list)
+	if not CDTL3.player["guid"] then
+		CDTL3:GetCharacterData()
+	end
+	local guid = CDTL3.player["guid"]
+	if not guid or type(list) ~= "table" then
+		return
+	end
+
+	for _, entry in pairs(list) do
+		if type(entry) == "table" then
+			if type(entry["usedBy"]) ~= "table" then
+				entry["usedBy"] = {}
+			end
+			local mine = false
+			for _, g in pairs(entry["usedBy"]) do
+				if g == guid then
+					mine = true
+				end
+			end
+			if not mine then
+				table.insert(entry["usedBy"], guid)
+			end
+		end
+	end
+end
+
+-- Write a checked string into the current profile
+local function ApplyShare(plan, mode)
+	local profile, data = CDTL3.db.profile, plan.data
+
+	if plan.meta and plan.meta.kind == "LANE" then
+		CDTL3:WriteFrameSettings("lanes", plan.meta.lane, data)
+
+	elseif mode == "ALL" then
 		-- keep this profile's import/export choices, and each of its Filters lists the string
 		-- leaves empty: a "Settings Only" export empties them all, and importing one this way
 		-- wiped every character's spells, Customs and Custom CD Times on the profile
@@ -2629,6 +2819,7 @@ function CDTL3:ImportHandler(importString)
 			local theirs = profile.tables[key]
 			if type(theirs) == "table" and next(theirs) then
 				carried = carried + 1
+				ClaimEntries(theirs)
 			elseif type(own) == "table" and type(own[key]) == "table" and next(own[key]) then
 				profile.tables[key] = own[key]
 				table.insert(kept, IMPORT_LIST_NAMES[key])
@@ -2640,47 +2831,228 @@ function CDTL3:ImportHandler(importString)
 			CDTL3:Print("Imported. This profile's own "..table.concat(kept, ", ").." Filters lists were kept: the string's were empty.")
 		end
 
-	elseif importMode == "SETTINGS" then
-		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
-			if type(data[key]) ~= "table" then
-				return Fail("Settings data (not a CDTL3 settings export)")
-			end
-		end
-		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
-			if not FitsDefaults(data[key], defaults[key], key) then
-				return Fail("Settings data (malformed)")
-			end
-		end
+	elseif mode == "SETTINGS" then
 		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
 			profile[key] = data[key]
 		end
 
-	elseif importMode == "CDDATA" then
-		-- a cooldown-data export is the tables map itself; a full/settings export nests it
-		local tables = type(data.tables) == "table" and data.tables or data
-		if not FitsFilterLists(tables) then
-			return Fail("Cooldown data (malformed)")
-		end
-		local found = 0
-		for _, key in ipairs(IMPORT_TABLE_TYPES) do
-			if type(tables[key]) == "table" and next(tables[key]) then
-				found = found + 1
-			end
-		end
-		if found == 0 then
-			-- e.g. a "Settings Only" export, whose cooldown lists are deliberately empty
-			return Fail("Cooldown data (the string contains no cooldown data)")
-		end
+	elseif mode == "CDDATA" then
+		local tables = ShareTables(data)
 		for _, key in ipairs(IMPORT_TABLE_TYPES) do
 			if type(tables[key]) == "table" then
 				profile.tables[key] = tables[key]
+				ClaimEntries(tables[key])
+			end
+		end
+	end
+end
+
+-- "Import into a new profile": Imported, Imported 2, ...
+local function NewProfileName()
+	local taken = {}
+	for _, name in ipairs((CDTL3.db:GetProfiles())) do
+		taken[name] = true
+	end
+	local name, n = "Imported", 1
+	while taken[name] do
+		n = n + 1
+		name = "Imported "..n
+	end
+	return name
+end
+
+local function IntoNewProfile()
+	return CDTL3.db.global and CDTL3.db.global["importNewProfile"] == true
+end
+
+local function Plural(n, words)
+	return n.." "..(n == 1 and words[1] or words[2])
+end
+
+-- text from someone else's string, shown as plain text (no colour codes or links)
+local function Plain(s, max)
+	s = tostring(s or ""):gsub("%c", " ")
+	if max and #s > max then
+		s = s:sub(1, max).."..."
+	end
+	return (s:gsub("|", "||"))
+end
+
+-- True when this client has no spell with that ID (spell data, not the spellbook: another
+-- class's spells exist, another game's may not)
+local function SpellMissing(id)
+	if type(id) ~= "number" or id <= 0 then
+		return false
+	end
+	local ok, name = pcall(CDTL3.GetSpellInfo, CDTL3, id)
+	return ok and (name == nil or name == "")
+end
+
+local function CountEntries(t)
+	local n = 0
+	for _ in pairs(t) do
+		n = n + 1
+	end
+	return n
+end
+
+-- "All Settings and Data: 3 lanes, 41 spells, 6 buffs, made on 3.1.1 Retail.", then warnings
+-- (another client, spells this client doesn't have) and where it goes
+local function PreviewText(plan, mode)
+	local data, meta = plan.data, plan.meta
+	local kind = meta and meta.kind
+	local defaults = CDTL3.db.defaults.profile
+	local lines, parts = {}, {}
+	local lists
+
+	if kind == "LANE" then
+		parts[1] = "settings for lane "..meta.lane..' ("'..Plain(data.name, 40)..'")'
+	else
+		if (mode == "ALL" or mode == "SETTINGS") and type(data.lanes) == "table" then
+			local on = 0
+			for n = 1, 3 do
+				local lane, default = data.lanes["lane"..n], defaults.lanes["lane"..n]
+				local enabled
+				if type(lane) == "table" then
+					enabled = lane.enabled
+				end
+				if enabled == nil and default then
+					enabled = default.enabled
+				end
+				if enabled then
+					on = on + 1
+				end
+			end
+			parts[#parts + 1] = Plural(on, { "lane", "lanes" })
+		end
+		if mode == "ALL" then
+			lists = type(data.tables) == "table" and data.tables or nil
+		elseif mode == "CDDATA" then
+			lists = ShareTables(data)
+		end
+		for _, key in ipairs(IMPORT_TABLE_TYPES) do
+			local n = lists and type(lists[key]) == "table" and CountEntries(lists[key]) or 0
+			if n > 0 then
+				parts[#parts + 1] = Plural(n, SHARE_LIST_WORDS[key])
 			end
 		end
 	end
 
+	local made
+	if meta then
+		made = "made on "..(meta.version and Plain(meta.version, 12) or "an unknown version").." "..(SHARE_CLIENTS[meta.client] or Plain(meta.client or "?", 20))
+	else
+		made = "made on an older CDTL3 (the string doesn't say which version or game)"
+	end
+	local what = kind == "LANE" and SHARE_KINDS.LANE or SHARE_KINDS[mode] or "Import"
+	lines[1] = what..": "..(#parts > 0 and table.concat(parts, ", ")..", " or "")..made.."."
+
+	local here = ShareClient()
+	if meta and meta.client and meta.client ~= here then
+		lines[#lines + 1] = "|cffff9900Made on "..(SHARE_CLIENTS[meta.client] or Plain(meta.client, 20)).." and this is "..SHARE_CLIENTS[here]..": spells, textures and fonts can differ.|r"
+	end
+
+	if lists then
+		local names = {}
+		for _, key in ipairs(SHARE_SPELL_LISTS) do
+			if type(lists[key]) == "table" then
+				for _, entry in pairs(lists[key]) do
+					if type(entry) == "table" and SpellMissing(entry["id"]) then
+						names[#names + 1] = Plain(entry["name"] or ("spell "..tostring(entry["id"])), 30)
+					end
+				end
+			end
+		end
+		if #names > 0 then
+			table.sort(names)
+			local shown = {}
+			for i = 1, math.min(#names, 8) do
+				shown[i] = names[i]
+			end
+			local more = #names > #shown and (" and "..(#names - #shown).." more") or ""
+			lines[#lines + 1] = "|cffff9900"..Plural(#names, { "spell", "spells" }).." in it "..(#names == 1 and "isn't" or "aren't")
+				.." in this client: "..table.concat(shown, ", ")..more..". They are imported but can't show here.|r"
+		end
+	end
+
+	local current = Plain(CDTL3.db:GetCurrentProfile(), 40)
+	if IntoNewProfile() then
+		lines[#lines + 1] = "Goes into a new profile, "..NewProfileName()..". This profile ("..current..") stays as it is."
+	elseif kind == "LANE" then
+		lines[#lines + 1] = "Replaces lane "..meta.lane.."'s settings in this profile ("..current.."), except its name, position and whether it's on."
+	elseif mode == "SETTINGS" then
+		lines[#lines + 1] = "Replaces this profile's settings ("..current.."). Its Filters lists stay."
+	elseif mode == "CDDATA" then
+		lines[#lines + 1] = "Replaces the Filters lists the string has in this profile ("..current.."). Settings stay."
+	else
+		lines[#lines + 1] = "Replaces this profile's settings and the Filters lists the string has ("..current..")."
+	end
+	lines[#lines + 1] = "Import it?"
+
+	return table.concat(lines, "\n\n")
+end
+
+-- The Import box asks first: the preview text for its Accept / Cancel box, or false when the
+-- string can't be imported (then the import prints why and writes nothing). Never errors, so
+-- the Import box can't skip the question.
+function CDTL3:ImportPreview(importString)
+	local ok, text = pcall(function()
+		local mode = CDTL3.db.profile.global["importMode"]
+		local plan = ReadShare(importString)
+		if not plan or CheckShare(plan, mode) then
+			return false
+		end
+		return PreviewText(plan, mode)
+	end)
+	if not ok then
+		return "Import this string?"
+	end
+
+	return text
+end
+
+function CDTL3:ImportHandler(importString)
+	local function Fail(what)
+		CDTL3:Print("There was an error importing the data!")
+		CDTL3:Print("  -"..what)
+		return nil
+	end
+
+	local plan, why = ReadShare(importString)
+	if not plan then
+		return Fail(why)
+	end
+	local mode = CDTL3.db.profile.global["importMode"]
+	why = CheckShare(plan, mode)
+	if why then
+		Fail(why)
+		local kind = plan.meta and plan.meta.kind
+		if kind and kind ~= "LANE" and kind ~= mode then
+			CDTL3:Print("  This string is a \""..SHARE_KINDS[kind].."\" export: pick that under Import and paste it again.")
+		end
+		return nil
+	end
+
+	-- Import into a new profile: made only now that the string checked out; it gets the
+	-- import/export choices of the profile the player was on
+	local from, newName = CDTL3.db:GetCurrentProfile(), nil
+	if IntoNewProfile() then
+		local g = CDTL3.db.profile.global
+		local exportMode, importMode = g["exportMode"], g["importMode"]
+		newName = NewProfileName()
+		CDTL3.db:SetProfile(newName)
+		CDTL3.db.profile.global["exportMode"], CDTL3.db.profile.global["importMode"] = exportMode, importMode
+	end
+
+	ApplyShare(plan, mode)
+
 	-- re-apply defaults for anything an older export lacks, then rebuild everything
 	CDTL3.db:RegisterDefaults(CDTL3.db.defaults)
 	CDTL3:RefreshConfig()
+
+	if newName then
+		CDTL3:Print("Imported into a new profile, "..newName..". "..from.." is unchanged: switch back on the Profiles tab.")
+	end
 
 	return nil
 end

@@ -68,6 +68,13 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
   anyway, the once-only auto-ignore note, Hide spells I don't know, Only for this spec (MoP and Retail),
   My spells and Show only the ticked spells, Pull from Cooldown Manager (Retail and Forever, with just
   enough of the Cooldown Manager faked).
+- `share.lua`: sharing and media (feature panel of 12 Nov 2026, cards 34 and 40): `!CDTL3:2!` exports
+  naming the client and CDTL3 version, a round trip of every export kind and of each lane's Copy this
+  lane string, older strings importing exactly as before, the import preview (counts, Cancel, a string
+  from another client, spells this client doesn't have), Into a new profile, refused strings, imported
+  Filters entries listed for the importing character on a shared Default profile, the "(missing)" note
+  on every font / bar texture / sound dropdown with CDTL3's media fallbacks, CDTL3's own media in
+  LibSharedMedia, and Masque groups per timer type (a stub Masque).
 - The `/cdtl3 probe` test build and its `probe.lua` harness live on branch `cdm-probe`.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).

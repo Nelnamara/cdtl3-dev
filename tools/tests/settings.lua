@@ -55,7 +55,14 @@ local LD = LibStub("LibDeflate")
 LD.CompressDeflate = function(_, s) return s end
 LD.DecompressDeflate = function(_, s) return s end
 local function encode(t) return LD:EncodeForPrint(LD:CompressDeflate(AS:Serialize(t))) end
-local function decode(s) local ok, t = AS:Deserialize(LD:DecompressDeflate(LD:DecodeForPrint(s))); return ok and t end
+-- the export box's strings carry a "!CDTL3:2!" header and wrap the data (card 34, share.lua)
+local function decode(s)
+	local body = s:match("^!CDTL3:2!(.*)$")
+	local ok, t = AS:Deserialize(LD:DecompressDeflate(LD:DecodeForPrint(body or s)))
+	if not ok then return nil end
+	if body then return type(t) == "table" and t.data end
+	return t
+end
 local function export(mode)
 	CDTL3.db.profile.global.exportMode = mode
 	return CDTL3:GetFullOptions().args.importexport.args.exportbox.get({})
