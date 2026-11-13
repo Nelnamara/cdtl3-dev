@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+**Getting started**
+- **A three-step tour** on a first install shows what the lane, the bars and the Ready frame are, with sample icons, then Lock in place and Open settings
+- **The Simple tab** comes first: what to track, timeline width, icon size, the ready sound and a lock button
+- **Setups by role** (Quick Style › Setup): Starter, Healer, Tank or DPS appear on your real frames with sample icons first; *Keep* saves it, *Undo* puts your lanes back, and a setup you never kept is undone at your next login
+- **Your own looks** — save the current look as a card, apply it to everything or to one lane, bar frame or Ready frame, and share it as a string
+- **Help** — the minimap tooltip shows whether frames are locked and combat timers are on, Alt-click opens a Help tab with every command
+- **A ~ before estimated times** (Global tab, off by default) tells a time CDTL3 counts itself from one that follows the game's own timer
+
+**On the lanes and icons**
+- **Charge pips** on spells with charges, the icon riding the recharge until every charge is back
+- **Buff alerts** — a lane flash when a buff lands or drops, with a sound
+- **A burst window** shaded on the lane, with an optional *Ready-by list* of the cooldowns that will be back for it
+- **A refresh zone** for DoTs on Classic clients, **a pulse** before a cooldown comes back, and **GCD waits** that sit in the Ready frame instead of looking like a real cooldown
+- **A mana gauge** at a lane's Ready end, **a bar that changes colour** at a resource number (and Brewmaster **Stagger** tracking)
+
+**Boards and groups**
+- **A Ready frame that shows every pinned defensive** (*Stay until used*), bright when ready and dimmed with its time when cooling
+- **A fight timeline** with flags at 2, 3 and 5 minutes showing where each pinned cooldown will be
+- **A Caster lane** for other players' cooldowns, with each caster's name under their icon: from the combat log on MoP, TBC and Classic Era, and from CooldownCollaborator on any client
+- **Externals you gave** — a strip on your cooldown icon with the target's name and the effect's time left
+- **Burst pack** (Filters › Defaults) sets up lust, Sated, your trinkets and potion on a Burst lane, with an optional Burst strip
+
 **Filters**
 - **Says why a spell or buff isn't showing** — pick an entry and a line says what's hiding it (ignored for being over the Ignore Threshold, longer than the lane's Max Time, its lane switched off…) with a *Show anyway* button. The first time a long cooldown is ignored automatically, one chat line says so
 - **My spells** — Filters › Spells lists your spellbook's cooldowns with ticks, so you can pick spells before you've ever cast them, plus *Show only the ticked spells*
