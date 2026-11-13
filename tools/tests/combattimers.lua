@@ -778,6 +778,112 @@ feed(ITEM, 0.1, 60, 50)
 check("estimate over, off its lane: text alpha restored", parentName(fg.icon) ~= "CDTL3_Lane_1" and gt:GetAlpha() == 1 and gb:GetAlpha() == 1,
 	tostring(parentName(fg.icon)) .. " " .. tostring(gt:GetAlpha()))
 
+---------------------------------------------------------------- 3c. a feed that pauses or moves bars (red team card 11)
+print("[held feeds " .. FLAVOR .. "]")
+local readySounds, toReady, inReady = 0, 0, false
+local realPSF, realToReady = PlaySoundFile, CDTL3.SendToReady
+PlaySoundFile = function(...) if inReady then readySounds = readySounds + 1 end return realPSF(...) end
+CDTL3.SendToReady = function(self, cd)
+	if cd ~= fb then return realToReady(self, cd) end
+	toReady, inReady = toReady + 1, true
+	realToReady(self, cd)
+	inReady = false
+end
+local function fed(item, other, frames, left)
+	for _ = 1, frames do
+		if item then item.Bar:SetMinMaxValues(0, S(60)); item.Bar:SetValue(S(left)) end
+		if other then other.Bar:SetMinMaxValues(0, S(5)); other.Bar:SetValue(S(4)) end
+		RunOnUpdate(0.02, 1)
+	end
+end
+fed(ITEM, ITEM2, 20, 50)
+fb.data.currentCD = 40   -- the estimate its text shows
+check("buff riding before the pause", CT:Riding(fb) and parentName(fb.icon) == "CDTL3_Lane_1")
+-- Alt+Z: UIParent hides; CDTL3's frames and Blizzard's bars stop updating, CombatTimers' event frame (no parent) doesn't
+UIParent:Hide()
+RunOnUpdate(0.02, 100)
+UIParent:Show()
+RunOnUpdate(0.02, 1)      -- CDTL3 updates before Blizzard's bars do
+check("UI back after 2 s hidden: the stale feed holds the ride, the icon keeps its last value", CT:Riding(fb) and fb.ct.feed == nil
+	and Val(fb.ct.rider:GetValue()) == 50, tostring(Val(fb.ct.rider:GetValue())))
+fed(ITEM, ITEM2, 25, 47)
+check("Alt+Z: still riding on lane 1 with the fresh value", CT:Riding(fb) and parentName(fb.icon) == "CDTL3_Lane_1" and Val(fb.ct.rider:GetValue()) == 47)
+check("Alt+Z: never sent to Ready, no ready sound", toReady == 0 and readySounds == 0, string.format("toReady=%d sounds=%d", toReady, readySounds))
+check("Alt+Z: the estimate carries on, not restarted at the buff's length", fb.data.currentCD < 40 and fb.data.currentCD > 39, string.format("%.2f", fb.data.currentCD))
+-- Blizzard's pool re-deals its bars: the bar that had the buff shows another first, then the buff lands on the other bar
+ITEM.cooldownID, ITEM2.cooldownID = 999, 201
+fed(nil, ITEM, 1, 0)
+check("re-deal, old bar re-used first: held, icon keeps its value", CT:Riding(fb) and fb.ct.feed == nil and Val(fb.ct.rider:GetValue()) == 47,
+	tostring(Val(fb.ct.rider:GetValue())))
+fed(ITEM2, ITEM, 2, 46)
+check("re-deal, buff on its new bar (under MIN_FEED): still held", CT:Riding(fb) and fb.ct.feed == nil and Val(fb.ct.rider:GetValue()) == 47)
+fed(ITEM2, ITEM, 25, 45)
+check("re-deal: rides the new bar", CT:Riding(fb) and fb.ct.feed == P.mirror.recs[ITEM2] and Val(fb.ct.rider:GetValue()) == 45)
+ITEM.cooldownID, ITEM2.cooldownID = 201, 999
+fed(ITEM, ITEM2, 25, 44)
+check("dealt back: rides the first bar again", CT:Riding(fb) and fb.ct.feed == P.mirror.recs[ITEM] and Val(fb.ct.rider:GetValue()) == 44)
+check("re-deals: never sent to Ready, no ready sound, estimate kept", toReady == 0 and readySounds == 0 and fb.data.currentCD > 37 and fb.data.currentCD < 39,
+	string.format("toReady=%d sounds=%d cd=%.2f", toReady, readySounds, fb.data.currentCD))
+-- a feed that just stops still ends the buff at 0.5 s, as before
+fed(nil, ITEM2, 22, 0)
+check("feed stopped 0.44 s: still riding", CT:Riding(fb))
+fed(nil, ITEM2, 8, 0)
+check("feed stopped 0.6 s: buff ended (Ready)", not CT:Riding(fb) and toReady == 1, "toReady=" .. toReady)
+fed(ITEM, ITEM2, 20, 59)
+check("a new feed starts it again", CT:Riding(fb) and parentName(fb.icon) == "CDTL3_Lane_1")
+-- the buff ends as its bar is handed to another buff: held at most 0.5 s, then Ready
+ITEM.cooldownID = 999
+fed(nil, ITEM, 15, 0)
+check("bar handed to another buff, 0.3 s: held", CT:Riding(fb) and toReady == 1)
+fed(nil, ITEM, 15, 0)
+check("0.6 s with no bar for it: buff ended (Ready)", not CT:Riding(fb) and toReady == 2, "toReady=" .. toReady)
+ITEM.cooldownID = 201
+fed(ITEM, ITEM2, 20, 58)
+check("its bar back: rides again", CT:Riding(fb))
+PlaySoundFile, CDTL3.SendToReady = realPSF, realToReady
+
+---------------------------------------------------------------- 3d. no new tables or closures per frame while riding (red team card 33)
+print("[per-frame garbage " .. FLAVOR .. "]")
+local function fromCT() local i = debug.getinfo(3, "S"); return i and i.source and i.source:find("CombatTimers.lua", 1, true) ~= nil end
+local realConcat, realPcall = table.concat, pcall
+local concats, fns, nfns = 0, {}, 0
+table.concat = function(...) if fromCT() then concats = concats + 1 end return realConcat(...) end
+pcall = function(fn, ...)
+	if fromCT() and not fns[fn] then fns[fn] = true; nfns = nfns + 1 end
+	return realPcall(fn, ...)
+end
+local knotCalls = 0
+local realKnots = P.SplitKnots
+P.SplitKnots = function(...) knotCalls = knotCalls + 1; return realKnots(...) end
+SPELLCD[TEST] = { startTime = S(NOW), duration = S(30), isEnabled = true, isActive = true, isOnGCD = false, modRate = 1 }
+DUR[TEST] = { NOW, 24 }
+cast(TEST)
+FireEvent("SPELL_UPDATE_COOLDOWN")
+for _, m in ipairs({ "SPLIT_ABS", "SPLIT", "LINEAR" }) do
+	lane.mode.type = m
+	fed(ITEM, ITEM2, 5, 50)                      -- settle: curves, segments, rider laid out
+	local geoS, geoB = f.ct.geo, fb.ct.geo
+	concats, fns, nfns, knotCalls = 0, {}, 0, 0
+	fed(ITEM, ITEM2, 100, 50)                    -- 2 s: a riding spell (icon + bar) and a riding buff
+	check(m .. ": spell and buff riding, no module errors", CT:Riding(f) and CT:Riding(fb) and P.errors == 0, tostring(P.lastError))
+	check(m .. ": each rider reuses its lane geometry table", geoS and f.ct.geo == geoS and geoB and fb.ct.geo == geoB)
+	check(m .. ": no key tables built (table.concat from CombatTimers.lua)", concats == 0, "calls=" .. concats)
+	check(m .. ": split points not re-read while nothing changed", knotCalls == 0, "SplitKnots calls=" .. knotCalls)
+	-- the spell's 0.2 s isActive read still makes one (10 in 2 s); a closure per frame per bar made 100 more
+	check(m .. ": no closure per frame (new pcall functions over 100 frames)", nfns < 50, "distinct=" .. nfns)
+end
+local s2v = lane.mode.splitAbs.s2v
+lane.mode.splitAbs.s2v = 5   -- a settings change is still picked up
+lane.mode.type = "SPLIT_ABS"
+fed(ITEM, ITEM2, 3, 50)
+check("Split (Time) points no longer increasing: buff falls back to the straight line", fb.ct.rider:IsShown() and not fb.ct.segs[1]:IsShown())
+lane.mode.splitAbs.s2v = s2v
+fed(ITEM, ITEM2, 3, 50)
+check("points fixed again: segments back", fb.ct.segs[1]:IsShown() and not fb.ct.rider:IsShown())
+lane.mode.type = "LINEAR"
+fed(ITEM, ITEM2, 3, 50)
+table.concat, pcall, P.SplitKnots = realConcat, realPcall, realKnots
+
 ---------------------------------------------------------------- 4. setting off
 print("[off " .. FLAVOR .. "]")
 SPELLCD[TEST] = { startTime = S(NOW), duration = S(30), isEnabled = true, isActive = true, isOnGCD = false, modRate = 1 }

@@ -8,6 +8,7 @@ private.dynamicTextPollRate = 10
 private.timeTextPollRate = 2
 -- seconds after an item's use in which a readable 0 cooldown read means "no cooldown"
 private.itemNoCooldownWindow = 2
+private.laneKeys = { "lane1", "lane2", "lane3" }
 
 function CDTL3:CreateCooldown(UID, cdType, cdData)
 	local fName = "CDTL3_CD_"..UID
@@ -961,16 +962,28 @@ private.BarUpdate = function(f, elapsed)
 			local CT = CDTL3.CombatTimers
 			local riding = CT and CT:Riding(f)
 
+			-- an item whose cooldown hasn't been read yet shows no bar (see the ITEMS poll)
+			if d["itemUnread"] then
+				if ba.valid then
+					ba.valid = false
+					ba:GetParent().triggerUpdate = true
+				end
+				return
+			end
+
 			-- "Transition bars" hides a bar once its cooldown is under the lane's Max Time. With the
 			-- option off (or no lane), a bar it hid earlier comes back: it used to stay hidden until
-			-- a /reload, so unticking the option looked like it did nothing.
-			if (d["lane"] == 0 or not s["transition"]["hideTransitioned"]) and not ba.valid
+			-- a /reload, so unticking the option looked like it did nothing. A lane that's switched
+			-- off counts as no lane: its icons have nowhere to show, so its bars stay.
+			local laneKey = private.laneKeys[d["lane"]]
+			local laneOn = laneKey and CDTL3.db.profile.lanes[laneKey]["enabled"]
+			if (not laneOn or not s["transition"]["hideTransitioned"]) and not ba.valid
 				and d["enabled"] and not d["ignored"] then
 				ba.valid = true
 				ba:GetParent().triggerUpdate = true
 			end
 
-			if d["lane"] == 0 then
+			if not laneOn then
 				-- For now, do nothing
 			else
 				if s["transition"]["hideTransitioned"] then
@@ -1362,17 +1375,25 @@ private.CooldownUpdate = function(f, elapsed)
 					
 					-- nil while the item cooldown is secret: decide nothing yet, retry next poll
 					local duration = nil
+					local read = false
 					local tinker, slot = CDTL3:CheckEngTinkerCases(d["name"])
 					if tinker then
 						local _, spellID = CDTL3.Compat.GetItemSpell(d["itemID"])
 						if spellID == d["id"] then
 							local _
 							_, duration = CDTL3:GetInventoryItemCooldown(slot)
+							read = true
 						end
 					else
 						local _
 						_, duration = CDTL3:GetItemCooldown(d["itemID"])
+						read = true
 					end
+
+					-- While it's secret the item shows nothing (IconUpdate, BarUpdate): the 1000 above
+					-- only keeps this poll going, it isn't a timer. It used to show as a full bar
+					-- reading 16:40 until combat ended.
+					d["itemUnread"] = read and duration == nil
 					
 					-- A 0 read means "no cooldown" (food, drink: saved as ignored) only when it's
 					-- taken within a moment of the use, which the use handler records as the
@@ -1600,7 +1621,13 @@ private.IconUpdate = function(f, elapsed)
 				iconPercent = private.CalcSplitPosition(d["currentCD"], d["baseCD"], s)
 			end
 			
-			if d["currentCD"] > max then
+			if d["itemUnread"] then
+				-- an item whose cooldown hasn't been read yet shows nothing (see the ITEMS poll)
+				if ic.valid then
+					ic.valid = false
+					ic:GetParent().triggerUpdate = true
+				end
+			elseif d["currentCD"] > max then
 				-- a flight always shows: it often runs past a lane's Max Time
 				if hideTimeSurplus == true and d["type"] ~= "flights" then
 					if ic.valid then
@@ -1866,16 +1893,21 @@ function CDTL3:MoveToLane(f)
 	end
 end
 
+-- A switched-off Ready frame takes nothing (no sound, no icon waiting in the hidden frame). An icon
+-- arriving is shown: one hidden on its lane for being over Max Time (Hide time surplus) used to stay
+-- hidden in the Ready frame after an early reset (Cold Snap, Preparation, Readiness). A highlighted
+-- icon stays the Highlight Duration.
 function CDTL3:SendToReady(f)
 	local ic = f.icon
 	local s = nil
 	
 	if f.data["readyFrame"] == 1 then
-		if CDTL3_Ready_1_MF then
+		if CDTL3_Ready_1_MF and CDTL3.db.profile.ready["ready1"]["enabled"] then
 			ic:GetParent().triggerUpdate = true
 			ic:SetParent(CDTL3_Ready_1_MF)
+			ic.valid = true
 			s = CDTL3.db.profile.ready["ready1"]
-			ic.readyTime = s["nTime"]
+			ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
 			
 			if f.data["highlight"] then
 				if s["hSound"] ~= "None" then
@@ -1894,11 +1926,12 @@ function CDTL3:SendToReady(f)
 			CDTL3:SendToHolding(f)
 		end		
 	elseif f.data["readyFrame"] == 2 then
-		if CDTL3_Ready_2_MF then
+		if CDTL3_Ready_2_MF and CDTL3.db.profile.ready["ready2"]["enabled"] then
 			ic:GetParent().triggerUpdate = true
 			ic:SetParent(CDTL3_Ready_2_MF)
+			ic.valid = true
 			s = CDTL3.db.profile.ready["ready2"]
-			ic.readyTime = s["nTime"]
+			ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
 			
 			if f.data["highlight"] then
 				if s["hSound"] ~= "None" then
@@ -1917,11 +1950,12 @@ function CDTL3:SendToReady(f)
 			CDTL3:SendToHolding(f)
 		end
 	elseif f.data["readyFrame"] == 3 then
-		if CDTL3_Ready_3_MF then
+		if CDTL3_Ready_3_MF and CDTL3.db.profile.ready["ready3"]["enabled"] then
 			ic:GetParent().triggerUpdate = true
 			ic:SetParent(CDTL3_Ready_3_MF)
+			ic.valid = true
 			s = CDTL3.db.profile.ready["ready3"]
-			ic.readyTime = s["nTime"]
+			ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
 			
 			if f.data["highlight"] then
 				if s["hSound"] ~= "None" then
