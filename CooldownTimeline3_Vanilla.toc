@@ -26,6 +26,7 @@ Ready.lua
 Cooldown.lua
 API.lua
 CombatTimers.lua
+IconFx.lua
 FlightData\Era.lua
 Flights.lua
 Group.lua

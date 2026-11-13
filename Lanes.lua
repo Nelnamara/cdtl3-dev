@@ -192,6 +192,9 @@ function CDTL3:RefreshLane(i)
 	f.animateOut.fade:SetFromAlpha(s["alpha"])
 	f.animateOut.fade:SetToAlpha(0)
 	
+	-- EFFECTS: burst window, refresh zone, Ready-by list (IconFx.lua)
+	CDTL3.IconFx:RefreshLane(f, s)
+
 	-- DEBUG/UNLOCK
 	f.db:ClearAllPoints()
 	f.db:SetPoint("CENTER", 0, 0)
@@ -1024,6 +1027,9 @@ private.LaneUpdate = function(f, elapsed)
 	end
 	
 	f.forceShow = false
+
+	-- lane flash, ghost and the Ready-by list (IconFx.lua)
+	CDTL3.IconFx:LaneUpdate(f, s)
 	
 	-- UPDATE
 	if f.triggerUpdate then

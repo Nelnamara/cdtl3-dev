@@ -148,6 +148,15 @@ local laneDefaults = {
 	-- Caster lane (Group.lua): each owned timer's icon gets its caster's name under it
 	casterLane = false,
 
+	-- Effects (IconFx.lua), all off until turned on: charge pips on spell icons, GCD waits sent to the
+	-- Ready frame, the burst window (shaded on a Time lane, and/or a Ready-by list) and the refresh zone
+	fx = {
+		chargePips = false,
+		gcdWait = false,
+		burst = { enabled = false, secs = 25, shaded = true, list = false },
+		refresh = { enabled = false, pct = 30 },
+	},
+
 	iconOffset = 0,
 
 	tracking = {
