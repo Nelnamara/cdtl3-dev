@@ -61,6 +61,7 @@ Type `/cdtl3` to open the settings window. Cooldowns appear as you use abilities
 
 Primary command is `/cdtl3` (or `/cooldowntimeline3`). The old `/cdtl2` / `/cooldowntimeline2` remain as legacy aliases.
 
+- **`/cdtl3 help`** — List every subcommand with a line each
 - **`/cdtl3`** — Open the settings window (movable; every panel is a tab)
 - **`/cdtl3 lanes`** / **`ready`** / **`bars`** / **`filters`** / **`profiles`** — Jump straight to that tab
 - **`/cdtl3 lock`** / **`/cdtl3 unlock`** — Toggle frame lock (enable/disable dragging)
@@ -70,6 +71,10 @@ Primary command is `/cdtl3` (or `/cooldowntimeline3`). The old `/cdtl2` / `/cool
 - **`/cdtl3 auras`** — Print every buff/debuff on you as CDTL3 sees it: readable or hidden by the game, saved or not, ignored, which lane, and whether it's assigned to your character. Use this first if a buff won't show up
 - **`/cdtl3 oaf`** — Print the built-in spell list size, every saved "cooldown starts when used" spell (Nature's Swiftness, Presence of Mind, Stealth…) and the live state of those cooldowns. Use this if one of them goes straight to ready
 - **`/cdtl3 combattimers`** — Print the combat timers status: on or off, how many spells and buffs are following the game's timer, the buffs in your Tracked Bars, and any errors. `/cdtl3 combattimers off` / `on` switch them (Retail and Forever)
+
+### For addon authors
+
+CDTL3 sends messages when a timer starts, becomes ready and ends, and has a read-only API of what it tracks. See [Extending CDTL3](docs/EXTENDING.md).
 
 ### Settings Window
 

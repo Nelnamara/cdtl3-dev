@@ -54,6 +54,9 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
   old code (kept in the file as the reference) over 864 layouts, the secondary marker on vertical lanes
   and on a hidden GCD, Secondary Tracking from the options, live lane texts, Hide out of combat by
   frame number, Override Autohide on an empty lane, whole Split Counts, Edit Mode ranges.
+- `api.lua`: the public messages (`CDTL3_TimerStarted/Ready/Ended` received by a separate AceEvent listener: fields,
+  hidden times nil, Ready still firing, a move is not a start, a failing listener harmless), `CDTL3.API` (copies,
+  hidden times, lanes by number and name) and `/cdtl3 help`.
 - The `/cdtl3 probe` test build and its `probe.lua` harness live on branch `cdm-probe`.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).

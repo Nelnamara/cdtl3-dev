@@ -1711,7 +1711,9 @@ private.IconUpdate = function(f, elapsed)
 			elseif d["type"] == "test" then
 				
 			else
+				CDTL3:FireTimer("CDTL3_TimerReady", f)
 				CDTL3:SendToReady(f)
+				CDTL3:FireTimerIfHeld(f)
 			end
 		end
 	elseif p == "CDTL3_Ready_1_MF" or p == "CDTL3_Ready_2_MF" or p == "CDTL3_Ready_3_MF" then
@@ -1735,6 +1737,7 @@ private.IconUpdate = function(f, elapsed)
 				end
 			end
 		else
+			CDTL3:FireTimer("CDTL3_TimerEnded", f)
 			if d["type"] == "testing" then
 				if CDTL3.db.profile.global["testingLoop"] then
 					CDTL3:SendToLane(f)
@@ -1878,6 +1881,7 @@ function CDTL3:SendToLane(f)
 	-- restart the poll counter so the next update re-syncs with the game immediately
 	f.updateCount = 0
 	f.data["currentCD"] = f.data["baseCD"]
+	CDTL3:FireTimer("CDTL3_TimerStarted", f)
 end
 
 -- Move a cooldown to its (newly set) lane without restarting it. SendToLane restarts the
@@ -1888,7 +1892,9 @@ end
 function CDTL3:MoveToLane(f)
 	local remaining = f.data["currentCD"]
 	if remaining and remaining > 0 then
+		CDTL3.movingLane = true
 		CDTL3:SendToLane(f)
+		CDTL3.movingLane = nil
 		f.data["currentCD"] = remaining
 	end
 end

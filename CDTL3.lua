@@ -1231,6 +1231,34 @@ function CDTL3:OnEnable()
 	end
 end
 
+-- /cdtl3 help: every subcommand, one line each (kept next to ChatCommand: add a line here with each new one)
+private.helpLines = {
+	{ "", "open the settings window" },
+	{ "lanes", "open the Lanes tab" },
+	{ "ready", "open the Ready tab" },
+	{ "bars", "open the Bar Frames tab" },
+	{ "filters", "open the Filters tab" },
+	{ "profiles", "open the Profiles tab" },
+	{ "lock / unlock", "lock or unlock the frames for moving" },
+	{ "test", "show test timers" },
+	{ "debug", "toggle the debug window" },
+	{ "auras", "report the player's auras as CDTL3 sees them (readable or hidden)" },
+	{ "oaf", "report the spells whose cooldown starts when the effect is used" },
+	{ "combattimers [on|off]", "show or switch the combat timers (Retail and Forever)" },
+	{ "minimap", "show or hide the minimap button" },
+	{ "report", "open a copyable bug-report box" },
+	{ "log", "show the error log" },
+	{ "perf", "show CPU, memory and frame counts" },
+	{ "help", "show this list" },
+}
+
+function CDTL3:PrintHelp()
+	CDTL3:Print("commands (/cdtl3 <command>):")
+	for _, l in ipairs(private.helpLines) do
+		CDTL3:Print(string.format("  /cdtl3 %s - %s", l[1], l[2]))
+	end
+end
+
 function CDTL3:ChatCommand(input)
     if not input or input:trim() == "" then
         LibStub("AceConfigDialog-3.0"):Open("CDTL3")
@@ -1266,6 +1294,8 @@ function CDTL3:ChatCommand(input)
 		CDTL3:EnableTesting()
 	elseif input:trim() == "debug" then
 		CDTL3:ToggleDebug()
+	elseif input:trim() == "help" or input:trim() == "?" then
+		CDTL3:PrintHelp()
 	elseif input:trim() == "auras" then
 		CDTL3:DiagnoseAuras()
 	elseif input:trim() == "minimap" then
