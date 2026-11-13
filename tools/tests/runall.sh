@@ -14,8 +14,5 @@ for s in "11509 CooldownTimeline3_Vanilla.toc" "20506 CooldownTimeline3_TBC.toc"
 for s in "11509 CooldownTimeline3_Vanilla.toc" "16001 CooldownTimeline3_Camelot.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc" "120105 CooldownTimeline3_Mainline.toc"; do set -- $s; run $1 $T/rtengine.lua $2; done
 for s in "11509 CooldownTimeline3_Vanilla.toc" "16001 CooldownTimeline3_Camelot.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc" "120105 CooldownTimeline3_Mainline.toc"; do set -- $s; run $1 $T/settings.lua $2; done
 for s in "16001 CooldownTimeline3_Camelot.toc" "120105 CooldownTimeline3_Mainline.toc" "11509 CooldownTimeline3_Vanilla.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc"; do set -- $s; run $1 $T/lanes.lua $2; done
-<<<<<<< HEAD
 for s in "16001 CooldownTimeline3_Camelot.toc" "120105 CooldownTimeline3_Mainline.toc" "11509 CooldownTimeline3_Vanilla.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc"; do set -- $s; run $1 $T/api.lua $2; done
-=======
 for s in "11509 CooldownTimeline3_Vanilla.toc" "16001 CooldownTimeline3_Camelot.toc" "16001 CooldownTimeline3.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc" "120105 CooldownTimeline3_Mainline.toc"; do set -- $s; run $1 $T/show.lua $2; done
->>>>>>> r3-show
