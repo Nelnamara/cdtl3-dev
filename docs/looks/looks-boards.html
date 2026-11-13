@@ -1,0 +1,525 @@
+<title>CDTL3 Looks: Boards and Planning</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans+Condensed:wght@400;500;600;700&family=Fira+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#f2efe8; --surface:#fffdf8; --text:#1d1c19; --muted:#5e5950; --line:#d9d1c2; --accent:#7b5200;
+  /* game-screen tokens: the same in both themes, the mockups stand for the game */
+  --g-gold:#ffd100; --g-grey:#9aa0a6; --ready:#33e633;
+  --cc-war:#c79c6e; --cc-pal:#f58cba; --cc-pri:#ffffff; --cc-sha:#0070de; --cc-mon:#00ff99;
+  --cc-dru:#ff7d0a; --cc-dk:#c41f3b; --cc-mag:#40c7eb; --cc-hun:#abd473;
+  --bar-def:#c61e48;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131311; --surface:#1c1b19; --text:#ecebe6; --muted:#a7a39a; --line:#34322e; --accent:#e6b65c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131311; --surface:#1c1b19; --text:#ecebe6; --muted:#a7a39a; --line:#34322e; --accent:#e6b65c;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 "Fira Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:32px max(16px, env(safe-area-inset-right, 0px)) 72px max(16px, env(safe-area-inset-left, 0px))}
+.top h1{margin:0 0 4px;font-size:clamp(1.6rem,1.2rem + 1.6vw,2.2rem);line-height:1.15;letter-spacing:-.01em}
+.top p{margin:0;color:var(--muted)}
+.look{border-top:1px solid var(--line);margin-top:28px;padding-top:26px}
+.look h2{margin:0 0 6px;font-size:1.35rem;line-height:1.25}
+.look .what{margin:0 0 6px;max-width:72ch}
+.look .clients{margin:0 0 16px;max-width:82ch;font-size:.9rem;color:var(--muted)}
+.look .clients b{color:var(--text);font-weight:600}
+.choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,470px),1fr));gap:16px}
+.choice{margin:0;min-width:0;display:flex;flex-direction:column;gap:10px;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.mock{overflow-x:auto;border-radius:6px;padding:20px 14px;background:radial-gradient(130% 100% at 25% 0%,#2b333b 0%,#171c21 55%,#0d1013 100%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4)}
+figcaption{font-size:.92rem;line-height:1.45;padding:0 4px 2px}
+figcaption b{display:block;font-size:1rem;margin-bottom:1px}
+
+/* ---- game pieces (scaled to 0.8 of the addon's defaults) ---- */
+.scene{position:relative;margin:0 auto;font-family:"Fira Sans Condensed","Arial Narrow",sans-serif;color:#fff;line-height:1}
+.o{text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,1.5px 1px 1px rgba(0,0,0,.5)}
+.sh{text-shadow:1.5px 1px 0 #000}
+.lane{position:absolute;height:35px;background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,0) 48%,rgba(0,0,0,.22)),var(--cc);box-shadow:0 0 0 1px rgba(0,0,0,.5),0 0 8px 3px rgba(0,0,0,.3)}
+.mt{position:absolute;top:50%;font-size:11px;white-space:nowrap;transform:translate(-50%,-50%)}
+.mt.l{left:5px;transform:translateY(-50%)}
+.mt.r{right:5px;transform:translateY(-50%)}
+.ic{position:absolute;width:32px;height:32px;transform:translate(-50%,-50%);border-radius:2px;background:linear-gradient(150deg,var(--a),var(--b));box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 0 0 1px rgba(0,0,0,.85),0 2px 6px rgba(0,0,0,.6)}
+.ic.sm{width:22px;height:22px}
+.ic::before,.ri::before,.bi::before{content:attr(data-g);position:absolute;inset:0;display:grid;place-items:center;font-weight:700;color:rgba(255,255,255,.3);font-size:15px}
+.ic.sm::before{font-size:10px}
+.ic .t{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:600;z-index:2}
+.ring{box-shadow:0 0 0 2px var(--rc),0 0 0 3px rgba(0,0,0,.8),0 2px 6px rgba(0,0,0,.6)}
+.tag{position:absolute;transform:translateX(-50%);font-size:10.5px;font-weight:600;white-space:nowrap}
+.rf{position:absolute;display:flex;flex-direction:column;background:rgba(38,38,38,.5);box-shadow:0 0 8px 3px rgba(0,0,0,.25)}
+.rf.row{flex-direction:row}
+.rf.flow{position:relative}
+.ri{position:relative;flex:none;width:40px;height:40px;background:linear-gradient(150deg,var(--a),var(--b));box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 0 0 1px rgba(0,0,0,.85)}
+.ri::before{font-size:22px;color:rgba(255,255,255,.16)}
+.ri .n{position:absolute;left:0;right:0;top:6px;text-align:center;font-size:15px;font-weight:600;z-index:2}
+.ri .r{position:absolute;left:0;right:0;top:24px;text-align:center;font-size:10px;font-weight:500;z-index:2}
+.ri .c{position:absolute;inset:0;display:grid;place-items:center;font-size:14px;font-weight:600;z-index:2}
+.ri.s36{width:36px;height:36px}
+.ri.s36 .n{top:5px;font-size:14px}
+.ri.s36 .c{font-size:13px}
+.cool{filter:saturate(.2)}
+.cool::after{content:"";position:absolute;inset:0;background:rgba(10,12,14,.6);z-index:1}
+.swipe::after{content:"";position:absolute;inset:0;z-index:1;background:conic-gradient(transparent 0 var(--e),rgba(0,0,0,.64) var(--e) 100%)}
+.hl{box-shadow:0 0 0 2px var(--ready),0 0 0 3px rgba(0,0,0,.85)}
+.proc{box-shadow:0 0 0 2px var(--g-gold),0 0 9px 2px rgba(255,209,0,.55)}
+.bars{position:absolute;display:flex;flex-direction:column;gap:1px;box-shadow:0 0 8px 3px rgba(0,0,0,.25)}
+.bar{position:relative;display:flex;height:20px;width:var(--w,200px)}
+.bi{position:relative;display:block;flex:none;width:20px;height:20px;background:linear-gradient(150deg,var(--a),var(--b));box-shadow:inset 0 0 0 1px rgba(0,0,0,.6)}
+.bi::before{font-size:8.5px;color:rgba(255,255,255,.6)}
+.tr{position:relative;flex:1;background:rgba(38,38,38,.5)}
+.fi{position:absolute;left:0;top:0;bottom:0;width:var(--f);background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,0) 48%,rgba(0,0,0,.22)),var(--bc,var(--bar-def))}
+.fi.soft{opacity:.5}
+.bn{position:absolute;left:5px;top:50%;transform:translateY(-50%);font-size:11px;white-space:nowrap;z-index:1}
+.bt{position:absolute;right:5px;top:50%;transform:translateY(-50%);font-size:11px;z-index:1}
+.pan{background:rgba(38,38,38,.62);box-shadow:0 0 8px 3px rgba(0,0,0,.28);padding:9px 10px}
+.pill{position:absolute;padding:3px 7px;background:rgba(0,0,0,.6);border:1px solid rgba(255,209,0,.5);border-radius:3px;font-size:11px;color:var(--g-gold);white-space:nowrap}
+.tick{position:absolute;width:2px;margin-left:-1px;background:rgba(255,209,0,.9);box-shadow:0 0 0 1px rgba(0,0,0,.45)}
+.tkl{position:absolute;transform:translateX(-50%);font-size:11px;font-weight:600;color:var(--g-gold)}
+/* icon art stand-ins: plain colour squares, no game art */
+.k-nat{--a:#5f9a3c;--b:#1d3a14}
+.k-holy{--a:#e0bd55;--b:#6a4610}
+.k-fire{--a:#ee7b2c;--b:#6b1a08}
+.k-arc{--a:#b878e0;--b:#3b175a}
+.k-phys{--a:#a88c68;--b:#3a2d1e}
+.k-shd{--a:#7d5fb0;--b:#22163a}
+.k-shield{--a:#9aa4b8;--b:#2b3142}
+.k-blood{--a:#cc4a3e;--b:#4a1010}
+.k-item{--a:#9070d8;--b:#2a1d52}
+.k-jade{--a:#46b892;--b:#0f3d30}
+.k-pot{--a:#e05a8a;--b:#4a1028}
+.k-time{--a:#e3ad44;--b:#4d2d08}
+.k-totem{--a:#5aa0d8;--b:#123052}
+/* fp18 spell grid */
+.g18 .gh{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:var(--g-gold);margin-bottom:7px}
+.g18 .gh span:last-child{color:#cfd3d6}
+.g18 .gr{display:grid;grid-template-columns:20px 112px minmax(0,1fr);align-items:center;gap:6px;padding:2px 0}
+.g18 .gn{font-size:11.5px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 6px 3px 5px;border-left:3px solid var(--cc);background:rgba(255,255,255,.07);border-radius:2px;font-size:11px;white-space:nowrap}
+.chip .s{color:var(--g-grey)}
+.chip.rdy{background:rgba(51,230,51,.15)}
+.chip.rdy .s{color:#5ef05e}
+/* fp24 settings panel (the addon's AceConfig window) */
+.acp{width:340px;padding:10px 12px 12px;background:rgba(0,0,0,.8);border:1px solid #707070;border-radius:7px;box-shadow:0 8px 24px rgba(0,0,0,.6);font-family:"Fira Sans",Arial,sans-serif;font-size:11px;line-height:1.2;color:#fff}
+.acp .ttl{text-align:center;font-size:12px;margin-bottom:8px}
+.tabs{display:flex;flex-wrap:wrap;gap:2px;margin-bottom:-1px}
+.tab{padding:4px 7px 3px;border:1px solid #5a5a5a;border-bottom:0;border-radius:5px 5px 0 0;background:#1d1d1d;color:var(--g-gold);font-size:10.5px}
+.tab.on{background:#383838;color:#fff}
+.grp{display:grid;gap:9px;padding:9px;border:1px solid #5a5a5a;border-radius:0 5px 5px 5px;background:rgba(56,56,56,.35)}
+.fr{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+.fr.mid{align-items:center;gap:6px}
+.fld{display:flex;flex-direction:column;gap:3px}
+.fl{color:var(--g-gold);font-size:10.5px}
+.in{display:inline-block;min-width:64px;padding:3px 6px;background:#000;border:1px solid #6c6c6c;border-radius:3px}
+.dd{display:inline-block;min-width:74px;padding:3px 18px 3px 6px;position:relative;background:#141414;border:1px solid #6c6c6c;border-radius:3px;white-space:nowrap}
+.dd::after{content:"\25BE";position:absolute;right:5px;top:2px;color:var(--g-gold)}
+.cb{display:inline-flex;align-items:center;gap:5px}
+.cb i{display:inline-grid;place-items:center;width:12px;height:12px;border:1px solid #8a8a8a;border-radius:2px;background:#111;font-style:normal;font-size:10px;color:var(--g-gold)}
+.btn{display:inline-block;padding:4px 12px;background:linear-gradient(#a8260f,#5d0d04);border:1px solid #2c0802;border-radius:4px;box-shadow:inset 0 1px 0 rgba(255,255,255,.2);color:var(--g-gold);font-weight:600}
+/* fp24 burst strip */
+.strip{display:flex;gap:8px;padding:8px 10px}
+.slot{display:flex;flex-direction:column;align-items:center;gap:4px}
+.slot .sl{font-size:10px;color:var(--g-gold)}
+.slot .ss{font-size:10px;color:var(--g-grey)}
+.ss.up,.ss.go{color:#5ef05e}
+.ss.no{color:#ff7a6b}
+.ss.pr{color:var(--g-gold)}
+/* fp27 forecast table */
+.ftab .fh{font-size:12px;color:#cfd3d6;margin-bottom:7px}
+.ftab .fh b{color:var(--g-gold);font-size:13px;font-weight:600}
+.fg{display:grid;grid-template-columns:20px minmax(0,1fr) 42px 38px 52px 52px;gap:6px 6px;align-items:center;font-size:11.5px}
+.fg > span{text-align:center;white-space:nowrap}
+.fg .nm,.fg .hl0{text-align:left}
+.fg .hd{font-size:10.5px;color:var(--g-grey)}
+.fg .mk{color:var(--g-gold);font-weight:600}
+.ok{color:#5ef05e}
+.late{color:#ffb340}
+.no{color:#6d737a}
+/* fp27 fight timeline */
+.past{position:absolute;background:rgba(0,0,0,.34)}
+.flag{position:absolute;width:1px;background:rgba(255,209,0,.75)}
+.now{position:absolute;width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 4px rgba(255,255,255,.55)}
+.seg{position:absolute;height:6px;border-radius:3px;background:var(--sc)}
+.seg.was{opacity:.35}
+.tlt{position:absolute;transform:translateY(-50%);font-size:10.5px;white-space:nowrap}
+.axl{position:absolute;font-size:9.5px;color:var(--g-grey)}
+/* fp28 count row */
+.row28{display:flex;justify-content:center;gap:4px}
+.cnt{text-align:center;font-size:12px;color:var(--g-gold);margin-bottom:7px}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <h1>Boards and planning</h1>
+  <p>Pick one look per idea, or none, and add a note.</p>
+</header>
+
+<!-- ============ fp18 ============ -->
+<section class="look" data-item="fp18" id="fp18">
+  <h2>Raid cooldown roster</h2>
+  <p class="what">Shows other raid members' big cooldowns, such as Rallying Cry, Divine Hymn and Revival, one per caster, read from the combat log, with a tick list in Filters to pick which spells count.</p>
+  <p class="clients"><b>#18 &middot; MoP Classic, TBC Anniversary and Classic Era only.</b> Retail and Forever close the combat log to addons, so it can't be built there. Nothing like it exists today, so there is no Today choice.</p>
+  <div class="choices">
+
+    <figure class="choice" data-choice="a">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:250px;height:167px">
+        <div class="bars" style="left:0;top:0">
+          <div class="bar" style="--w:250px"><span class="bi k-phys" data-g="RC"></span><div class="tr"><div class="fi" style="--f:100%;--bc:var(--cc-war)"></div><span class="bn o">Rallying Cry &middot; Brannoc</span><span class="bt o">READY</span></div></div>
+          <div class="bar" style="--w:250px"><span class="bi k-holy" data-g="PWB"></span><div class="tr"><div class="fi" style="--f:100%;--bc:var(--cc-pri)"></div><span class="bn o">Power Word: Barrier &middot; Odrin</span><span class="bt o">READY</span></div></div>
+          <div class="bar" style="--w:250px"><span class="bi k-shd" data-g="AZ"></span><div class="tr"><div class="fi" style="--f:100%;--bc:var(--cc-dk)"></div><span class="bn o">Anti-Magic Zone &middot; Tavimir</span><span class="bt o">READY</span></div></div>
+          <div class="bar" style="--w:250px"><span class="bi k-totem" data-g="SLT"></span><div class="tr"><div class="fi soft" style="--f:81%;--bc:var(--cc-sha)"></div><span class="bn o">Spirit Link Totem &middot; Grashka</span><span class="bt o">34</span></div></div>
+          <div class="bar" style="--w:250px"><span class="bi k-phys" data-g="RC"></span><div class="tr"><div class="fi soft" style="--f:61%;--bc:var(--cc-war)"></div><span class="bn o">Rallying Cry &middot; Durnhalt</span><span class="bt o">1:10</span></div></div>
+          <div class="bar" style="--w:250px"><span class="bi k-holy" data-g="DH"></span><div class="tr"><div class="fi soft" style="--f:38%;--bc:var(--cc-pri)"></div><span class="bn o">Divine Hymn &middot; Sellivane</span><span class="bt o">1:52</span></div></div>
+          <div class="bar" style="--w:250px"><span class="bi k-shield" data-g="DA"></span><div class="tr"><div class="fi soft" style="--f:18%;--bc:var(--cc-pal)"></div><span class="bn o">Devotion Aura &middot; Velka</span><span class="bt o">2:28</span></div></div>
+          <div class="bar" style="--w:250px"><span class="bi k-jade" data-g="RV"></span><div class="tr"><div class="fi soft" style="--f:3%;--bc:var(--cc-mon)"></div><span class="bn o">Revival &middot; Pellora</span><span class="bt o">2:55</span></div></div>
+        </div>
+      </div></div>
+      <figcaption><b>Roster bars</b> A bar frame with one bar per caster in their class colour: ready ones full on top, the rest filling back up, soonest first.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="b">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:340px;height:114px">
+        <div class="rf row" style="left:10px;top:0">
+          <div class="ri k-phys" data-g="RC"><span class="n o">RC</span><span class="r o">READY</span></div>
+          <div class="ri k-holy" data-g="PWB"><span class="n o">PWB</span><span class="r o">READY</span></div>
+          <div class="ri k-shd" data-g="AZ"><span class="n o">AZ</span><span class="r o">READY</span></div>
+        </div>
+        <span class="tag o" style="left:30px;top:44px;color:var(--cc-war)">Brannoc</span>
+        <span class="tag o" style="left:70px;top:44px;color:var(--cc-pri)">Odrin</span>
+        <span class="tag o" style="left:110px;top:44px;color:var(--cc-dk)">Tavimir</span>
+        <div class="lane" style="left:10px;top:62px;width:320px;--cc:var(--cc-war)">
+          <span class="mt l sh">Ready</span><span class="mt sh" style="left:80px">45s</span><span class="mt sh" style="left:160px">1m30s</span><span class="mt sh" style="left:240px">2m15s</span><span class="mt r sh">3m</span>
+        </div>
+        <div class="ic k-totem" data-g="SLT" style="left:80px;top:79.5px"><span class="t o">34</span></div>
+        <div class="ic k-phys" data-g="RC" style="left:138px;top:79.5px"><span class="t o">1:10</span></div>
+        <div class="ic k-holy" data-g="DH" style="left:205px;top:79.5px"><span class="t o">1:52</span></div>
+        <div class="ic k-shield" data-g="DA" style="left:263px;top:79.5px"><span class="t o">2:28</span></div>
+        <div class="ic k-jade" data-g="RV" style="left:306px;top:79.5px"><span class="t o">2:55</span></div>
+        <span class="tag o" style="left:80px;top:100px;color:var(--cc-sha)">Grashka</span>
+        <span class="tag o" style="left:138px;top:100px;color:var(--cc-war)">Durnhalt</span>
+        <span class="tag o" style="left:205px;top:100px;color:var(--cc-pri)">Sellivane</span>
+        <span class="tag o" style="left:263px;top:100px;color:var(--cc-pal)">Velka</span>
+        <span class="tag o" style="left:306px;top:100px;color:var(--cc-mon)">Pellora</span>
+      </div></div>
+      <figcaption><b>Caster lane</b> A Raid cooldowns lane on a fixed 3-minute scale with each caster's name under their icon; ready ones wait in a ready frame above it.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="c">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:330px">
+        <div class="pan g18">
+          <div class="gh"><span>Raid cooldowns</span><span>3 of 8 ready</span></div>
+          <div class="gr"><span class="bi k-phys" data-g="RC"></span><span class="gn">Rallying Cry</span><span class="chips"><span class="chip rdy" style="--cc:var(--cc-war)">Brannoc <span class="s">ready</span></span><span class="chip" style="--cc:var(--cc-war)">Durnhalt <span class="s">1:10</span></span></span></div>
+          <div class="gr"><span class="bi k-holy" data-g="PWB"></span><span class="gn">Power Word: Barrier</span><span class="chips"><span class="chip rdy" style="--cc:var(--cc-pri)">Odrin <span class="s">ready</span></span></span></div>
+          <div class="gr"><span class="bi k-shd" data-g="AZ"></span><span class="gn">Anti-Magic Zone</span><span class="chips"><span class="chip rdy" style="--cc:var(--cc-dk)">Tavimir <span class="s">ready</span></span></span></div>
+          <div class="gr"><span class="bi k-totem" data-g="SLT"></span><span class="gn">Spirit Link Totem</span><span class="chips"><span class="chip" style="--cc:var(--cc-sha)">Grashka <span class="s">34</span></span></span></div>
+          <div class="gr"><span class="bi k-holy" data-g="DH"></span><span class="gn">Divine Hymn</span><span class="chips"><span class="chip" style="--cc:var(--cc-pri)">Sellivane <span class="s">1:52</span></span></span></div>
+          <div class="gr"><span class="bi k-shield" data-g="DA"></span><span class="gn">Devotion Aura</span><span class="chips"><span class="chip" style="--cc:var(--cc-pal)">Velka <span class="s">2:28</span></span></span></div>
+          <div class="gr"><span class="bi k-jade" data-g="RV"></span><span class="gn">Revival</span><span class="chips"><span class="chip" style="--cc:var(--cc-mon)">Pellora <span class="s">2:55</span></span></span></div>
+        </div>
+      </div></div>
+      <figcaption><b>Spell grid</b> One row per spell with a chip per caster, so who still has a Rallying Cry reads across one line; a ready count sits on top.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============ fp19 ============ -->
+<section class="look" data-item="fp19" id="fp19">
+  <h2>Externals I gave: target and time left</h2>
+  <p class="what">After you cast an external such as Ironbark, CDTL3 also shows the effect on your target, with their name and the time it has left, not only your own cooldown.</p>
+  <p class="clients"><b>#19 &middot; Exact on Classic Era, TBC Anniversary and MoP Classic</b> (from the combat log). On Retail and Forever the effect time is an estimate from your cast, in dimmed text, and it can't see the buff being removed early.</p>
+  <div class="choices">
+
+    <figure class="choice" data-choice="today">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:340px;height:60px">
+        <div class="lane" style="left:10px;top:12px;width:320px;--cc:var(--cc-dru)">
+          <span class="mt l sh">Ready</span><span class="mt sh" style="left:80px">25%</span><span class="mt sh" style="left:160px">50%</span><span class="mt sh" style="left:240px">75%</span><span class="mt r sh">100%</span>
+        </div>
+        <div class="ic k-nat" data-g="WG" style="left:66px;top:29.5px"><span class="t o">1.4</span></div>
+        <div class="ic k-arc" data-g="IN" style="left:124px;top:29.5px"><span class="t o">41</span></div>
+        <div class="ic k-nat" data-g="SM" style="left:182px;top:29.5px"><span class="t o">8.1</span></div>
+        <div class="ic k-phys" data-g="IB" style="left:306px;top:29.5px"><span class="t o">1:27</span></div>
+      </div></div>
+      <figcaption><b>Today</b> Ironbark shows only your own cooldown (1:27). The 12 s on Thrallson isn't tracked, since CDTL3 follows buffs on you.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="a">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:340px;height:72px">
+        <div class="lane" style="left:10px;top:12px;width:320px;--cc:var(--cc-dru)">
+          <span class="mt l sh">Ready</span><span class="mt sh" style="left:80px">25%</span><span class="mt sh" style="left:160px">50%</span><span class="mt sh" style="left:240px">75%</span><span class="mt r sh">100%</span>
+        </div>
+        <div class="ic k-nat" data-g="WG" style="left:66px;top:29.5px"><span class="t o">1.4</span></div>
+        <div class="ic k-arc" data-g="IN" style="left:124px;top:29.5px"><span class="t o">41</span></div>
+        <div class="ic k-nat" data-g="SM" style="left:182px;top:29.5px"><span class="t o">8.1</span></div>
+        <div class="ic k-phys ring" data-g="IB" style="left:252px;top:29.5px;--rc:var(--cc-war)"><span class="t o">9.4</span></div>
+        <div class="ic k-phys" data-g="IB" style="left:306px;top:29.5px"><span class="t o">1:27</span></div>
+        <span class="tag o" style="left:252px;top:52px;color:var(--cc-war)">Thrallson</span>
+      </div></div>
+      <figcaption><b>Effect icon on the lane</b> A second Ironbark icon, ringed in the target's class colour with their name under it, counts down the 9.4 s left.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="b">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:220px;height:62px">
+        <div class="bars" style="left:0;top:0">
+          <div class="bar" style="--w:220px"><span class="bi k-phys" data-g="IB"></span><div class="tr"><div class="fi" style="--f:78%;--bc:var(--cc-war)"></div><span class="bn o">Ironbark &rsaquo; Thrallson</span><span class="bt o">9.4</span></div></div>
+          <div class="bar" style="--w:220px"><span class="bi k-phys" data-g="IB"></span><div class="tr"><div class="fi" style="--f:97%"></div><span class="bn sh">Ironbark</span><span class="bt sh">1:27</span></div></div>
+          <div class="bar" style="--w:220px"><span class="bi k-arc" data-g="IN"></span><div class="tr"><div class="fi" style="--f:23%"></div><span class="bn sh">Innervate</span><span class="bt sh">41</span></div></div>
+        </div>
+      </div></div>
+      <figcaption><b>Named bar</b> A bar called "Ironbark &rsaquo; Thrallson", in the target's class colour, drains above your cooldown bars in the bar frame.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="c">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:350px;height:78px">
+        <div class="lane" style="left:10px;top:34px;width:320px;--cc:var(--cc-dru)">
+          <span class="mt l sh">Ready</span><span class="mt sh" style="left:80px">25%</span><span class="mt sh" style="left:160px">50%</span><span class="mt sh" style="left:240px">75%</span><span class="mt r sh">100%</span>
+        </div>
+        <div class="ic k-nat" data-g="WG" style="left:66px;top:51.5px"><span class="t o">1.4</span></div>
+        <div class="ic k-arc" data-g="IN" style="left:124px;top:51.5px"><span class="t o">41</span></div>
+        <div class="ic k-nat" data-g="SM" style="left:182px;top:51.5px"><span class="t o">8.1</span></div>
+        <div class="ic k-phys" data-g="IB" style="left:306px;top:51.5px"><span class="t o">1:27</span></div>
+        <div style="position:absolute;left:290px;top:26px;width:32px;height:4px;background:rgba(0,0,0,.7);box-shadow:0 0 0 1px rgba(0,0,0,.8)"><div style="width:78%;height:100%;background:var(--cc-war)"></div></div>
+        <span class="tag o" style="left:306px;top:10px"><span style="color:var(--cc-war)">Thrallson</span> 9.4</span>
+      </div></div>
+      <figcaption><b>Strip on the cooldown icon</b> Your one Ironbark icon carries a thin countdown strip and the target's name above it until the effect ends.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============ fp24 ============ -->
+<section class="look" data-item="fp24" id="fp24">
+  <h2>Burst pack: lust, Sated, trinkets, potion</h2>
+  <p class="what">One Burst pack button under Filters &rsaquo; Defaults adds timers for lust, Sated, your two trinkets (with the proc cooldowns the built-in data lacks) and your potion, and sends them all to one burst place.</p>
+  <p class="clients"><b>#24 &middot; Exact on MoP Classic and TBC Anniversary.</b> TBC has Bloodlust and Heroism but no Sated debuff; Classic Era has neither, so it gets trinkets and potion only. Retail and Forever: partly, since buffs that land in combat show late or as estimates and item timers are estimates. Shown here: a MoP Hunter mid-lust.</p>
+  <div class="choices">
+
+    <figure class="choice" data-choice="today">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:340px">
+        <div class="acp">
+          <div class="ttl">CDTL3 &rsaquo; Filters</div>
+          <div class="tabs"><span class="tab">Defaults</span><span class="tab">Spells</span><span class="tab">Items</span><span class="tab">Buffs</span><span class="tab">Debuffs</span><span class="tab on">Custom</span></div>
+          <div class="grp">
+            <div><span class="dd" style="min-width:150px">&lt;&lt; Add New &gt;&gt;</span></div>
+            <div class="fr">
+              <div class="fld"><span class="fl">Trigger Type</span><span class="dd">Aura</span></div>
+              <div class="fld"><span class="fl">Trigger ID</span><span class="in">57724</span></div>
+            </div>
+            <div class="fr mid"><span class="bi k-shd" data-g="SA"></span><span>Name:&nbsp;&nbsp; Sated</span></div>
+            <div class="fr mid"><span>Cooldown:</span><span class="in">600</span></div>
+            <div class="fr">
+              <div class="fld"><span class="fl">Lane</span><span class="dd">Lane 1</span></div>
+              <div class="fld"><span class="fl">Bar Frame</span><span class="dd">Bar Frame 1</span></div>
+              <div class="fld"><span class="fl">Ready Frame</span><span class="dd">Ready 1</span></div>
+            </div>
+            <div class="fr mid"><span class="cb"><i>&#10003;</i>Enabled</span><span class="cb"><i></i>Highlight</span><span class="cb"><i></i>Pinned</span></div>
+            <div><span class="btn">Save Custom</span></div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>Today</b> Each one is a Custom timer built by hand under Filters &rsaquo; Custom (trigger type, spell ID, time, frames, Save), five times over.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="a">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:350px;height:60px">
+        <div class="rf" style="left:0;top:9px">
+          <div class="ri k-pot" data-g="VB"><span class="n o">VB</span><span class="r o">READY</span></div>
+        </div>
+        <div class="lane" style="left:48px;top:12px;width:300px;--cc:var(--cc-hun)">
+          <span class="mt l sh">Ready</span><span class="mt sh" style="left:75px">30s</span><span class="mt sh" style="left:150px">2m</span><span class="mt sh" style="left:225px">10m</span><span class="mt r sh">1h</span>
+        </div>
+        <div class="ic k-item" data-g="RX" style="left:89px;top:29.5px"><span class="t o">11</span></div>
+        <div class="ic k-blood" data-g="BL" style="left:132px;top:29.5px"><span class="t o">31</span></div>
+        <div class="ic k-jade" data-g="JB" style="left:170px;top:29.5px"><span class="t o">1:22</span></div>
+        <div class="ic k-shd" data-g="SA" style="left:261px;top:29.5px"><span class="t o">9:31</span></div>
+      </div></div>
+      <figcaption><b>Burst lane</b> The pack gets its own lane on the Long buffs scale, so a 10-minute Sated sits beside a 31 s Bloodlust; ready items wait in a ready frame.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="b">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:230px;height:104px">
+        <div class="bars" style="left:0;top:0">
+          <div class="bar" style="--w:230px"><span class="bi k-blood" data-g="BL"></span><div class="tr"><div class="fi" style="--f:78%;--bc:#d2452f"></div><span class="bn o">Bloodlust</span><span class="bt o">31</span></div></div>
+          <div class="bar" style="--w:230px"><span class="bi k-shd" data-g="SA"></span><div class="tr"><div class="fi" style="--f:95%;--bc:#7a3d93"></div><span class="bn o">Sated</span><span class="bt o">9:31</span></div></div>
+          <div class="bar" style="--w:230px"><span class="bi k-item" data-g="RX"></span><div class="tr"><div class="fi" style="--f:73%;--bc:#8f6ad6"></div><span class="bn o">Relic of Xuen</span><span class="bt o">11</span></div></div>
+          <div class="bar" style="--w:230px"><span class="bi k-jade" data-g="JB"></span><div class="tr"><div class="fi" style="--f:68%;--bc:#2f9c78"></div><span class="bn o">Jade Bandit Figurine</span><span class="bt o">1:22</span></div></div>
+          <div class="bar" style="--w:230px"><span class="bi k-pot" data-g="VB"></span><div class="tr"><div class="fi" style="--f:100%;--bc:#3fbf5f"></div><span class="bn o">Virmen's Bite</span><span class="bt o">READY</span></div></div>
+        </div>
+      </div></div>
+      <figcaption><b>Burst bars</b> A Burst bar frame with one bar per entry in pack order, each in its own colour; a ready item stays as a full bar marked READY.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="c">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:262px">
+        <div class="pan strip">
+          <div class="slot"><span class="sl">Lust</span><div class="ri k-blood" data-g="BL"><span class="c o">31</span></div><span class="ss up">up</span></div>
+          <div class="slot"><span class="sl">Sated</span><div class="ri k-shd" data-g="SA"><span class="c o">9:31</span></div><span class="ss no">sated</span></div>
+          <div class="slot"><span class="sl">Trinket 1</span><div class="ri k-item proc" data-g="RX"><span class="c o">11</span></div><span class="ss pr">proc</span></div>
+          <div class="slot"><span class="sl">Trinket 2</span><div class="ri k-jade cool" data-g="JB"><span class="c o">1:22</span></div><span class="ss">cooling</span></div>
+          <div class="slot"><span class="sl">Potion</span><div class="ri k-pot" data-g="VB"><span class="n o">VB</span><span class="r o">READY</span></div><span class="ss go">ready</span></div>
+        </div>
+      </div></div>
+      <figcaption><b>Burst strip</b> Five fixed slots (lust, Sated, two trinkets, potion) that never move; each one says up, sated, proc, cooling or ready.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============ fp27 ============ -->
+<section class="look" data-item="fp27" id="fp27">
+  <h2>Fight clock and cooldown forecast</h2>
+  <p class="what">A fight clock with marks at 2:00, 3:00 and 5:00 of the fight, showing where each pinned cooldown will be at those marks, even past the lane's Max Time.</p>
+  <p class="clients"><b>#27 &middot; Exact on Classic Era, TBC Anniversary and MoP Classic.</b> On Retail and Forever, icons still slide from the game's own timer, but anything that works out "back by 3:00" is an estimate from your cast. Shown here: a Fire Mage 1:12 into a fight.</p>
+  <div class="choices">
+
+    <figure class="choice" data-choice="today">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:340px;height:60px">
+        <div class="lane" style="left:10px;top:12px;width:320px;--cc:var(--cc-mag)">
+          <span class="mt l sh">Ready</span><span class="mt sh" style="left:80px">25%</span><span class="mt sh" style="left:160px">50%</span><span class="mt sh" style="left:240px">75%</span><span class="mt r sh">100%</span>
+        </div>
+        <div class="ic k-fire" data-g="CB" style="left:132px;top:29.5px"><span class="t o">44</span></div>
+        <div class="ic k-arc" data-g="MI" style="left:297px;top:29.5px"><span class="t o">1:53</span></div>
+      </div></div>
+      <figcaption><b>Today</b> The lane counts each icon against its own cooldown, up to Max Time (2:00), so Time Warp, back in 3:50, is hidden and there's no fight clock.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="a">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:340px;height:100px">
+        <div class="lane" style="left:10px;top:34px;width:320px;--cc:var(--cc-mag)">
+          <span class="mt l sh">Ready</span><span class="mt r sh">4m</span>
+        </div>
+        <div class="tick" style="left:84px;top:24px;height:52px"></div>
+        <div class="tick" style="left:156px;top:24px;height:52px"></div>
+        <div class="tick" style="left:300px;top:24px;height:52px"></div>
+        <span class="tkl o" style="left:84px;top:8px">2:00</span>
+        <span class="tkl o" style="left:156px;top:8px">3:00</span>
+        <span class="tkl o" style="left:300px;top:8px">5:00</span>
+        <div class="ic k-fire" data-g="CB" style="left:79px;top:51.5px"><span class="t o">44</span></div>
+        <div class="ic k-arc" data-g="MI" style="left:162px;top:51.5px"><span class="t o">1:53</span></div>
+        <div class="ic k-time" data-g="TW" style="left:302px;top:51.5px"><span class="t o">3:50</span></div>
+        <span class="pill" style="left:10px;top:78px">Fight 1:12</span>
+      </div></div>
+      <figcaption><b>Clock on the lane</b> The lane runs 4 minutes ahead on one time scale; gold marks for 2:00, 3:00 and 5:00 of the fight slide toward Ready as the fight clock runs.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="b">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:330px">
+        <div class="pan ftab">
+          <div class="fh">Fight <b>1:12</b></div>
+          <div class="fg">
+            <span></span><span class="hd hl0">Pinned</span><span class="hd">back at</span><span class="hd mk">2:00</span><span class="hd mk">3:00</span><span class="hd mk">5:00</span>
+            <span class="bi k-fire" data-g="CB"></span><span class="nm">Combustion</span><span>1:56</span><span class="ok">&#10003;</span><span class="ok">&#10003;</span><span class="ok">&#10003;</span>
+            <span class="bi k-arc" data-g="MI"></span><span class="nm">Mirror Image</span><span>3:05</span><span class="no">&ndash;</span><span class="late">5 s late</span><span class="ok">&#10003;</span>
+            <span class="bi k-time" data-g="TW"></span><span class="nm">Time Warp</span><span>5:02</span><span class="no">&ndash;</span><span class="no">&ndash;</span><span class="late">2 s late</span>
+          </div>
+        </div>
+      </div></div>
+      <figcaption><b>Forecast table</b> A small table by the lane: when each pinned cooldown is back, and a tick or "5 s late" under each fight mark.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="c">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:340px;height:130px">
+        <div class="pan" style="position:absolute;inset:0"></div>
+        <div class="past" style="left:20px;top:18px;width:60px;height:92px"></div>
+        <div class="flag" style="left:120px;top:18px;height:92px"></div>
+        <div class="flag" style="left:170px;top:18px;height:92px"></div>
+        <div class="flag" style="left:270px;top:18px;height:92px"></div>
+        <span class="tkl o" style="left:120px;top:4px">2:00</span>
+        <span class="tkl o" style="left:170px;top:4px">3:00</span>
+        <span class="tkl o" style="left:270px;top:4px">5:00</span>
+        <div class="now" style="left:80px;top:14px;height:96px"></div>
+        <span class="tkl o" style="left:80px;top:4px;color:#fff">now 1:12</span>
+        <div class="seg was" style="left:23px;top:33px;width:57px;--sc:#ee7b2c"></div>
+        <div class="seg" style="left:80px;top:33px;width:37px;--sc:#ee7b2c"></div>
+        <div class="ic sm k-fire" data-g="CB" style="left:117px;top:36px"></div>
+        <span class="tlt o" style="left:131px;top:36px">1:56</span>
+        <div class="seg was" style="left:74px;top:61px;width:6px;--sc:#b878e0"></div>
+        <div class="seg" style="left:80px;top:61px;width:94px;--sc:#b878e0"></div>
+        <div class="ic sm k-arc" data-g="MI" style="left:174px;top:64px"></div>
+        <span class="tlt o" style="left:188px;top:64px">3:05</span>
+        <div class="seg was" style="left:22px;top:89px;width:58px;--sc:#e3ad44"></div>
+        <div class="seg" style="left:80px;top:89px;width:192px;--sc:#e3ad44"></div>
+        <div class="ic sm k-time" data-g="TW" style="left:272px;top:92px"></div>
+        <span class="tlt o" style="left:286px;top:92px">5:02</span>
+        <span class="axl" style="left:20px;top:114px">pull</span>
+        <span class="axl" style="right:20px;top:114px">6:00</span>
+      </div></div>
+      <figcaption><b>Fight timeline</b> A strip from the pull to 6:00 with a moving now line and flags at 2:00, 3:00 and 5:00; each pinned cooldown is a bar that ends where it's back.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<!-- ============ fp28 ============ -->
+<section class="look" data-item="fp28" id="fp28">
+  <h2>A what's-ready board for defensives</h2>
+  <p class="what">A ready frame mode, Stay until used, that keeps every chosen defensive on show: ready ones bright, cooling ones dimmed with their timer.</p>
+  <p class="clients"><b>#28 &middot; Every client.</b> Whether a spell is ready stays readable in combat on Retail and Forever too. Putting the cooling ones in order of time left is the one part Retail and Forever can't do in combat. Shown here: a Protection Warrior.</p>
+  <div class="choices">
+
+    <figure class="choice" data-choice="today">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:360px;height:84px">
+        <div class="rf" style="left:0;top:2px">
+          <div class="ri k-shield" data-g="SW"><span class="n o">SW</span><span class="r o">READY</span></div>
+          <div class="ri k-arc" data-g="SR"><span class="n o">SR</span><span class="r o">READY</span></div>
+        </div>
+        <div class="lane" style="left:56px;top:24px;width:300px;--cc:var(--cc-war)">
+          <span class="mt l sh">Ready</span><span class="mt sh" style="left:75px">25%</span><span class="mt sh" style="left:150px">50%</span><span class="mt sh" style="left:225px">75%</span><span class="mt r sh">100%</span>
+        </div>
+        <div class="ic k-phys" data-g="DS" style="left:179px;top:41.5px"><span class="t o">18</span></div>
+        <div class="ic k-blood" data-g="LS" style="left:300px;top:41.5px"><span class="t o">1:42</span></div>
+      </div></div>
+      <figcaption><b>Today</b> Pinned keeps Shield Wall and Spell Reflection in Ready 1 until used; cooling ones ride Lane 1, and Rallying Cry (2:31) is hidden past Max Time.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="a">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:40px;height:200px">
+        <div class="rf" style="left:0;top:0">
+          <div class="ri k-shield" data-g="SW"><span class="n o">SW</span><span class="r o">READY</span></div>
+          <div class="ri k-arc" data-g="SR"><span class="n o">SR</span><span class="r o">READY</span></div>
+          <div class="ri k-blood cool" data-g="LS"><span class="n o">LS</span><span class="r o">1:42</span></div>
+          <div class="ri k-holy cool" data-g="RC"><span class="n o">RC</span><span class="r o">2:31</span></div>
+          <div class="ri k-phys cool" data-g="DS"><span class="n o">DS</span><span class="r o">18</span></div>
+        </div>
+      </div></div>
+      <figcaption><b>Stay-until-used column</b> Ready 1 keeps all five in fixed slots: ready ones bright with READY, cooling ones dimmed with their time left.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="b">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:200px">
+        <div class="cnt o">2 of 5 ready</div>
+        <div class="row28">
+          <div class="ri s36 k-shield hl" data-g="SW"><span class="c o">SW</span></div>
+          <div class="ri s36 k-arc hl" data-g="SR"><span class="c o">SR</span></div>
+          <div class="ri s36 k-blood swipe" data-g="LS" style="--e:43%"><span class="c o">1:42</span></div>
+          <div class="ri s36 k-holy swipe" data-g="RC" style="--e:16%"><span class="c o">2:31</span></div>
+          <div class="ri s36 k-phys swipe" data-g="DS" style="--e:60%"><span class="c o">18</span></div>
+        </div>
+      </div></div>
+      <figcaption><b>Count row</b> A centred row under your character with a "2 of 5 ready" count; ready icons get a green edge, cooling ones a clock swipe and their time.</figcaption>
+    </figure>
+
+    <figure class="choice" data-choice="c">
+      <div class="mock"><div class="scene" aria-hidden="true" style="width:210px;height:104px">
+        <div class="bars" style="left:0;top:0">
+          <div class="bar" style="--w:210px"><span class="bi k-shield" data-g="SW"></span><div class="tr"><div class="fi" style="--f:100%;--bc:var(--ready)"></div><span class="bn o">Shield Wall</span><span class="bt o">READY</span></div></div>
+          <div class="bar" style="--w:210px"><span class="bi k-arc" data-g="SR"></span><div class="tr"><div class="fi" style="--f:100%;--bc:var(--ready)"></div><span class="bn o">Spell Reflection</span><span class="bt o">READY</span></div></div>
+          <div class="bar" style="--w:210px"><span class="bi k-phys" data-g="DS"></span><div class="tr"><div class="fi" style="--f:40%"></div><span class="bn sh">Demoralizing Shout</span><span class="bt sh">18</span></div></div>
+          <div class="bar" style="--w:210px"><span class="bi k-blood" data-g="LS"></span><div class="tr"><div class="fi" style="--f:57%"></div><span class="bn sh">Last Stand</span><span class="bt sh">1:42</span></div></div>
+          <div class="bar" style="--w:210px"><span class="bi k-holy" data-g="RC"></span><div class="tr"><div class="fi" style="--f:84%"></div><span class="bn sh">Rallying Cry</span><span class="bt sh">2:31</span></div></div>
+        </div>
+      </div></div>
+      <figcaption><b>Ready-first list</b> Bars with ready ones on top and the rest soonest first. That order holds on Era, TBC and MoP; on Retail and Forever cooling bars keep a fixed order in combat.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+</div>

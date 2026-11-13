@@ -1,0 +1,783 @@
+<title>CDTL3 Looks: Getting Started</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600&family=Fira+Sans+Condensed:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap">
+<style>
+:root {
+	--bg: #f2f4f3; --surface: #ffffff; --fg: #1c2421; --muted: #55635e; --line: #d2dbd7; --accent: #0f6b62;
+	/* game screen: the same in both themes, because it stands for the game */
+	--gs1: #2a3140; --gs2: #161a21;
+	--gold: #ffd100; --ggrey: #a9a9a9; --gblue: #54a3ff; --ggreen: #33ff99;
+	--class: #ff7d0a; --bar1: #c61e48; --mana: #2f6fd6;
+	--lanebg: rgba(38, 38, 38, 0.55); --dbov: rgba(26, 26, 26, 0.88);
+	color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) { --bg: #0f1514; --surface: #17201e; --fg: #e6eeeb; --muted: #9aaba6; --line: #2c3a36; --accent: #4fc4b6; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0f1514; --surface: #17201e; --fg: #e6eeeb; --muted: #9aaba6; --line: #2c3a36; --accent: #4fc4b6; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 "Fira Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 32px max(16px, env(safe-area-inset-right, 0px)) 72px max(16px, env(safe-area-inset-left, 0px)); }
+.top h1 { margin: 0 0 4px; font-size: 27px; font-weight: 600; letter-spacing: -0.01em; }
+.top p { margin: 0; color: var(--muted); }
+.look { margin-top: 44px; padding-top: 28px; border-top: 1px solid var(--line); }
+.look h2 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
+.look .what { margin: 0 0 18px; max-width: 72ch; color: var(--muted); }
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr)); gap: 24px 22px; }
+.choice { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+figcaption { font-size: 14px; line-height: 1.45; color: var(--muted); }
+figcaption b { display: block; margin-bottom: 1px; font-size: 15px; font-weight: 600; color: var(--fg); }
+
+/* ---------- the game screen ---------- */
+.mock { position: relative; overflow: hidden; flex: 1 0 auto; min-height: 300px; display: flex; flex-direction: column; gap: 12px; padding: 16px 12px; border: 1px solid var(--line); border-radius: 6px; background: linear-gradient(180deg, var(--gs1), var(--gs2)); color: #fff; font: 12px/1.35 "Fira Sans Condensed", "Roboto Condensed", "Arial Narrow", sans-serif; }
+.mock p { margin: 0; }
+.ann { align-self: flex-start; padding: 3px 8px; border: 1px solid rgba(255,255,255,0.16); border-radius: 999px; background: rgba(255,255,255,0.07); color: #d8dce2; font: 500 11px/1.2 "Fira Sans", system-ui, sans-serif; }
+.gold { color: var(--gold); } .dim { color: var(--ggrey); } .blu { color: var(--gblue); }
+.c { text-align: center; } .sm { font-size: 11px; }
+.ol { text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000, 1px 1px 1px #000; }
+.sp { flex: 1; }
+
+/* lanes */
+.lane { position: relative; flex: none; align-self: center; width: 100%; max-width: 400px; height: 44px; background: var(--class); box-shadow: 0 0 0 1px rgba(0,0,0,0.55), 0 0 7px 2px rgba(0,0,0,0.35); }
+.lane.thin { height: 5px; margin: 12px 0; }
+.lane.mana { height: 12px; background: #1d1d1d; }
+.lane.mana .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--mana); }
+.mt { position: absolute; top: 50%; left: var(--x, 50%); transform: translate(-50%, -50%); font-size: 12px; white-space: nowrap; text-shadow: 1.5px 1px 0 #000; }
+.mt.l { left: 5px; transform: translateY(-50%); }
+.mt.r { left: auto; right: 5px; transform: translateY(-50%); }
+.dbov { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; background: var(--dbov); font-size: 12px; }
+.lab { align-self: center; width: 100%; max-width: 400px; margin-bottom: -7px; color: var(--gold); font-size: 11.5px; text-shadow: 1px 1px 0 #000; }
+
+/* icons: a square stands in for the spell art, its letter is the spell */
+.ic { --s: 40px; position: absolute; top: 50%; left: var(--x); z-index: 1; width: var(--s); height: var(--s); transform: translate(-50%, -50%); display: grid; place-items: center; background: var(--c, #555); border: 1px solid #000; box-shadow: 0 0 4px rgba(0,0,0,0.6); }
+.ic::before { content: attr(data-g); position: absolute; inset: 0; display: grid; place-items: center; font-weight: 600; font-size: calc(var(--s) * 0.5); color: rgba(255,255,255,0.3); }
+.ic .t { position: relative; font-size: 16px; font-weight: 500; text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000, 1px 1px 1px #000; }
+.ic.sm { --s: 30px; } .ic.sm .t { font-size: 13px; }
+.ic.hov { outline: 2px solid rgba(255,255,255,0.85); outline-offset: 1px; }
+.est { opacity: 0.55; }
+.dt { opacity: 0.55; }
+.tl { font-style: italic; }
+.tick { position: absolute; top: 2px; right: 2px; z-index: 1; width: 12px; height: 12px; border-radius: 50%; background: var(--gold); color: #111; font: 700 9px/12px system-ui, sans-serif; text-align: center; }
+
+/* bar frames */
+.bars { align-self: flex-start; width: 180px; max-width: 100%; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 0 7px 2px rgba(0,0,0,0.35); }
+.bar { position: relative; height: 25px; display: flex; align-items: center; background: var(--lanebg); }
+.bar .bi { position: relative; z-index: 1; flex: none; width: 25px; height: 25px; display: grid; place-items: center; background: var(--c); border-right: 1px solid #000; font-weight: 600; font-size: 12px; color: rgba(255,255,255,0.35); }
+.bar .f { position: absolute; left: 25px; top: 0; bottom: 0; width: calc((100% - 25px) * var(--p)); background: var(--bar1); }
+.bar .n { position: relative; flex: 1; min-width: 0; margin-left: 5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-shadow: 1.5px 1px 0 #000; }
+.bar .tm { position: relative; margin-right: 5px; text-shadow: 1.5px 1px 0 #000; }
+.bar .tick { position: relative; top: auto; right: auto; flex: none; margin-right: 4px; }
+.bar.est { opacity: 0.55; }
+
+/* ready frames */
+.rdy { position: relative; flex: none; width: 50px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; background: var(--c); border: 1px solid #000; box-shadow: 0 0 6px 2px rgba(0,0,0,0.35); }
+.rdy .a { font-size: 18px; } .rdy .b { margin-top: 3px; font-size: 12px; }
+.ovb { position: relative; flex: none; display: grid; place-items: center; background: var(--dbov); box-shadow: 0 0 6px 2px rgba(0,0,0,0.35); font-size: 12px; }
+.frow { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+.num { position: absolute; top: -9px; right: -9px; z-index: 3; width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; background: var(--gold); color: #111; font-weight: 600; font-size: 11px; box-shadow: 0 0 0 2px rgba(0,0,0,0.5); }
+
+/* the Ace3 settings window */
+.ace { position: relative; width: 100%; padding: 22px 9px 40px; background: rgba(11,11,11,0.94); border: 1px solid #6b6b6b; outline: 1px solid #000; border-radius: 3px; }
+.ace-t { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); padding: 2px 24px; white-space: nowrap; background: #1d1810; border: 1px solid #8a6d32; border-radius: 3px; color: var(--gold); font-size: 12.5px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 0 4px; }
+.tabs.sub { padding: 0; }
+.tab { padding: 3px 7px 2px; font-size: 11px; color: var(--gold); background: #202020; border: 1px solid #4d4d4d; border-bottom: 0; border-radius: 4px 4px 0 0; }
+.tab.on { color: #fff; background: #343434; }
+.pane { display: flex; flex-direction: column; gap: 8px; min-height: 150px; padding: 9px 10px; background: rgba(255,255,255,0.025); border: 1px solid #4d4d4d; }
+.tabs.sub + .split { margin-top: -8px; border-top: 1px solid #4d4d4d; padding-top: 8px; }
+.split { display: flex; gap: 8px; align-items: flex-start; }
+.tree { flex: none; width: 84px; display: flex; flex-direction: column; gap: 1px; padding: 3px; border: 1px solid #3d3d3d; }
+.tree span { padding: 2px 4px; font-size: 11.5px; color: var(--gold); }
+.tree .on { background: rgba(255,255,255,0.14); color: #fff; }
+.tree.wide { width: 116px; }
+.body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 2px 2px 2px 4px; }
+.desc { margin: 0; font-size: 12px; line-height: 1.4; color: #fff; }
+.desc.dim { color: var(--ggrey); }
+.intro { padding-left: 7px; border-left: 2px solid var(--gold); }
+.ex { margin: -5px 0 0; font-size: 11.5px; line-height: 1.35; color: var(--ggrey); }
+.old { font-weight: 400; color: var(--ggrey); }
+.hd { display: flex; align-items: center; gap: 8px; color: var(--gold); font-size: 12px; }
+.hd::before, .hd::after { content: ""; flex: 1; height: 1px; background: #555; }
+.row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.row.c { justify-content: center; }
+.row.sb { justify-content: space-between; align-items: center; }
+.lbl { font-size: 11px; color: var(--gold); }
+.dd { position: relative; align-self: flex-start; min-width: 150px; display: flex; flex-direction: column; gap: 2px; }
+.row .dd { align-self: auto; }
+.dd.wide { align-self: stretch; min-width: 0; }
+.box { min-width: 0; display: flex; justify-content: space-between; gap: 8px; padding: 3px 6px; background: #0a0a0a; border: 1px solid #5a5a5a; border-radius: 3px; color: #fff; font-size: 12px; }
+.box::after { content: "\25BE"; color: var(--gold); }
+.box.in { display: block; min-height: 22px; }
+.box.in::after { content: none; }
+.mono { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 10.5px/1.5 ui-monospace, Consolas, monospace; color: #d6d6d6; }
+.ddl { position: absolute; top: 100%; left: 0; right: 0; z-index: 4; margin-top: 2px; padding: 4px 0; background: #0a0a0a; border: 1px solid #777; border-radius: 3px; box-shadow: 0 3px 8px rgba(0,0,0,0.6); }
+.ddl span { position: relative; display: block; padding: 2px 10px 2px 22px; font-size: 12px; }
+.ddl .on::before { content: "\2713"; position: absolute; left: 7px; color: var(--gold); }
+.cb { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #fff; }
+.cb::before { content: ""; flex: none; width: 14px; height: 14px; display: grid; place-items: center; background: #0b0b0b; border: 1px solid #6f6f6f; border-radius: 2px; color: var(--gold); font-size: 12px; line-height: 1; }
+.cb.on::before { content: "\2713"; }
+.sl { flex: 1; min-width: 130px; max-width: 210px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.sl .track { position: relative; width: 100%; height: 7px; background: #0b0b0b; border: 1px solid #555; border-radius: 4px; }
+.sl .track i { position: absolute; top: 50%; left: var(--v); width: 9px; height: 15px; transform: translate(-50%, -50%); background: linear-gradient(#e0e0e0, #9a9a9a); border: 1px solid #222; border-radius: 2px; }
+.sl .val { padding: 0 9px; font-size: 11px; background: #0b0b0b; border: 1px solid #444; border-radius: 2px; }
+.btn { display: inline-block; padding: 3px 11px; white-space: nowrap; font-size: 11.5px; color: var(--gold); background: linear-gradient(#911d1d, #560b0b); border: 1px solid #2b0505; border-radius: 3px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.15); }
+.btn.s { padding: 2px 8px; font-size: 11px; }
+.foot { position: absolute; left: 9px; right: 9px; bottom: 9px; display: flex; align-items: center; gap: 6px; }
+.foot .stat { flex: 1; height: 20px; background: rgba(0,0,0,0.4); border: 1px solid #3d3d3d; }
+.seg { align-self: center; display: inline-flex; margin: 0 auto 8px; overflow: hidden; border: 1px solid #666; border-radius: 4px; }
+.seg span { padding: 3px 14px; font-size: 12px; color: var(--gold); background: #1c1c1c; }
+.seg .on { color: #fff; background: #3a3a3a; }
+.acewrap { display: flex; flex-direction: column; }
+
+/* CDTL3's own windows (welcome, unlock box) */
+.win { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 12px; background: rgba(26,26,26,0.93); box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 0 10px 3px rgba(0,0,0,0.45); }
+.win h4 { margin: 0 0 2px; text-align: center; font-size: 18px; font-weight: 500; text-shadow: 1.5px 1px 0 #000; }
+.scroll { position: relative; max-height: 132px; overflow: hidden; padding-right: 16px; display: flex; flex-direction: column; gap: 7px; }
+.scroll::before { content: ""; position: absolute; top: 0; right: 2px; width: 8px; height: 100%; background: #2b2b2b; border-radius: 4px; }
+.scroll::after { content: ""; position: absolute; left: 0; right: 16px; bottom: 0; height: 40px; background: linear-gradient(rgba(26,26,26,0), rgba(26,26,26,0.97)); }
+.url { word-break: break-all; }
+.unl { align-self: center; width: 180px; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 6px 4px; text-align: center; line-height: 1.3; background: var(--dbov); box-shadow: 0 0 6px 2px rgba(0,0,0,0.35); }
+.unl .btn { margin-top: 4px; }
+.three { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.three li { line-height: 1.4; }
+.card { position: relative; align-self: center; max-width: 300px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; padding: 10px 12px; background: rgba(12,12,14,0.96); border: 1px solid #c9a646; border-radius: 4px; }
+.card::after { content: ""; position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); border: 9px solid transparent; border-bottom: 0; border-top-color: #c9a646; }
+.card .x { position: absolute; top: 4px; right: 8px; color: var(--ggrey); }
+.dots { letter-spacing: 3px; color: var(--gold); }
+.lnk { color: #71d5ff; }
+
+/* tooltip, chat, minimap */
+.tip { position: relative; max-width: 240px; padding: 6px 9px; font-size: 12px; line-height: 1.45; background: rgba(6,8,20,0.95); border: 1px solid #8c94a8; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.55); }
+.tip .h { font-size: 13.5px; }
+.tip.r { align-self: flex-end; }
+.gap { height: 6px; }
+.leg { font-size: 11.5px; line-height: 1.4; padding: 6px 9px; background: rgba(12,12,12,0.92); border: 1px solid #4d4d4d; border-radius: 3px; }
+.leg .gold { display: block; margin-bottom: 2px; font-size: 11px; }
+.chat { align-self: flex-start; max-width: 440px; display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; background: rgba(0,0,0,0.42); border-radius: 2px; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; text-shadow: 1px 1px 0 #000; }
+.pfx { color: var(--ggreen); }
+.mmrow { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-end; gap: 6px; }
+.mm { position: relative; flex: none; width: 112px; height: 112px; border-radius: 50%; background: radial-gradient(circle at 42% 38%, #4b6a3f, #2a3d25 62%, #1c2a19); border: 3px solid #7d776b; box-shadow: 0 0 0 1px #000, 0 0 8px rgba(0,0,0,0.5); }
+.mmb { position: absolute; left: 1px; top: 81px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle, #2b3f63, #16213a); border: 2px solid #d0aa48; box-shadow: 0 0 0 1px #000; font-size: 10px; font-weight: 600; color: #fff; }
+.qa { display: flex; flex-direction: column; gap: 2px; }
+.qa ol { margin: 0; padding-left: 18px; }
+.cmd { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid #2e2e2e; }
+.cmd span:first-child { min-width: 0; }
+.rep { max-height: 156px; overflow: hidden; padding: 6px 7px; background: #060606; border: 1px solid #4d4d4d; border-radius: 3px; font-size: 11px; line-height: 1.4; color: #e8e8e8; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* setups and looks */
+.ban { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 9px; background: rgba(12,12,14,0.95); border: 1px solid #c9a646; border-radius: 4px; }
+.chips { flex: 1; display: flex; flex-wrap: wrap; gap: 3px; }
+.chips span { padding: 2px 7px; font-size: 11px; color: var(--gold); border: 1px solid #555; border-radius: 3px; }
+.chips .on { color: #fff; background: #3a3a3a; border-color: #999; }
+.tiles, .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tile, .lc { display: flex; flex-direction: column; gap: 4px; padding: 7px; background: rgba(0,0,0,0.3); border: 1px solid #444; border-radius: 3px; }
+.tile.on, .lc.on { border-color: var(--gold); background: rgba(255,209,0,0.06); }
+.mini { height: 48px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 0 7px; background: rgba(0,0,0,0.38); }
+.ml { position: relative; display: block; height: 9px; background: var(--class); }
+.ml.th { height: 3px; } .ml.big { height: 17px; } .ml.mana { height: 5px; background: var(--mana); }
+.ml b { position: absolute; top: 50%; width: 9px; height: 9px; transform: translate(-50%, -50%); background: #d8d8d8; border: 1px solid #000; }
+.ml.big b { width: 15px; height: 15px; }
+.sum { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.35; }
+.lc.add { min-height: 112px; align-items: center; justify-content: center; text-align: center; border-style: dashed; }
+.plus { font-size: 24px; line-height: 1; color: var(--gold); }
+.pv { height: 50px; display: flex; flex-direction: column; justify-content: center; gap: 7px; padding: 0 8px; background: #13161b; }
+.pv .pl { position: relative; height: 13px; }
+.pv .pb { width: 72%; height: 9px; }
+.pv .pl b { position: absolute; top: 50%; width: 11px; height: 11px; transform: translate(-50%, -50%); background: #ccc; border: 1px solid #000; }
+.pv.k .pl { background: var(--class); box-shadow: 0 0 5px 2px rgba(0,0,0,0.45); }
+.pv.k .pb { background: linear-gradient(90deg, var(--bar1) 64%, rgba(38,38,38,0.7) 64%); box-shadow: 0 0 5px 2px rgba(0,0,0,0.45); }
+.pv.m .pl { background: var(--class); outline: 1px solid #000; }
+.pv.m .pb { background: linear-gradient(90deg, var(--class) 64%, rgba(13,13,13,0.8) 64%); outline: 1px solid #000; }
+.pv.r .pl { background: #6a4bb5; outline: 1px solid #cfc6ef; }
+.pv.r .pb { background: linear-gradient(90deg, #6a4bb5 64%, #0d0d0d 64%); outline: 1px solid #cfc6ef; }
+</style>
+
+<div class="wrap">
+<header class="top">
+	<h1>CDTL3 Looks: Getting Started</h1>
+	<p>Pick one look per idea, or none, and add a note.</p>
+</header>
+
+<!-- ============================== fp03 ============================== -->
+<section class="look" data-item="fp03" id="fp03">
+	<h2>Starter setups by role</h2>
+	<p class="what">Quick Style gains whole setups for Starter, Healer, Tank and DPS that decide which lanes you have, what goes on each and the time limits that suit the role.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<div class="ace">
+					<div class="ace-t">CDTL3</div>
+					<div class="tabs"><span class="tab">Global</span><span class="tab on">Quick Style</span><span class="tab">Colors</span><span class="tab">Import/Export</span><span class="tab">Changelog</span><span class="tab">Lanes</span><span class="tab">Ready</span><span class="tab">Bar Frames</span><span class="tab">Filters</span><span class="tab">Profiles</span></div>
+					<div class="pane">
+						<p class="desc">Pick a style and apply it to every lane, bar frame and ready frame at once. Only looks change (textures, colours, borders, fonts); sizes, positions and what is tracked stay as they are. Fine-tune anything afterwards in the Lanes, Bar Frames and Ready tabs.</p>
+						<div class="dd"><span class="lbl">Style</span><span class="box">Minimal</span></div>
+						<p class="desc dim">Flat bars, dark backgrounds, one-pixel borders, class colours</p>
+						<div><span class="btn">Apply Style</span></div>
+					</div>
+					<div class="foot"><span class="stat"></span><span class="btn">Close</span></div>
+				</div>
+			</div>
+			<figcaption><b>Today</b> Quick Style swaps textures, colours, borders and fonts only; which lanes you have, what goes on each and the time limits stay as shipped.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<div class="ace">
+					<div class="ace-t">CDTL3</div>
+					<div class="tabs"><span class="tab">Global</span><span class="tab on">Quick Style</span><span class="tab">Colors</span><span class="tab">Import/Export</span><span class="tab">Changelog</span><span class="tab">Lanes</span><span class="tab">Ready</span><span class="tab">Bar Frames</span><span class="tab">Filters</span><span class="tab">Profiles</span></div>
+					<div class="pane">
+						<div class="hd">Setup</div>
+						<p class="desc">Sets which lanes you have, what goes on each and their time limits for one role. Your Filters entries and frame positions are kept.</p>
+						<div class="row"><div class="dd"><span class="lbl">Setup</span><span class="box">Healer</span></div><span class="btn">Apply Setup</span></div>
+						<ul class="sum">
+							<li><span class="gold">Lane 1, Big cooldowns:</span> spells over 30 s, up to 5:00, so Tranquility (3:00) stays in view</li>
+							<li><span class="gold">Lane 2, Short cooldowns:</span> spells up to 30 s, like Swiftmend and Wild Growth</li>
+							<li><span class="gold">Lane 3, Mana:</span> your mana as a bar</li>
+							<li><span class="gold">Buffs:</span> shown up to 5:00 (Ignore Threshold 300 s)</li>
+						</ul>
+						<div class="hd">Style</div>
+						<div class="row"><div class="dd"><span class="lbl">Style</span><span class="box">Minimal</span></div><span class="btn">Apply Style</span></div>
+					</div>
+					<div class="foot"><span class="stat"></span><span class="btn">Close</span></div>
+				</div>
+			</div>
+			<figcaption><b>Setup list above Style</b> A second list in Quick Style (Starter, Healer, Tank, DPS) spells out every lane and limit it will change before you apply; Style stays below for looks.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<div class="win">
+					<h4><span class="blu">CDTL3</span> - v3.1.1</h4>
+					<p class="desc c">How do you play this character? This sets up your lanes; you can change it any time in Quick Style.</p>
+					<div class="tiles">
+						<div class="tile"><span class="gold">Starter</span><div class="mini"><i class="ml big"><b style="left:30%"></b><b style="left:68%"></b></i></div><span class="dim">One lane, bigger icons</span></div>
+						<div class="tile on"><span class="gold">Healer</span><div class="mini"><i class="ml mana"></i><i class="ml th"><b style="left:22%"></b></i><i class="ml"><b style="left:44%"></b><b style="left:80%"></b></i></div><span class="dim">Mana &#183; short cooldowns &#183; big cooldowns</span></div>
+						<div class="tile"><span class="gold">Tank</span><div class="mini"><i class="ml th"><b style="left:18%"></b><b style="left:40%"></b></i><i class="ml th"><b style="left:60%"></b></i><i class="ml"><b style="left:35%"></b><b style="left:75%"></b></i></div><span class="dim">Taunt and interrupt &#183; buffs on you &#183; defensives</span></div>
+						<div class="tile"><span class="gold">DPS</span><div class="mini"><i class="ml th"><b style="left:50%"></b></i><i class="ml th"><b style="left:25%"></b><b style="left:70%"></b></i><i class="ml"><b style="left:15%"></b><b style="left:55%"></b></i></div><span class="dim">Procs &#183; burst &#183; rotation</span></div>
+					</div>
+					<div class="row c"><span class="btn">Use Healer</span><span class="btn">Not now</span></div>
+				</div>
+			</div>
+			<figcaption><b>Role tiles at first login</b> The first-run window asks once, with a small drawing of each layout; the same four wait in Quick Style for later.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<div class="ban"><span class="gold">Previewing: Healer</span><span class="chips"><span>Starter</span><span class="on">Healer</span><span>Tank</span><span>DPS</span></span><span class="btn s">Keep</span><span class="btn s">Undo</span></div>
+				<div class="sp"></div>
+				<div class="lab">Lane 3 &#183; Mana</div>
+				<div class="lane mana"><span class="fill" style="width:72%"></span></div>
+				<div class="lab">Lane 2 &#183; Short cooldowns, up to 30 s</div>
+				<div class="lane thin">
+					<span class="ic sm" style="--x:10%;--c:#3f8a4a" data-g="W"><span class="t">3.1</span></span>
+					<span class="ic sm" style="--x:21%;--c:#2f7f62" data-g="Sm"><span class="t">6.2</span></span>
+				</div>
+				<div class="lab">Lane 1 &#183; Big cooldowns, up to 5:00</div>
+				<div class="lane">
+					<span class="mt l">Ready</span><span class="mt" style="--x:25%">30s</span><span class="mt" style="--x:50%">1m</span><span class="mt" style="--x:75%">2m</span><span class="mt r">5m</span>
+					<span class="ic" style="--x:40%;--c:#8a7a4a" data-g="Ib"><span class="t">48</span></span>
+					<span class="ic" style="--x:58%;--c:#3b64a6" data-g="I"><span class="t">1:20</span></span>
+					<span class="ic" style="--x:81%;--c:#3d8f9a" data-g="T"><span class="t">2:40</span></span>
+				</div>
+			</div>
+			<figcaption><b>Try it on screen first</b> Picking a setup shows it on your real frames with sample icons and lane labels; Keep saves it, Undo puts your old lanes back.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ============================== fp08 ============================== -->
+<section class="look" data-item="fp08" id="fp08">
+	<h2>One clear estimate-versus-exact marking</h2>
+	<p class="what">Every icon and bar running on CDTL3's own estimate instead of the game's timer gets one look, a tooltip line says which it is, and the lane settings explain the mark in one line. Estimates happen on Retail and Forever, in combat.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<div class="ann">Retail, in combat</div>
+				<div class="bars">
+					<div class="bar"><span class="bi" style="--c:#7b6140">B</span><span class="f" style="--p:.75"></span><span class="n">Barkskin</span><span class="tm">45</span></div>
+					<div class="bar"><span class="bi" style="--c:#4b7a3a">H</span><span class="f" style="--p:.63"></span><span class="n">Healthstone</span><span class="tm">38</span></div>
+				</div>
+				<div class="sp"></div>
+				<div class="lane thin">
+					<span class="ic sm" style="--x:27%;--c:#4f9a3c" data-g="L"><span class="t dt">4.0</span></span>
+					<span class="ic sm" style="--x:75%;--c:#8a3d8f" data-g="R"><span class="t dt">9</span></span>
+				</div>
+				<div class="lane">
+					<span class="mt l">Ready</span><span class="mt" style="--x:25%">25%</span><span class="mt" style="--x:50%">50%</span><span class="mt" style="--x:75%">75%</span><span class="mt r">100%</span>
+					<span class="ic" style="--x:41%;--c:#2f7f62" data-g="Sm"><span class="t">6.2</span></span>
+					<span class="ic" style="--x:63%;--c:#4b7a3a" data-g="H"><span class="t">38</span></span>
+					<span class="ic" style="--x:75%;--c:#7b6140" data-g="B"><span class="t">45</span></span>
+				</div>
+			</div>
+			<figcaption><b>Today</b> Only buffs dim, and only their text (Lifebloom, Rejuvenation); Healthstone and Swiftmend with a Custom CD Time are estimates too but look exact.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<div class="ann">Retail, in combat</div>
+				<div class="bars">
+					<div class="bar"><span class="bi" style="--c:#7b6140">B</span><span class="f" style="--p:.75"></span><span class="n">Barkskin</span><span class="tm">45</span></div>
+					<div class="bar est"><span class="bi" style="--c:#4b7a3a">H</span><span class="f" style="--p:.63"></span><span class="n">Healthstone</span><span class="tm">38</span></div>
+				</div>
+				<div class="sp"></div>
+				<div class="lane thin">
+					<span class="ic sm est" style="--x:27%;--c:#4f9a3c" data-g="L"><span class="t">4.0</span></span>
+					<span class="ic sm est" style="--x:75%;--c:#8a3d8f" data-g="R"><span class="t">9</span></span>
+				</div>
+				<div class="lane">
+					<span class="mt l">Ready</span><span class="mt" style="--x:25%">25%</span><span class="mt" style="--x:50%">50%</span><span class="mt" style="--x:75%">75%</span><span class="mt r">100%</span>
+					<span class="ic est hov" style="--x:41%;--c:#2f7f62" data-g="Sm"><span class="t">6.2</span></span>
+					<span class="ic est" style="--x:63%;--c:#4b7a3a" data-g="H"><span class="t">38</span></span>
+					<span class="ic" style="--x:75%;--c:#7b6140" data-g="B"><span class="t">45</span></span>
+				</div>
+				<div class="tip r"><div class="h">Swiftmend</div><div class="gold">Estimate, from your Custom CD Time</div><div class="dim">Instant &#183; 15 sec cooldown</div></div>
+				<div class="leg"><span class="gold">Lanes &#8250; Lane 1 &#8250; General</span>Dimmed icons and bars are CDTL3's estimate; bright ones follow the game's own timer.</div>
+			</div>
+			<figcaption><b>Dimmed estimates</b> The whole icon and its bar dim, not just the text, for every kind of estimate: buffs, items and Custom CD Time spells.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<div class="ann">Retail, in combat</div>
+				<div class="bars">
+					<div class="bar"><span class="bi" style="--c:#7b6140">B</span><span class="f" style="--p:.75"></span><span class="n">Barkskin</span><span class="tm">45</span></div>
+					<div class="bar"><span class="bi" style="--c:#4b7a3a">H</span><span class="f" style="--p:.63"></span><span class="n">Healthstone</span><span class="tm tl">~38</span></div>
+				</div>
+				<div class="sp"></div>
+				<div class="lane thin">
+					<span class="ic sm" style="--x:27%;--c:#4f9a3c" data-g="L"><span class="t tl">~4.0</span></span>
+					<span class="ic sm" style="--x:75%;--c:#8a3d8f" data-g="R"><span class="t tl">~9</span></span>
+				</div>
+				<div class="lane">
+					<span class="mt l">Ready</span><span class="mt" style="--x:25%">25%</span><span class="mt" style="--x:50%">50%</span><span class="mt" style="--x:75%">75%</span><span class="mt r">100%</span>
+					<span class="ic" style="--x:41%;--c:#2f7f62" data-g="Sm"><span class="t tl">~6.2</span></span>
+					<span class="ic hov" style="--x:63%;--c:#4b7a3a" data-g="H"><span class="t tl">~38</span></span>
+					<span class="ic" style="--x:75%;--c:#7b6140" data-g="B"><span class="t">45</span></span>
+				</div>
+				<div class="tip r"><div class="h">Healthstone</div><div class="gold">~ Estimate, from when you used it</div><div class="dim">Use: restores health &#183; 1 min cooldown</div></div>
+				<div class="leg"><span class="gold">Lanes &#8250; Lane 1 &#8250; General</span>A ~ before a time means CDTL3's estimate; plain numbers follow the game's own timer.</div>
+			</div>
+			<figcaption><b>Tilde before the time</b> Icons stay bright; a slanted ~ in front of the number marks an estimate, on icons and bars alike.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<div class="ann">Retail, in combat</div>
+				<div class="bars">
+					<div class="bar"><span class="bi" style="--c:#7b6140">B</span><span class="f" style="--p:.75"></span><span class="n">Barkskin</span><span class="tick">&#10003;</span><span class="tm">45</span></div>
+					<div class="bar"><span class="bi" style="--c:#4b7a3a">H</span><span class="f" style="--p:.63"></span><span class="n">Healthstone</span><span class="tm">38</span></div>
+				</div>
+				<div class="sp"></div>
+				<div class="lane thin">
+					<span class="ic sm" style="--x:27%;--c:#4f9a3c" data-g="L"><span class="t">4.0</span></span>
+					<span class="ic sm" style="--x:75%;--c:#8a3d8f" data-g="R"><span class="t">9</span></span>
+				</div>
+				<div class="lane">
+					<span class="mt l">Ready</span><span class="mt" style="--x:25%">25%</span><span class="mt" style="--x:50%">50%</span><span class="mt" style="--x:75%">75%</span><span class="mt r">100%</span>
+					<span class="ic" style="--x:41%;--c:#2f7f62" data-g="Sm"><span class="t">6.2</span></span>
+					<span class="ic" style="--x:63%;--c:#4b7a3a" data-g="H"><span class="t">38</span></span>
+					<span class="ic hov" style="--x:75%;--c:#7b6140" data-g="B"><span class="tick">&#10003;</span><span class="t">45</span></span>
+				</div>
+				<div class="tip r"><div class="h">Barkskin</div><div class="gold">&#10003; Exact, game timer</div><div class="dim">Instant &#183; 1 min cooldown</div></div>
+				<div class="leg"><span class="gold">Lanes &#8250; Lane 1 &#8250; General</span>A tick marks the game's own timer; unmarked times are CDTL3's estimate.</div>
+			</div>
+			<figcaption><b>Tick on exact timers</b> The other way round: the game's own timers get a small gold tick, estimates stay plain. On Classic, where nearly every time is exact, the ticks stay off.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ============================== fp10 ============================== -->
+<section class="look" data-item="fp10" id="fp10">
+	<h2>A first-run welcome that explains the screen</h2>
+	<p class="what">On a first install a short welcome says what the lanes are, with Show me, Lock in place and Open settings buttons, and What's new moves behind its own button.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<div class="unl">CDTL3<br>Frames currently unlocked<br>Drag and drop to move<span class="btn s">Lock</span></div>
+				<div class="win">
+					<h4><span class="blu">CDTL3</span> - v3.1.1</h4>
+					<div class="scroll">
+						<p>Found a problem or have a suggestion? Open an issue on GitHub (or leave a comment on CurseForge):</p>
+						<p class="blu url">https://github.com/Nelnamara/cdtl3-dev/issues</p>
+						<p class="gold">New in 3.1.0: combat timers (experimental), on for everyone</p>
+						<p>In combat the game hides cooldown and buff timings from addons. CDTL3 now uses the game's own timer instead:</p>
+						<p>&nbsp;&nbsp;- Spell cooldowns keep sliding, draining and counting down in combat, at their real length (talents and haste included), and go to ready on time</p>
+					</div>
+					<p class="c sm">Show this message next login/reload?</p>
+					<div class="row c"><span class="btn s">Yes</span><span class="btn s">No</span></div>
+				</div>
+				<div class="sp"></div>
+				<div class="frow"><div class="ovb" style="width:180px;height:25px">Bar Frame 1</div><div class="ovb" style="width:50px;height:50px">Ready 1</div></div>
+				<div class="lane"><span class="dbov">Lane 1</span></div>
+			</div>
+			<figcaption><b>Today</b> A first install opens the support link, the combat timers notice (Retail, Forever) and the changelog; every frame is a dark box with its name, and nothing says what a lane is.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<div class="win">
+					<h4><span class="blu">CDTL3</span> - v3.1.1</h4>
+					<ul class="three">
+						<li><span class="gold">Lane:</span> the long bar below your character. Each cooldown slides left along it and is back when it reaches Ready.</li>
+						<li><span class="gold">Bars and Ready:</span> the same cooldowns as countdown bars, and an icon with a click sound the moment one is back.</li>
+						<li><span class="gold">Unlocked:</span> drag any frame where you like, then lock it so it can't move in a fight.</li>
+					</ul>
+					<div class="row c"><span class="btn">Show me</span><span class="btn">Lock in place</span><span class="btn">Open settings</span></div>
+					<div class="row sb"><span class="btn s">What's new</span><span class="btn s">Close</span></div>
+				</div>
+				<div class="sp"></div>
+				<div class="frow"><div class="ovb" style="width:180px;height:25px">Bar Frame 1</div><div class="ovb" style="width:50px;height:50px">Ready 1</div></div>
+				<div class="lane"><span class="dbov">Lane 1</span></div>
+			</div>
+			<figcaption><b>Welcome page, same window</b> Same place and size as today; its first page is the three lines and three buttons, and the support link, notice and changelog move behind What's new.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<div class="frow"><div class="ovb" style="width:180px;height:25px">Bar Frame 1</div><div class="ovb" style="width:50px;height:50px">Ready 1</div></div>
+				<div class="sp"></div>
+				<div class="card">
+					<span class="x">&#215;</span>
+					<p><span class="gold">This is your lane.</span> Cooldowns slide left along it; when one reaches Ready it's back.</p>
+					<p>Drag it where you like, then lock it.</p>
+					<div class="row"><span class="btn s">Show me</span><span class="btn s">Lock in place</span><span class="btn s">Settings</span></div>
+					<p class="sm lnk">What's new in 3.1.1</p>
+				</div>
+				<div class="lane"><span class="dbov">Lane 1</span></div>
+			</div>
+			<figcaption><b>Card beside the lane</b> No window in the middle: a small card points at the lane itself and goes away once you lock; What's new is a link at its foot.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<div class="frow">
+					<div class="bars" style="position:relative">
+						<span class="num" style="left:-9px;right:auto">2</span>
+						<div class="bar"><span class="bi" style="--c:#7b6140">B</span><span class="f" style="--p:.75"></span><span class="n">Barkskin</span><span class="tm">45</span></div>
+						<div class="bar"><span class="bi" style="--c:#3b64a6">I</span><span class="f" style="--p:.44"></span><span class="n">Innervate</span><span class="tm">1:20</span></div>
+					</div>
+					<div class="rdy" style="--c:#2f7f62"><span class="num">3</span><span class="a ol">S</span><span class="b ol">READY</span></div>
+				</div>
+				<div class="sp"></div>
+				<div class="card">
+					<span class="gold">1 of 3 &#183; Lane</span>
+					<p>Cooldowns slide left. When one reaches Ready it's back, and you hear a click.</p>
+					<div class="row sb"><span class="dots">&#9679;&#9675;&#9675;</span><span class="btn s">Next</span></div>
+				</div>
+				<div class="lane">
+					<span class="mt l">Ready</span><span class="mt" style="--x:25%">25%</span><span class="mt" style="--x:50%">50%</span><span class="mt" style="--x:75%">75%</span><span class="mt r">100%</span>
+					<span class="ic" style="--x:41%;--c:#2f7f62" data-g="Sm"><span class="t">6.2</span></span>
+					<span class="ic" style="--x:67%;--c:#3b64a6" data-g="I"><span class="t">1:20</span></span>
+					<span class="ic" style="--x:79%;--c:#7b6140" data-g="B"><span class="t">45</span></span>
+				</div>
+			</div>
+			<figcaption><b>Three-step tour</b> Sample icons start and a bubble walks Lane, Bars and Ready one at a time; step 3 ends with Lock in place and Open settings.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ============================== fp13 ============================== -->
+<section class="look" data-item="fp13" id="fp13">
+	<h2>Plain names and a Simple settings view</h2>
+	<p class="what">A Simple view holds the few settings most people change, and jargon settings get plain names, a one-line example and a sentence at the top of each tab.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<div class="ace">
+					<div class="ace-t">CDTL3</div>
+					<div class="tabs"><span class="tab">Global</span><span class="tab">Quick Style</span><span class="tab">Colors</span><span class="tab">Import/Export</span><span class="tab">Changelog</span><span class="tab on">Lanes</span><span class="tab">Ready</span><span class="tab">Bar Frames</span><span class="tab">Filters</span><span class="tab">Profiles</span></div>
+					<div class="pane">
+						<div class="tabs sub"><span class="tab on">Lane 1</span><span class="tab">Lane 2</span><span class="tab">Lane 3</span></div>
+						<div class="split">
+							<div class="tree"><span class="on">General</span><span>Appearance</span><span>Icons</span><span>Stacking</span><span>Text</span></div>
+							<div class="body">
+								<div class="row"><div class="dd" style="min-width:110px"><span class="lbl">Frame Name</span><span class="box in">Lane 1</span></div><span class="cb on">Enabled</span></div>
+								<div class="row"><span class="cb">Reversed</span><span class="cb">Vertical</span></div>
+								<div class="row"><div class="dd" style="min-width:110px"><span class="lbl">Mode</span><span class="box">Linear (%)</span></div><span class="btn s">Long buffs scale</span></div>
+								<div class="tip"><div class="gold">Mode</div><div>How icons will progress along the lane</div></div>
+								<div class="row"><div class="sl" style="--v:3.3%"><span class="lbl">Max Time</span><span class="track"><i></i></span><span class="val">120</span></div><span class="cb on">Hide Long Timers</span></div>
+							</div>
+						</div>
+					</div>
+					<div class="foot"><span class="stat"></span><span class="btn">Close</span></div>
+				</div>
+			</div>
+			<figcaption><b>Today</b> Ten tabs, then three more, then a tree; what Mode or Hide Long Timers means is only in the hover tooltip.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<div class="ace">
+					<div class="ace-t">CDTL3</div>
+					<div class="tabs"><span class="tab on">Simple</span><span class="tab">Global</span><span class="tab">Quick Style</span><span class="tab">Colors</span><span class="tab">Import/Export</span><span class="tab">Changelog</span><span class="tab">Lanes</span><span class="tab">Ready</span><span class="tab">Bar Frames</span><span class="tab">Filters</span><span class="tab">Profiles</span></div>
+					<div class="pane">
+						<p class="desc">The settings most people change. Everything else is in the other tabs.</p>
+						<span class="lbl">What to show</span>
+						<div class="row"><span class="cb on">Spells</span><span class="cb on">Items</span><span class="cb on">Buffs</span><span class="cb on">Debuffs</span></div>
+						<div class="row"><div class="sl" style="--v:66.6%"><span class="lbl">Timeline width</span><span class="track"><i></i></span><span class="val">400</span></div><div class="sl" style="--v:31%"><span class="lbl">Icon size</span><span class="track"><i></i></span><span class="val">40</span></div></div>
+						<div class="row"><div class="dd"><span class="lbl">Ready sound</span><span class="box">CDTL3 Click</span></div><span class="btn s">Play</span></div>
+						<span class="lbl">Position</span>
+						<div class="row"><span class="btn s">Lock frames</span><span class="desc dim">or move them in Edit Mode (not on Classic Era)</span></div>
+					</div>
+					<div class="foot"><span class="stat"></span><span class="btn">Close</span></div>
+				</div>
+			</div>
+			<figcaption><b>Simple tab first</b> A Simple tab at the front with the five basics; the other ten tabs stay exactly as they are.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<div class="ace acewrap">
+					<div class="ace-t">CDTL3</div>
+					<div class="seg"><span class="on">Simple</span><span>All settings</span></div>
+					<div class="pane">
+						<div class="hd">Show</div>
+						<div class="row"><span class="cb on">Spells</span><span class="cb on">Items</span><span class="cb on">Buffs</span><span class="cb on">Debuffs</span></div>
+						<div class="hd">Size</div>
+						<div class="row"><div class="sl" style="--v:66.6%"><span class="lbl">Timeline width</span><span class="track"><i></i></span><span class="val">400</span></div><div class="sl" style="--v:31%"><span class="lbl">Icon size</span><span class="track"><i></i></span><span class="val">40</span></div></div>
+						<div class="hd">Sound and position</div>
+						<div class="row"><div class="dd"><span class="lbl">Ready sound</span><span class="box">CDTL3 Click</span></div><span class="btn s">Play</span><span class="btn s">Lock frames</span></div>
+						<p class="desc dim">Lanes, Filters, colours and profiles are under All settings.</p>
+					</div>
+					<div class="foot"><span class="stat"></span><span class="btn">Close</span></div>
+				</div>
+			</div>
+			<figcaption><b>Simple or All settings</b> The window opens on one page with no tabs; a switch at the top brings back all ten, and it reopens the way you left it.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<div class="ace">
+					<div class="ace-t">CDTL3</div>
+					<div class="tabs"><span class="tab">Global</span><span class="tab">Quick Style</span><span class="tab">Colors</span><span class="tab">Import/Export</span><span class="tab">Changelog</span><span class="tab on">Lanes</span><span class="tab">Ready</span><span class="tab">Bar Frames</span><span class="tab">Filters</span><span class="tab">Profiles</span></div>
+					<div class="pane">
+						<p class="desc intro">A lane is a bar your cooldowns slide along toward Ready. Lane 1 gets your spells and items.</p>
+						<div class="tabs sub"><span class="tab on">Lane 1</span><span class="tab">Lane 2</span><span class="tab">Lane 3</span></div>
+						<div class="split">
+							<div class="tree"><span class="on">General</span><span>Appearance</span><span>Icons</span><span>Stacking</span><span>Text</span></div>
+							<div class="body">
+								<div class="dd" style="min-width:0"><span class="lbl">How icons move <span class="old">(Mode)</span></span><span class="box">Share of cooldown left</span></div>
+								<p class="ex">Barkskin with 45 s of its 60 s left sits three quarters of the way along.</p>
+								<div class="sl" style="--v:3.3%;max-width:none"><span class="lbl">Longest time on the lane <span class="old">(Max Time)</span></span><span class="track"><i></i></span><span class="val">120</span></div>
+								<span class="cb on">Wait until it fits <span class="old">(Hide Long Timers)</span></span>
+								<p class="ex">Survival Instincts (3:00) shows up once 2:00 is left.</p>
+							</div>
+						</div>
+					</div>
+					<div class="foot"><span class="stat"></span><span class="btn">Close</span></div>
+				</div>
+			</div>
+			<figcaption><b>Plain words in place</b> No new tab: each tab opens with one sentence, and jargon settings get a plain name (old name in brackets) with a worked example under it.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ============================== fp15 ============================== -->
+<section class="look" data-item="fp15" id="fp15">
+	<h2>Minimap tooltip and a Help tab</h2>
+	<p class="what">The minimap tooltip says what each click does, and a Help tab answers the common questions with exact steps and shows the /cdtl3 auras report in a window instead of chat.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<div class="mmrow">
+					<div class="tip">
+						<div><span class="blu">CDTL3</span> (CooldownTimeline)</div>
+						<div>Left-click: Open settings</div>
+						<div>Right-click: Lock/unlock</div>
+						<div class="dim">Drag: Reposition</div>
+					</div>
+					<div class="mm"><span class="mmb">C</span></div>
+				</div>
+				<div class="sp"></div>
+				<div class="chat">
+					<p><span class="pfx">CDTL3</span>: AURA CHECK v3.1.1 | detection on: true | UNIT_AURA events: 214 | combat log: false</p>
+					<p><span class="pfx">CDTL3</span>: guid: Player-1084-0B4F21C7 | buffs enabled: true | only mine: true | ignore over: 120s | default lane: 2</p>
+					<p><span class="pfx">CDTL3</span>: buffs #1: Mark of the Wild (1126) from player, 3600s -&gt; saved: ignored=true enabled=true lane=2 yours=true savedID=1126</p>
+					<p><span class="pfx">CDTL3</span>: buffs #2: Rejuvenation (774) from player, 12s -&gt; saved: ignored=false enabled=true lane=2 yours=true savedID=774</p>
+				</div>
+			</div>
+			<figcaption><b>Today</b> The tooltip already names left-click, right-click and drag; the slash commands are only on CurseForge and in the README, and /cdtl3 auras prints into chat.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<div class="ace">
+					<div class="ace-t">CDTL3</div>
+					<div class="tabs"><span class="tab on">Help</span><span class="tab">Global</span><span class="tab">Quick Style</span><span class="tab">Colors</span><span class="tab">Import/Export</span><span class="tab">Changelog</span><span class="tab">Lanes</span><span class="tab">Ready</span><span class="tab">Bar Frames</span><span class="tab">Filters</span><span class="tab">Profiles</span></div>
+					<div class="pane">
+						<div class="qa"><span class="gold">A spell or buff isn't showing</span><ol><li>Filters &#8250; Spells (or Buffs): pick it in the list.</li><li>Untick Ignored.</li><li>Check its Lane isn't set to Hide.</li></ol></div>
+						<div class="qa"><span class="gold">Moving and locking the frames</span><p>Right-click the minimap button to unlock, drag the frames, right-click again to lock. Edit Mode works too, except on Classic Era.</p></div>
+						<div class="qa"><span class="gold">A buff is only an estimate in combat</span><p>Retail and Forever: add it to Tracked Bars in the Cooldown Manager (/cdm).</p></div>
+						<div class="row"><span class="btn s">Show aura report</span><span class="btn s">Copy issue link</span></div>
+					</div>
+					<div class="foot"><span class="stat"></span><span class="btn">Close</span></div>
+				</div>
+			</div>
+			<figcaption><b>Help tab with answers</b> A Help tab first in the window: each common question with numbered steps, plus buttons for the aura report and the issue link; the tooltip adds Shift-click: Help.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<div class="mmrow">
+					<div class="tip">
+						<div><span class="blu">CDTL3</span> (CooldownTimeline)</div>
+						<div>Frames: <span class="gold">unlocked</span></div>
+						<div>Combat timers: on</div>
+						<div class="gap"></div>
+						<div>Left-click: Open settings</div>
+						<div>Right-click: Lock/unlock</div>
+						<div>Shift-click: Help</div>
+						<div class="dim">Drag: Reposition</div>
+					</div>
+					<div class="mm"><span class="mmb">C</span></div>
+				</div>
+				<div class="ace">
+					<div class="ace-t">CDTL3</div>
+					<div class="tabs"><span class="tab">Global</span><span class="tab">Quick Style</span><span class="tab">Colors</span><span class="tab">Import/Export</span><span class="tab">Changelog</span><span class="tab">Lanes</span><span class="tab">Ready</span><span class="tab">Bar Frames</span><span class="tab">Filters</span><span class="tab">Profiles</span><span class="tab on">Help</span></div>
+					<div class="pane" style="min-height:0;gap:0">
+						<div class="cmd"><span><span class="gold">/cdtl3 lock</span>, <span class="gold">unlock</span>: stop or allow dragging</span><span class="btn s">Run</span></div>
+						<div class="cmd"><span><span class="gold">/cdtl3 test</span>: sample icons on every frame</span><span class="btn s">Run</span></div>
+						<div class="cmd"><span><span class="gold">/cdtl3 auras</span>: what CDTL3 sees of your buffs</span><span class="btn s">Run</span></div>
+						<div class="cmd"><span><span class="gold">/cdtl3 combattimers</span>: what follows the game's timer</span><span class="btn s">Run</span></div>
+						<div class="cmd"><span><span class="gold">/cdtl3 minimap</span>: hide or show this button</span><span class="btn s">Run</span></div>
+					</div>
+					<div class="foot"><span class="stat"></span><span class="btn">Close</span></div>
+				</div>
+			</div>
+			<figcaption><b>Status tooltip and command list</b> The tooltip also says whether frames are locked and combat timers are on (that line on Retail and Forever only); Help lists every /cdtl3 command with a Run button.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<div class="win">
+					<h4><span class="blu">CDTL3</span> Help</h4>
+					<div class="split">
+						<div class="tree wide"><span>Nothing shows up</span><span>A spell is missing</span><span>Moving and locking</span><span>Buffs in combat</span><span class="on">Aura report</span></div>
+						<div class="body">
+							<div class="rep">AURA CHECK v3.1.1 | detection on: true | UNIT_AURA events: 214 | combat log: false
+buffs #1: Mark of the Wild (1126) from player, 3600s -&gt; saved: ignored=true enabled=true lane=2 yours=true savedID=1126
+buffs #2: Rejuvenation (774) from player, 12s -&gt; saved: ignored=false enabled=true lane=2 yours=true savedID=774</div>
+							<div class="row"><span class="btn s">Refresh</span><span class="btn s">Select all</span></div>
+						</div>
+					</div>
+				</div>
+				<div class="sp"></div>
+				<div class="mmrow">
+					<div class="tip">
+						<div><span class="blu">CDTL3</span> (CooldownTimeline)</div>
+						<div>Left-click: Open settings</div>
+						<div>Right-click: Lock/unlock</div>
+						<div>Shift-click: Help</div>
+						<div class="dim">Drag: Reposition</div>
+					</div>
+					<div class="mm"><span class="mmb">C</span></div>
+				</div>
+			</div>
+			<figcaption><b>Help window of its own</b> Shift-click on the minimap button opens a small movable Help window apart from settings; its Aura report page puts the report in a box you can copy.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ============================== fp43 ============================== -->
+<section class="look" data-item="fp43" id="fp43">
+	<h2>Save and share your own looks</h2>
+	<p class="what">Save the current look under your own name, share it as a string, and apply any look to one lane, bar frame or ready frame, or to all of them.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<div class="ace">
+					<div class="ace-t">CDTL3</div>
+					<div class="tabs"><span class="tab">Global</span><span class="tab on">Quick Style</span><span class="tab">Colors</span><span class="tab">Import/Export</span><span class="tab">Changelog</span><span class="tab">Lanes</span><span class="tab">Ready</span><span class="tab">Bar Frames</span><span class="tab">Filters</span><span class="tab">Profiles</span></div>
+					<div class="pane" style="min-height:190px">
+						<p class="desc">Pick a style and apply it to every lane, bar frame and ready frame at once. Only looks change (textures, colours, borders, fonts); sizes, positions and what is tracked stay as they are.</p>
+						<div class="dd"><span class="lbl">Style</span><span class="box">Minimal</span>
+							<div class="ddl"><span>CDTL3 Classic</span><span class="on">Minimal</span><span>Blizzard Modern</span><span>Class Colours</span></div>
+						</div>
+						<p class="desc dim">Flat bars, dark backgrounds, one-pixel borders, class colours</p>
+						<div><span class="btn">Apply Style</span></div>
+					</div>
+					<div class="foot"><span class="stat"></span><span class="btn">Close</span></div>
+				</div>
+			</div>
+			<figcaption><b>Today</b> Four built-in looks, always applied to every frame at once; Import/Export shares a whole profile, and Copy Settings copies one lane onto another.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<div class="ace">
+					<div class="ace-t">CDTL3</div>
+					<div class="tabs"><span class="tab">Global</span><span class="tab on">Quick Style</span><span class="tab">Colors</span><span class="tab">Import/Export</span><span class="tab">Changelog</span><span class="tab">Lanes</span><span class="tab">Ready</span><span class="tab">Bar Frames</span><span class="tab">Filters</span><span class="tab">Profiles</span></div>
+					<div class="pane">
+						<div class="row"><div class="dd" style="min-width:120px"><span class="lbl">Style</span><span class="box">Raid Night</span></div><div class="dd" style="min-width:120px"><span class="lbl">Apply to</span><span class="box">Everything</span></div><span class="btn">Apply Style</span></div>
+						<p class="desc dim">Yours, saved 12 Nov &#183; textures, colours, borders and fonts</p>
+						<div class="hd">Your looks</div>
+						<div class="row"><span class="btn s">Save current look as&#8230;</span><span class="btn s">Delete</span></div>
+						<div class="dd wide"><span class="lbl">Share Raid Night (copy this string)</span><span class="box in"><span class="mono">!CDTL3LOOK:1!nN1xVTnmq4FlUeHk0e5RwsQ8gL2pZ(yKc)Tb9Mv</span></span></div>
+						<div class="dd wide"><span class="lbl">Import a look (paste a string)</span><span class="box in"></span></div>
+					</div>
+					<div class="foot"><span class="stat"></span><span class="btn">Close</span></div>
+				</div>
+			</div>
+			<figcaption><b>Your looks in the Style list</b> Saved looks join the built-in four in the same list, Apply to picks one frame or everything, and share and import are string boxes below.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<div class="ace">
+					<div class="ace-t">CDTL3</div>
+					<div class="tabs"><span class="tab">Global</span><span class="tab on">Quick Style</span><span class="tab">Colors</span><span class="tab">Import/Export</span><span class="tab">Changelog</span><span class="tab">Lanes</span><span class="tab">Ready</span><span class="tab">Bar Frames</span><span class="tab">Filters</span><span class="tab">Profiles</span></div>
+					<div class="pane">
+						<div class="row"><div class="dd"><span class="lbl">Apply to</span><span class="box">Everything</span></div></div>
+						<div class="cards">
+							<div class="lc"><div class="pv k"><div class="pl"><b style="left:30%"></b><b style="left:72%"></b></div><div class="pb"></div></div><span class="gold">CDTL3 Classic</span><span class="dim">Built in</span><div class="row"><span class="btn s">Apply</span></div></div>
+							<div class="lc"><div class="pv m"><div class="pl"><b style="left:30%"></b><b style="left:72%"></b></div><div class="pb"></div></div><span class="gold">Minimal</span><span class="dim">Built in</span><div class="row"><span class="btn s">Apply</span></div></div>
+							<div class="lc on"><div class="pv r"><div class="pl"><b style="left:30%"></b><b style="left:72%"></b></div><div class="pb"></div></div><span class="gold">Raid Night</span><span class="dim">Yours</span><div class="row"><span class="btn s">Apply</span><span class="btn s">Share</span></div></div>
+							<div class="lc add"><span class="plus">+</span><span class="gold">Save current look</span></div>
+						</div>
+					</div>
+					<div class="foot"><span class="stat"></span><span class="btn">Close</span></div>
+				</div>
+			</div>
+			<figcaption><b>Look cards</b> Every look drawn as a small card with a preview of a lane and a bar, yours beside the built-in ones; Share copies its string.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<div class="ace">
+					<div class="ace-t">CDTL3</div>
+					<div class="tabs"><span class="tab">Global</span><span class="tab">Quick Style</span><span class="tab">Colors</span><span class="tab">Import/Export</span><span class="tab">Changelog</span><span class="tab on">Lanes</span><span class="tab">Ready</span><span class="tab">Bar Frames</span><span class="tab">Filters</span><span class="tab">Profiles</span></div>
+					<div class="pane">
+						<div class="tabs sub"><span class="tab">Lane 1</span><span class="tab on">Lane 2</span><span class="tab">Lane 3</span></div>
+						<div class="split">
+							<div class="tree"><span>General</span><span class="on">Appearance</span><span>Icons</span><span>Stacking</span><span>Text</span></div>
+							<div class="body">
+								<div class="hd">Look</div>
+								<div class="dd" style="min-width:0"><span class="lbl">Look</span><span class="box">Raid Night</span></div>
+								<div class="row"><span class="btn s">Apply to this lane</span><span class="btn s">All lanes</span></div>
+								<div class="row"><span class="btn s">Save this lane's look as&#8230;</span><span class="btn s">Share</span></div>
+								<div class="hd">Size</div>
+								<div class="row"><div class="sl" style="--v:66.6%"><span class="lbl">Width</span><span class="track"><i></i></span><span class="val">400</span></div><div class="sl" style="--v:0.7%"><span class="lbl">Height</span><span class="track"><i></i></span><span class="val">5</span></div></div>
+							</div>
+						</div>
+					</div>
+					<div class="foot"><span class="stat"></span><span class="btn">Close</span></div>
+				</div>
+			</div>
+			<figcaption><b>A Look row on every frame</b> Each lane, bar frame and ready frame gets a Look row on its Appearance page to apply, save or share just that frame's look; Quick Style keeps the four built-ins for everything.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+</div>
