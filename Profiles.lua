@@ -36,6 +36,7 @@
 	use before the first zone switch comes back. A profile picked by hand inside a zone stays.
 ]]--
 
+local L = LibStub("AceLocale-3.0"):GetLocale("CDTL3")
 local P = {}
 CDTL3.Profiles = P
 
@@ -388,7 +389,7 @@ P.SetSharing = function(on)
 		store["joined"][name] = true
 		db.global["shareEntries"] = true
 		CDTL3:RefreshConfig()
-		CDTL3:Print("Your Custom timers and spell settings are now shared by all your characters: every profile uses the same Filters lists until you switch sharing off.")
+		CDTL3:Print(L["Your Custom timers and spell settings are now shared by all your characters: every profile uses the same Filters lists until you switch sharing off."])
 	else
 		P.Detach()
 		db.global["shareEntries"] = false
@@ -403,7 +404,7 @@ P.SetSharing = function(on)
 			store["joined"][name] = nil
 		end
 		CDTL3:RefreshConfig()
-		CDTL3:Print("Sharing is off: this profile now has its own copy of your shared Custom timers and spell settings. Your other profiles get theirs the next time they are used.")
+		CDTL3:Print(L["Sharing is off: this profile now has its own copy of your shared Custom timers and spell settings. Your other profiles get theirs the next time they are used."])
 	end
 end
 
@@ -665,13 +666,13 @@ end
 P.Options = function()
 	local args = {
 		sharedHeader = {
-			name = "Shared by all your characters",
+			name = L["Shared by all your characters"],
 			type = "header",
 			order = 200,
 		},
 		shareEntries = {
-			name = "Share my Custom timers and spell settings with all my characters",
-			desc = "One Filters list (spells, items, auras, Custom timers and their settings) for every character on this account; switching it off gives this profile a copy of it",
+			name = L["Share my Custom timers and spell settings with all my characters"],
+			desc = L["One Filters list (spells, items, auras, Custom timers and their settings) for every character on this account; switching it off gives this profile a copy of it"],
 			type = "toggle",
 			width = "full",
 			order = 201,
@@ -679,13 +680,13 @@ P.Options = function()
 			set = function(info, val) P.SetSharing(val and true or false) end,
 		},
 		newHeader = {
-			name = "New characters",
+			name = L["New characters"],
 			type = "header",
 			order = 210,
 		},
 		newCharacterProfile = {
-			name = "New characters start on",
-			desc = "The profile a character uses the first time it logs in with CDTL3",
+			name = L["New characters start on"],
+			desc = L["The profile a character uses the first time it logs in with CDTL3"],
 			type = "select",
 			order = 211,
 			values = { DEFAULT = "The Default profile", LAST = "The last profile used", CHOSEN = "A profile I choose" },
@@ -696,8 +697,8 @@ P.Options = function()
 				end,
 		},
 		newCharacterProfileName = {
-			name = "Profile for new characters",
-			desc = "The profile new characters start on",
+			name = L["Profile for new characters"],
+			desc = L["The profile new characters start on"],
 			type = "select",
 			order = 212,
 			hidden = function(info) return CDTL3.db.global["newCharacterProfile"] ~= "CHOSEN" end,
@@ -707,12 +708,12 @@ P.Options = function()
 			set = function(info, val) CDTL3.db.global["newCharacterProfileName"] = val end,
 		},
 		zoneHeader = {
-			name = "Profiles by zone",
+			name = L["Profiles by zone"],
 			type = "header",
 			order = 220,
 		},
 		zoneDesc = {
-			name = "Switch profile when you enter a raid, a dungeon, PvP or the open world (this character only). While you are there the zone's profile wins over spec profiles; where it says None, spec profiles or the profile you picked work as before.\n",
+			name = L["Switch profile when you enter a raid, a dungeon, PvP or the open world (this character only). While you are there the zone's profile wins over spec profiles; where it says None, spec profiles or the profile you picked work as before."] .. "\n",
 			type = "description",
 			order = 221,
 		},
@@ -764,7 +765,7 @@ P.Setup = function()
 	P.events:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 	if P.startedOn and P.startedOn == db:GetCurrentProfile() then
-		CDTL3:Print("This character starts on the profile \""..P.startedOn.."\" (Profiles tab: New characters start on).")
+		CDTL3:Print(string.format(L["This character starts on the profile \"%s\" (Profiles tab: New characters start on)."], P.startedOn))
 	end
 end
 

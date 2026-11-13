@@ -3,6 +3,7 @@
 	https://www.curseforge.com/wow/addons/cooldown-timeline
 ]]--
 
+local L = LibStub("AceLocale-3.0"):GetLocale("CDTL3")
 local private = {}
 
 -- NEW SAVED ENTRIES
@@ -1504,10 +1505,10 @@ end
 -- Everything new here is off until the player turns it on: no rule hides anything by default.
 
 -- type names as the Filters tabs and the Defaults list show them
-private.filterTabNames = { spells = "Spells", items = "Items", buffs = "Buffs", debuffs = "Debuffs",
-	offensives = "Offensives", petspells = "Petspells", runes = "Runes", customs = "Custom" }
-private.filterTypeNames = { spells = "Spells", items = "Items", buffs = "Buffs", debuffs = "Debuffs",
-	offensives = "Offensives", petspells = "Pet Spells", runes = "Runes", customs = "Customs" }
+private.filterTabNames = { spells = L["Spells"], items = L["Items"], buffs = L["Buffs"], debuffs = L["Debuffs"],
+	offensives = L["Offensives"], petspells = L["Pet Spells"], runes = L["Runes"], customs = L["Custom"] }
+private.filterTypeNames = { spells = L["Spells"], items = L["Items"], buffs = L["Buffs"], debuffs = L["Debuffs"],
+	offensives = L["Offensives"], petspells = L["Pet Spells"], runes = L["Runes"], customs = L["Customs"] }
 private.filterAuraTypes = { buffs = true, debuffs = true, offensives = true }
 private.filterLaneKeys = { "lane1", "lane2", "lane3" }
 
@@ -1543,16 +1544,16 @@ end
 -- 180 s cooldown is over the ... Ignore Threshold (120 s)", or nil when the rule wouldn't (then it
 -- was ignored by hand). Saved lengths are plain numbers; callers still run this in a pcall.
 private.AutoIgnoreText = function(s, kind)
-	local word = private.filterAuraTypes[kind] and "duration" or "cooldown"
+	local isAura = private.filterAuraTypes[kind]
 	local seconds = (tonumber(s["bCD"]) or 0) / 1000
 	if seconds <= 3 then
-		return "its " .. word .. " is 3 s or less"
+		return isAura and L["its duration is 3 s or less"] or L["its cooldown is 3 s or less"]
 	end
 
 	local threshold = CDTL3.db.profile.global[kind] and CDTL3.db.profile.global[kind]["ignoreThreshold"]
 	if threshold and seconds > threshold then
-		return "its " .. private.Seconds(seconds) .. " s " .. word .. " is over the " .. private.filterTypeNames[kind]
-			.. " Ignore Threshold (" .. private.Seconds(threshold) .. " s)"
+		return string.format(isAura and L["its %s s duration is over the %s Ignore Threshold (%s s)"] or L["its %s s cooldown is over the %s Ignore Threshold (%s s)"],
+			private.Seconds(seconds), private.filterTypeNames[kind], private.Seconds(threshold))
 	end
 end
 
@@ -1576,8 +1577,8 @@ function CDTL3:NoteAutoIgnore(s, kind)
 
 	g["autoIgnoreNoted"] = true
 	local name = tostring((kind == "items" and s["itemName"]) or s["name"] or "?")
-	CDTL3:Print(name .. " won't show: CDTL3 ignored it because " .. why .. ". To show it, type /cdtl3 filters, pick it on the "
-		.. private.filterTabNames[kind] .. " tab and click Show anyway. (This note shows once.)")
+	CDTL3:Print(string.format(L["%s won't show: CDTL3 ignored it because %s. To show it, type /cdtl3 filters, pick it on the %s tab and click Show anyway. (This note shows once.)"],
+		name, why, private.filterTabNames[kind]))
 end
 
 -- Ignored as far as showing goes: the entry's own Ignored box, or a Filters > Spells rule
@@ -1853,7 +1854,7 @@ private.SpecName = function(specID)
 	if ok and type(name) == "string" and name ~= "" then
 		return name
 	end
-	return "spec " .. tostring(specID)
+	return string.format(L["spec %s"], tostring(specID))
 end
 
 -- "Arcane, Fire" for an entry's onlySpecs
@@ -1958,36 +1959,36 @@ private.WhyNotShowing = function(s, kind)
 	if s["ignored"] then
 		local why = private.AutoIgnoreText(s, kind)
 		if why then
-			return "Ignored automatically: " .. why .. ".", "unignore"
+			return string.format(L["Ignored automatically: %s."], why), "unignore"
 		end
-		return "Ignored by hand: the Ignored box below is ticked.", "unignore"
+		return L["Ignored by hand: the Ignored box below is ticked."], "unignore"
 	end
 
 	local rule = CDTL3:RuleHides(s, kind)
 	if rule == "unticked" then
-		return "Hidden: it isn't ticked in My spells (below), and Show only the ticked spells is on.", "tick"
+		return L["Hidden: it isn't ticked in My spells (below), and Show only the ticked spells is on."], "tick"
 	elseif rule == "spec" then
-		return "Hidden: it's set to show only for " .. CDTL3:SpecNames(s["onlySpecs"]) .. " (Only for this spec).", "spec"
+		return string.format(L["Hidden: it's set to show only for %s (Only for this spec)."], CDTL3:SpecNames(s["onlySpecs"])), "spec"
 	elseif rule == "unknown" then
-		return "Hidden: this character doesn't know it right now, and Hide spells I don't know is on (top of this tab)."
+		return L["Hidden: this character doesn't know it right now, and Hide spells I don't know is on (top of this tab)."]
 	end
 
 	if s["enabled"] == false then
-		return "Switched off: its Enabled box below is unticked.", "enable"
+		return L["Switched off: its Enabled box below is unticked."], "enable"
 	end
 
 	if g[kind] and g[kind]["enabled"] == false then
-		return "Switched off: all " .. typeName .. " are off (Filters > Defaults, pick " .. typeName .. ", Enabled).", "type"
+		return string.format(L["Switched off: all %s are off (Filters > Defaults, pick %s, Enabled)."], typeName, typeName), "type"
 	end
 
 	local lane = tonumber(s["lane"]) or 0
 	local key = private.filterLaneKeys[lane]
 	if not key then
-		local text = "Not on a lane: its Lane below is set to Hide."
+		local text = L["Not on a lane: its Lane below is set to Hide."]
 		local bar = tonumber(s["barFrame"])
 		local bf = bar and CDTL3.db.profile.barFrames["frame" .. bar]
 		if bf and bf["enabled"] then
-			text = text .. " (Its bar still shows in " .. tostring(bf["name"]) .. ".)"
+			text = text .. " " .. string.format(L["(Its bar still shows in %s.)"], tostring(bf["name"]))
 		end
 		return text, "lane", private.LaneToUse(kind)
 	end
@@ -1995,7 +1996,7 @@ private.WhyNotShowing = function(s, kind)
 	local ls = CDTL3.db.profile.lanes[key]
 	local laneName = tostring(ls["name"])
 	if not ls["enabled"] then
-		return "Not showing: " .. laneName .. " is switched off (Lanes > " .. laneName .. " > General > Enabled).", "laneOn", lane
+		return string.format(L["Not showing: %s is switched off (Lanes > %s > General > Enabled)."], laneName, laneName), "laneOn", lane
 	end
 
 	local max, hide = private.LaneMax(ls)
@@ -2004,9 +2005,8 @@ private.WhyNotShowing = function(s, kind)
 		seconds = s["customCDTime"] / 1000
 	end
 	if hide and max and seconds > max then
-		return "Hidden until " .. private.Seconds(max) .. " s are left: its " .. private.Seconds(seconds) .. " s is longer than "
-			.. laneName .. "'s Max Time and Hide Long Timers is on. To see it the whole time, raise Lanes > " .. laneName
-			.. " > General > Max Time to " .. math.ceil(seconds) .. " or untick Hide Long Timers there."
+		return string.format(L["Hidden until %s s are left: its %s s is longer than %s's Max Time and Hide Long Timers is on. To see it the whole time, raise Lanes > %s > General > Max Time to %d or untick Hide Long Timers there."],
+			private.Seconds(max), private.Seconds(seconds), laneName, laneName, math.ceil(seconds))
 	end
 
 	return nil
@@ -2418,7 +2418,7 @@ function CDTL3:ToggleDebug()
 			private.DebugOff(f.icon)
 		end
 		
-		CDTL3:Print("Debug Mode Disabled")
+		CDTL3:Print(L["Debug Mode Disabled"])
 	else
 		CDTL3.db.profile.global["debugMode"] = true
 		CDTL3.debugFrame:Show()
@@ -2446,7 +2446,7 @@ function CDTL3:ToggleDebug()
 			private.DebugOff(f.icon)
 		end
 		
-		CDTL3:Print("Debug Mode Enabled")
+		CDTL3:Print(L["Debug Mode Enabled"])
 	end
 end
 
@@ -2456,7 +2456,7 @@ function CDTL3:ToggleFrameLock(quiet)
 
 	-- Guard: unlockFrame may be nil if OnEnable errored before CreateUnlockFrame ran.
 	if not CDTL3.unlockFrame then
-		CDTL3:Print("CDTL3: unlockFrame not ready — try reloading the UI.")
+		CDTL3:Print(L["CDTL3: unlockFrame not ready — try reloading the UI."])
 		return
 	end
 	
@@ -2481,7 +2481,7 @@ function CDTL3:ToggleFrameLock(quiet)
 		end
 		
 		if not quiet then
-			CDTL3:Print("Frames Locked")
+			CDTL3:Print(L["Frames Locked"])
 		end
 	else
 		CDTL3.db.profile.global["unlockFrames"] = true
@@ -2505,7 +2505,7 @@ function CDTL3:ToggleFrameLock(quiet)
 		end
 		
 		if not quiet then
-			CDTL3:Print("Frames Unlocked")
+			CDTL3:Print(L["Frames Unlocked"])
 		end
 	end
 end
@@ -2723,24 +2723,24 @@ local function ReadShare(importString)
 	if text:sub(1, 7) ~= "!CDTL3:" then
 		local data = DecodeShare(text)
 		if not data then
-			return nil, "All data (was invalid import string)"
+			return nil, L["All data (was invalid import string)"]
 		end
 		return { data = data }
 	end
 
 	local fmt, body = text:match("^!CDTL3:(%d+)!(.*)$")
 	if not fmt then
-		return nil, "All data (was invalid import string)"
+		return nil, L["All data (was invalid import string)"]
 	end
 	if tonumber(fmt) > SHARE_FORMAT then
-		return nil, "All data (made by a newer CDTL3: update CDTL3, then import it)"
+		return nil, L["All data (made by a newer CDTL3: update CDTL3, then import it)"]
 	end
 	local wrapper = DecodeShare(body)
 	if not wrapper or type(wrapper.data) ~= "table" or not SHARE_KINDS[wrapper.kind] then
-		return nil, "All data (was invalid import string)"
+		return nil, L["All data (was invalid import string)"]
 	end
 	if wrapper.kind == "LANE" and not (wrapper.lane == 1 or wrapper.lane == 2 or wrapper.lane == 3) then
-		return nil, "Lane settings (was invalid import string)"
+		return nil, L["Lane settings (was invalid import string)"]
 	end
 
 	local version = wrapper.version
@@ -2764,7 +2764,7 @@ local function CheckShare(plan, mode)
 
 	if plan.meta and plan.meta.kind == "LANE" then
 		if not FitsDefaults(data, defaults.lanes["lane"..plan.meta.lane]) then
-			return "Lane settings (malformed)"
+			return L["Lane settings (malformed)"]
 		end
 		return nil
 	end
@@ -2772,29 +2772,29 @@ local function CheckShare(plan, mode)
 	if mode == "ALL" then
 		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
 			if type(data[key]) ~= "table" then
-				return "All data (not a full CDTL3 export)"
+				return L["All data (not a full CDTL3 export)"]
 			end
 		end
 		if not FitsDefaults(data, defaults) or (data.tables ~= nil and not FitsFilterLists(data.tables)) then
-			return "All data (malformed)"
+			return L["All data (malformed)"]
 		end
 
 	elseif mode == "SETTINGS" then
 		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
 			if type(data[key]) ~= "table" then
-				return "Settings data (not a CDTL3 settings export)"
+				return L["Settings data (not a CDTL3 settings export)"]
 			end
 		end
 		for _, key in ipairs(IMPORT_SETTINGS_KEYS) do
 			if not FitsDefaults(data[key], defaults[key], key) then
-				return "Settings data (malformed)"
+				return L["Settings data (malformed)"]
 			end
 		end
 
 	elseif mode == "CDDATA" then
 		local tables = ShareTables(data)
 		if not FitsFilterLists(tables) then
-			return "Cooldown data (malformed)"
+			return L["Cooldown data (malformed)"]
 		end
 		local found = 0
 		for _, key in ipairs(IMPORT_TABLE_TYPES) do
@@ -2804,7 +2804,7 @@ local function CheckShare(plan, mode)
 		end
 		if found == 0 then
 			-- e.g. a "Settings Only" export, whose cooldown lists are deliberately empty
-			return "Cooldown data (the string contains no cooldown data)"
+			return L["Cooldown data (the string contains no cooldown data)"]
 		end
 	end
 
@@ -2876,11 +2876,11 @@ local function ApplyShare(plan, mode)
 			CDTL3.Profiles.ImportLists(own, lists)
 		end
 		-- while sharing, the lists that stay are the ones all your characters share
-		local whose = (CDTL3.Profiles and CDTL3.Profiles.Sharing()) and "the shared" or "this profile's own"
+		local sharing = CDTL3.Profiles and CDTL3.Profiles.Sharing()
 		if carried == 0 then
-			CDTL3:Print("This string has no Filters lists (a Settings Only export leaves them empty): its settings were imported and "..whose.." Filters lists were kept.")
+			CDTL3:Print(sharing and L["This string has no Filters lists (a Settings Only export leaves them empty): its settings were imported and the shared Filters lists were kept."] or L["This string has no Filters lists (a Settings Only export leaves them empty): its settings were imported and this profile's own Filters lists were kept."])
 		elseif #kept > 0 then
-			CDTL3:Print("Imported. "..(whose:gsub("^%l", string.upper)).." "..table.concat(kept, ", ").." Filters lists were kept: the string's were empty.")
+			CDTL3:Print(string.format(sharing and L["Imported. The shared %s Filters lists were kept: the string's were empty."] or L["Imported. This profile's own %s Filters lists were kept: the string's were empty."], table.concat(kept, ", ")))
 		end
 
 	elseif mode == "SETTINGS" then
@@ -3074,7 +3074,7 @@ function CDTL3:ImportPreview(importString)
 		return PreviewText(plan, mode)
 	end)
 	if not ok then
-		return "Import this string?"
+		return L["Import this string?"]
 	end
 
 	return text
@@ -3082,7 +3082,7 @@ end
 
 function CDTL3:ImportHandler(importString)
 	local function Fail(what)
-		CDTL3:Print("There was an error importing the data!")
+		CDTL3:Print(L["There was an error importing the data!"])
 		CDTL3:Print("  -"..what)
 		return nil
 	end
@@ -3097,7 +3097,7 @@ function CDTL3:ImportHandler(importString)
 		Fail(why)
 		local kind = plan.meta and plan.meta.kind
 		if kind and kind ~= "LANE" and kind ~= mode then
-			CDTL3:Print("  This string is a \""..SHARE_KINDS[kind].."\" export: pick that under Import and paste it again.")
+			CDTL3:Print(string.format(L["  This string is a \"%s\" export: pick that under Import and paste it again."], SHARE_KINDS[kind]))
 		end
 		return nil
 	end
@@ -3120,7 +3120,7 @@ function CDTL3:ImportHandler(importString)
 	CDTL3:RefreshConfig()
 
 	if newName then
-		CDTL3:Print("Imported into a new profile, "..newName..". "..from.." is unchanged: switch back on the Profiles tab.")
+		CDTL3:Print(string.format(L["Imported into a new profile, %s. %s is unchanged: switch back on the Profiles tab."], newName, from))
 	end
 
 	return nil

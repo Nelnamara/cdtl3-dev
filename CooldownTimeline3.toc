@@ -12,6 +12,7 @@
 ## X-License: All Rights Reserved
 
 embeds.xml
+Locales\Locales.xml
 Libs\LibEditMode\embed.xml
 
 CDTL3.lua
