@@ -135,6 +135,8 @@ local laneDefaults = {
 	height = 44,
 	relativeTo = "CENTER",
 	alpha = 1,
+	-- Pause while hidden: icons skip their visual updates while the lane is faded to nothing (Cooldown.lua)
+	pauseHidden = false,
 
 	iconOffset = 0,
 
@@ -775,6 +777,9 @@ local defaults = {
 
 			dynamicSpellDetection = false,
 
+			-- Update rate (Cooldown.lua): 0 = every frame, else visual updates per second
+			updateRate = 0,
+
 			-- CombatTimers.lua: on for everyone since 3.1.0 (the owner's call), with a notice on the
 			-- first login after the update. Blizzard's Tracked Bars stay visible unless the player hides them.
 			combatTimers = { enabled = true, hideBlizzardBars = false },
@@ -1268,6 +1273,12 @@ function CDTL3:ChatCommand(input)
 		CDTL3:ToggleDebug()
 	elseif input:trim() == "auras" then
 		CDTL3:DiagnoseAuras()
+	elseif input:trim() == "report" then
+		CDTL3:ShowReport()	-- Diagnostics.lua
+	elseif input:trim() == "log" then
+		CDTL3:ShowLog()
+	elseif input:trim() == "perf" then
+		CDTL3:PrintPerf()
 	elseif input:trim() == "minimap" then
 		CDTL3.db.global.minimapHide = not CDTL3.db.global.minimapHide
 		if CDTL3.minimapBtn then
@@ -1978,12 +1989,16 @@ end
 -- /cdtl3 auras: read-only report of what CDTL3 can see of the player's auras and what it
 -- has saved for each, to pin down why a buff isn't detected (detection off, no UNIT_AURA
 -- events, secret aura data, or a saved entry that is ignored / not marked as yours).
-function CDTL3:DiagnoseAuras()
+-- out(line) gets each line (/cdtl3 report collects them); without it they go to chat.
+function CDTL3:DiagnoseAuras(out)
+	out = out or function(line)
+		CDTL3:Print(line)
+	end
 	local g = CDTL3.db.profile.global
-	CDTL3:Print("AURA CHECK v"..CDTL3.version.." | detection on: "..tostring(CDTL3.enabled)
+	out("AURA CHECK v"..CDTL3.version.." | detection on: "..tostring(CDTL3.enabled)
 		.." | UNIT_AURA events: "..tostring(CDTL3.unitAuraEvents or 0)
 		.." | combat log: "..tostring(CDTL3.combatLogRegistered))
-	CDTL3:Print("guid: "..tostring(CDTL3.player["guid"])
+	out("guid: "..tostring(CDTL3.player["guid"])
 		.." | buffs enabled: "..tostring(g["buffs"]["enabled"])
 		.." | only mine: "..tostring(g["buffs"]["onlyPlayer"])
 		.." | ignore over: "..tostring(g["buffs"]["ignoreThreshold"]).."s"
@@ -1994,7 +2009,7 @@ function CDTL3:DiagnoseAuras()
 		for i = 1, 40 do
 			local readOK, aura = pcall(C_UnitAuras.GetAuraDataByIndex, "player", i, filter)
 			if not readOK then
-				CDTL3:Print(t.." #"..i..": can't read auras right now (secret)")
+				out(t.." #"..i..": can't read auras right now (secret)")
 				break
 			end
 			if not aura then
@@ -2025,10 +2040,11 @@ function CDTL3:DiagnoseAuras()
 				return text
 			end)
 
-			if ok and line then
-				CDTL3:Print(line)
+			-- a line built from a hidden field is hidden too: it's left out
+			if ok and line and not (issecretvalue and issecretvalue(line)) then
+				out(line)
 			else
-				CDTL3:Print(t.." #"..i..": details hidden (secret)")
+				out(t.." #"..i..": details hidden (secret)")
 			end
 		end
 	end

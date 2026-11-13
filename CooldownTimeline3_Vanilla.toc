@@ -10,6 +10,7 @@
 embeds.xml
 
 CDTL3.lua
+Diagnostics.lua
 Data.lua
 Options.lua
 Helpers.lua

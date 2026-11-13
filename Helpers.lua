@@ -210,6 +210,7 @@ function CDTL3:AuraExists(unit, aura)
 	end
 
 	-- the scan hit a secret value: can't tell whether the aura is there
+	CDTL3:LogFailure("AuraExists", result)
 	return nil, true
 end
 
@@ -887,10 +888,13 @@ function CDTL3:GetSpellCharges(id)
 			-- group is validated separately (the arithmetic throws on a secret value),
 			-- so a charge spell still reports its charges while its timing is hidden.
 			-- The start field is cooldownStartTime (not cooldownStart).
-			pcall(function()
+			local ok, err = pcall(function()
 				maxCharges = data["maxCharges"] + 0
 			end)
-			pcall(function()
+			if not ok then
+				CDTL3:LogFailure("GetSpellCharges max", err)
+			end
+			ok, err = pcall(function()
 				local cc, cs, cd = data["currentCharges"], data["cooldownStartTime"], data["cooldownDuration"]
 				if cc + cs + cd >= 0 then
 					currentCharges   = cc
@@ -898,6 +902,9 @@ function CDTL3:GetSpellCharges(id)
 					cooldownDuration = cd
 				end
 			end)
+			if not ok then
+				CDTL3:LogFailure("GetSpellCharges", err)
+			end
 		end
 	else
 		currentCharges, maxCharges, cooldownStart, cooldownDuration = GetSpellCharges(id)
@@ -909,22 +916,23 @@ end
 -- Item cooldowns can be SECRET on Midnight / WoW: Forever, like spell cooldowns. These
 -- return real numbers, or nil when the values are secret so callers skip the refresh
 -- and keep counting down from what they already have.
-local function RealCooldown(start, duration, enabled)
-	local ok = pcall(function()
+local function RealCooldown(place, start, duration, enabled)
+	local ok, err = pcall(function()
 		return start + duration >= 0
 	end)
 
 	if ok then
 		return start, duration, enabled
 	end
+	CDTL3:LogFailure(place, err)
 end
 
 function CDTL3:GetItemCooldown(itemID)
-	return RealCooldown(C_Container.GetItemCooldown(itemID))
+	return RealCooldown("GetItemCooldown", C_Container.GetItemCooldown(itemID))
 end
 
 function CDTL3:GetInventoryItemCooldown(slot)
-	return RealCooldown(GetInventoryItemCooldown("player", slot))
+	return RealCooldown("GetInventoryItemCooldown", GetInventoryItemCooldown("player", slot))
 end
 
 function CDTL3:GetSpellCooldown(id)
@@ -950,12 +958,15 @@ function CDTL3:GetSpellCooldown(id)
 				-- here. A bare read of a secret value does NOT error (ok stays true);
 				-- only comparing/using it later does — which is why the old check at
 				-- `duration == 0` outside the pcall threw "compare a secret number".
-				local ok = pcall(function()
+				local ok, err = pcall(function()
 					if data["duration"] and data["duration"] > 0 then
 						start    = data["startTime"]
 						duration = data["duration"]
 					end
 				end)
+				if not ok then
+					CDTL3:LogFailure("GetSpellCooldown", err)
+				end
 
 				-- isActive is also true during the global cooldown. When the timing is secret
 				-- the fallback below would invent a ~1.6s cooldown for every spell on the GCD,
@@ -964,6 +975,9 @@ function CDTL3:GetSpellCooldown(id)
 				local gcdOK, onGCD = pcall(function()
 					return data["isOnGCD"] == true
 				end)
+				if not gcdOK then
+					CDTL3:LogFailure("GetSpellCooldown isOnGCD", onGCD)
+				end
 
 				if (not ok or duration == 0) and gcdOK and onGCD then
 					start, duration = 0, 0

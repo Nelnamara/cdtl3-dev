@@ -73,9 +73,11 @@ private.OnBarFrame = function(f)
 	return private.BAR_FRAMES[ParentName(f.bar) or ""] and true or false
 end
 
-private.Error = function(err)
+-- also kept in CDTL3's log (/cdtl3 log): the place and the error text only
+private.Error = function(err, place)
 	private.errors = private.errors + 1
 	private.lastError = type(err) == "string" and err or "error"
+	CDTL3:LogFailure(place or "CombatTimers", err)
 end
 
 private.SpellName = function(id)
@@ -111,11 +113,17 @@ private.SpellSecret = function(id)
 		if ok and not IsSecret(v) and type(v) == "boolean" then
 			return v
 		end
+		if not ok then
+			CDTL3:LogFailure("CombatTimers.SpellSecret", v)
+		end
 	end
 	if C_Secrets.ShouldCooldownsBeSecret then
 		local ok, v = pcall(C_Secrets.ShouldCooldownsBeSecret)
 		if ok and not IsSecret(v) and type(v) == "boolean" then
 			return v
+		end
+		if not ok then
+			CDTL3:LogFailure("CombatTimers.SpellSecret", v)
 		end
 	end
 	return false
@@ -130,6 +138,9 @@ private.FetchDuration = function(ct, id)
 			return info and info.maxCharges and info.maxCharges > 1
 		end)
 		charges = ok and multi == true
+		if not ok then
+			CDTL3:LogFailure("CombatTimers.FetchDuration charges", multi)
+		end
 	end
 	ct.charges = charges
 
@@ -138,6 +149,9 @@ private.FetchDuration = function(ct, id)
 		ok, dur = pcall(C_Spell.GetSpellChargeDuration, id)
 	else
 		ok, dur = pcall(C_Spell.GetSpellCooldownDuration, id, true)
+	end
+	if not ok then
+		CDTL3:LogFailure("CombatTimers.FetchDuration", dur)
 	end
 	local t = ok and type(dur)
 	ct.dur = (ok and not IsSecret(dur) and (t == "table" or t == "userdata")) and dur or nil
@@ -157,6 +171,7 @@ private.ReadActive = function(ct, id, withGCD)
 		end
 	end)
 	if not ok then
+		CDTL3:LogFailure("CombatTimers.ReadActive", active)
 		return
 	end
 	if IsSecret(active) or type(active) ~= "boolean" then
@@ -344,8 +359,8 @@ private.Leave = function(f, resync)
 	end
 end
 
-private.Fail = function(f, err)
-	private.Error(err)
+private.Fail = function(f, err, place)
+	private.Error(err, place)
 	if f.ct then
 		f.ct.broken = true	-- back to the estimate until combat ends
 	end
@@ -403,7 +418,7 @@ function CT:Update(f, elapsed)
 	end
 	local ok, err = pcall(private.Update, f, elapsed)
 	if not ok then
-		private.Fail(f, err)
+		private.Fail(f, err, "CombatTimers.Update")
 	end
 end
 
@@ -465,7 +480,7 @@ function CT:DimText(f, tf)
 	end
 	local ok, err = pcall(private.DimText, f, tf)
 	if not ok then
-		private.Error(err)
+		private.Error(err, "CombatTimers.DimText")
 	end
 end
 
@@ -796,7 +811,7 @@ function CT:PlaceIcon(f, s, mode, max)
 	if ok then
 		return true
 	end
-	private.Fail(f, err)
+	private.Fail(f, err, "CombatTimers.PlaceIcon")
 	return false
 end
 
@@ -825,7 +840,7 @@ function CT:DriveBar(f)
 	if ok then
 		return true
 	end
-	private.Fail(f, err)
+	private.Fail(f, err, "CombatTimers.DriveBar")
 	return false
 end
 
@@ -980,7 +995,7 @@ function CT:OwnsText(f, tf, s)
 		return true
 	end
 	-- only the text falls back to the estimate; the icon and bar keep riding
-	private.Error(err)
+	private.Error(err, "CombatTimers.BindText")
 	ct.noText = true
 	if ct.bindings then
 		for _, b in pairs(ct.bindings) do
@@ -1349,7 +1364,7 @@ function CT:SetEnabled(on)
 	if CT:Available() then
 		local ok, err = pcall(private.RecheckMirror)
 		if not ok then
-			private.Error(err)
+			private.Error(err, "CombatTimers.RecheckMirror")
 		end
 	end
 end
@@ -1363,7 +1378,7 @@ function CT:SetHideBlizzardBars(on)
 	if CT:Available() then
 		local ok, err = pcall(private.ApplyHide)
 		if not ok then
-			private.Error(err)
+			private.Error(err, "CombatTimers.ApplyHide")
 		end
 	end
 end
@@ -1478,13 +1493,13 @@ if CT:Available() then
 		end
 		local ok, err = pcall(private.OnEvent, event)
 		if not ok then
-			private.Error(err)
+			private.Error(err, "CombatTimers.OnEvent")
 		end
 	end)
 	ef:SetScript("OnUpdate", function(_, elapsed)
 		local ok, err = pcall(private.OnUpdate, elapsed)
 		if not ok then
-			private.Error(err)
+			private.Error(err, "CombatTimers.OnUpdate")
 		end
 	end)
 	for _, event in ipairs(private.EVENTS) do

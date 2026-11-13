@@ -906,6 +906,21 @@ check("on again: Blizzard's bars hidden", BuffBarCooldownViewer:GetAlpha() == 0)
 poll(f, 0.3)
 check("on again: rides", CT:Riding(f))
 
+-- Update rate (feature panel card 38): at 15 a second a riding icon is placed less often, and still goes
+-- to Ready on the frame the game says its cooldown is over
+g.updateRate = 15
+local placed = 0
+local RSP = f.icon.SetPoint
+rawset(f.icon, "SetPoint", function(s, ...) placed = placed + 1; return RSP(s, ...) end)
+poll(f, 1)
+check("15 a second: still riding, the icon placed on about 1 frame in 4", CT:Riding(f) and placed >= 10 and placed <= 15, "placed=" .. placed)
+SPELLCD[TEST] = { startTime = S(0), duration = S(0), isEnabled = true, isActive = false, isOnGCD = false, modRate = 1 }
+FireEvent("SPELL_UPDATE_COOLDOWN")
+poll(f, 0.02)
+check("15 a second: the game says done, Ready on that frame", parentName(f.icon) == "CDTL3_Ready_1_MF" and not CT:Riding(f), tostring(parentName(f.icon)))
+rawset(f.icon, "SetPoint", nil)
+g.updateRate = 0
+
 COMBAT = false
 SECRET_AURAS = false
 FireEvent("PLAYER_REGEN_ENABLED")
