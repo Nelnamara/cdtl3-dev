@@ -2404,8 +2404,8 @@ private.GetBarFrameSet = function(i)
 						desc = "Sets the width of the bars",
 						order = 101,
 						type = "range",
-						softMin = 1,
-						softMax = 300,
+						min = 1,
+						max = 600,
 						bigStep = 1,
 						get = function(info, index)
 								return frame["width"]
@@ -5116,8 +5116,8 @@ private.GetLaneSet = function(i)
 						desc = "Sets the width for the lane",
 						order = 201,
 						type = "range",
-						softMin = 1,
-						softMax = 600,
+						min = 1,
+						max = 1000,
 						bigStep = 1,
 						get = function(info, index)
 								return lane["width"]

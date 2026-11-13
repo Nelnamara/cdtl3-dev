@@ -122,7 +122,7 @@ private.Register = function(frame, kind, number)
 	LEM:AddFrame(frame, private.OnMoved, default, "CDTL3: "..kind.label.." "..number)
 
 	-- Edit Mode's slider stops at its ends, so every size the options window's sliders reach must fit:
-	-- the same ranges, except the widths keep the longer reach they already had here
+	-- the same ranges as the options window (the widths' options sliders were raised to these)
 	local settings
 	if kind.group == "lanes" then
 		settings = {

@@ -553,7 +553,8 @@ private.CalcStacking = function(f, s, count)
 					icon.stack = i
 					local iconOffset = 0
 					local stackOffset = 0
-					if iconSize * stackCount > height then
+					-- a lone icon stays in the lane (in a stack shorter than one icon it got a NaN offset)
+					if stackCount > 1 and iconSize * stackCount > height then
 						local maxHeight = height - iconSize
 						iconOffset = (maxHeight / (stackCount - 1)) * (k - 1)
 						

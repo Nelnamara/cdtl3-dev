@@ -366,7 +366,9 @@ local function Layout(vertical, n, pattern, size)
 end
 
 local function Same(a, b)
-	return a == b or (a ~= a and b ~= b)	-- NaN offsets (a lone icon when the stack height is under an icon) match too
+	-- a lone icon in a stack shorter than one icon: the old code gave it a NaN offset, the new code 0
+	-- (a NaN on both sides is a mismatch: the new code must never make one)
+	return a == b or (a ~= a and b == 0) or (b ~= b and a == 0)
 end
 
 local lane2, s2 = CDTL3_Lane_2, L.lane2
