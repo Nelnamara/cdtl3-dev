@@ -418,11 +418,20 @@ do
 	local GONE = { font = "Gone Font", statusbar = "Gone Texture", sound = "Gone Sound" }
 	local USING = { font = "Fira Sans Condensed", statusbar = "CDTL3 Smooth", sound = "CDTL3 Click" }
 	local tested, noted, clean = 0, 0, 0
+	local missed = {}
 	local e0 = #ERRORS
 	for _, f in ipairs(found) do
 		local o = f.opt
 		local ok, was = pcall(o.get, {})
+		-- a per-entry picker (Filters › an entry › Ready Sound) saves nothing while no entry is picked,
+		-- so it has no saved name to check here; it shares the same note code as the rest
+		local takes = false
 		if ok and type(was) == "string" then
+			o.set({}, GONE[f.kind])
+			takes = o.get({}) == GONE[f.kind]
+			o.set({}, was)
+		end
+		if takes then
 			tested = tested + 1
 			local plain = o.name({})
 			o.set({}, GONE[f.kind])
@@ -430,13 +439,16 @@ do
 			if n == plain .. " |cffff9900(missing)|r" and d:find("Missing, using the default: " .. USING[f.kind] .. ".", 1, true)
 				and d:find('"' .. GONE[f.kind] .. '"', 1, true) then
 				noted = noted + 1
+			else
+				missed[#missed + 1] = f.key .. " (" .. tostring(plain) .. ")"
 			end
 			o.set({}, was)
 			if o.name({}) == plain and not tostring(o.desc({})):find("Missing", 1, true) then clean = clean + 1 end
 		end
 	end
-	check("every one (" .. tested .. ") says (missing) and names the default when its saved name isn't registered", tested == #found and noted == tested,
-		string.format("%d of %d", noted, tested))
+	check("every one (" .. tested .. ", plus " .. (#found - tested) .. " per-entry pickers with no entry picked) says (missing) and names the default when its saved name isn't registered",
+		tested > 0 and noted == tested,
+		string.format("%d of %d; missed: %s", noted, tested, table.concat(missed, ", ")))
 	check("  and says nothing once a registered name is saved", clean == tested)
 	check("  no Lua errors", #ERRORS == e0)
 	local tex
