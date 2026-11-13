@@ -1188,7 +1188,7 @@ function CDTL3:BuildMinimapButton()
 		GameTooltip:AddLine(L["Left-click: Open settings"], 1, 1, 1)
 		GameTooltip:AddLine(L["Right-click: Lock/unlock"], 1, 1, 1)
 		GameTooltip:AddLine(CDTL3.testing and L["Shift-click: Stop preview"] or L["Shift-click: Preview with sample icons"], 1, 1, 1)
-		GameTooltip:AddLine(L["Ctrl-click: Help"], 1, 1, 1)
+		GameTooltip:AddLine(L["Alt-click: Help"], 1, 1, 1)
 		GameTooltip:AddLine(L["Drag: Reposition"], 0.7, 0.7, 0.7)
 		GameTooltip:Show()
 	end)
@@ -1199,7 +1199,7 @@ function CDTL3:BuildMinimapButton()
 			CDTL3:ToggleFrameLock()
 		elseif IsShiftKeyDown and IsShiftKeyDown() then
 			CDTL3:TogglePreview()
-		elseif IsControlKeyDown and IsControlKeyDown() then
+		elseif IsAltKeyDown and IsAltKeyDown() then	-- not Ctrl: on a Mac, Ctrl-click arrives as a right-click
 			CDTL3:ChatCommand("help window")
 		else
 			CDTL3:ChatCommand("")

@@ -685,6 +685,11 @@ private.SetAutohideOverride = function(f, differs)
 end
 
 -- current/max as a 0-1 fraction (0 when current is 0); nil if either is secret
+-- for pcall: does UnitStagger give a value at all (a hidden one makes the test fail, which counts as yes)
+private.StaggerHas = function(stagger)
+	return stagger ~= nil
+end
+
 private.Fraction = function(current, max)
 	local ok, fraction = pcall(function()
 		if current ~= 0 then
@@ -886,7 +891,12 @@ private.CalcTracking = function(f, s, t, elapsed)
 		-- a Brewmaster's stagger against their max health. Where the client has no UnitStagger there is
 		-- nothing to show. The values can be hidden: the bar is fed them, never a comparison (like health).
 		if UnitStagger then
-			local sCurrent = UnitStagger("player") or 0
+			-- the value is handed on as it is (it can be hidden); the "is there one" test runs in a pcall
+			local sCurrent = UnitStagger("player")
+			local okHas, has = pcall(private.StaggerHas, sCurrent)
+			if okHas and not has then
+				sCurrent = 0
+			end
 			local sMax = UnitHealthMax("player")
 			position = private.Fraction(sCurrent, sMax)
 

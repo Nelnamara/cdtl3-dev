@@ -196,6 +196,29 @@ do
 		check("hidden count: the pips take it without a compare, no errors", pf and pf:IsShown() and rawequal(pf.pip[1].lit.__val, SECRET)
 			and rawequal(pf.pip[3].lit.__val, SECRET) and #ERRORS == e0, "errors " .. (#ERRORS - e0))
 		check("  the filling pip is left out (it needs the count compared)", pf.pip[1].part.__val == 0 and pf.pip[2].part.__val == 0 and pf.pip[3].part.__val == 0)
+
+		-- the max hidden too: the last readable max (3) still sets the number of pips
+		chargeData = { currentCharges = SECRET, maxCharges = SECRET, cooldownStartTime = SECRET, cooldownDuration = SECRET }
+		cast(931, 0)
+		RunOnUpdate(0.02, 30)
+		pf = F.icon.fxPips
+		check("hidden max: the last readable max keeps three pips, no errors", pf and pf:IsShown() and pf.n == 3 and F.icon.fxMaxRead == 3 and #ERRORS == e0, "errors " .. (#ERRORS - e0) .. " pf=" .. tostring(pf) .. " shown=" .. tostring(pf and pf:IsShown()) .. " n=" .. tostring(pf and pf.n) .. " max=" .. tostring(F.icon.fxMaxRead) .. " fxMax=" .. tostring(F.data.fxMax))
+
+		-- no readable max seen yet: the failure is logged once per icon per combat, not every 0.1 s
+		local logged, realLog, realCombat = 0, CDTL3.LogFailure, InCombatLockdown
+		function CDTL3:LogFailure(place, err) if place == "IconFx.Pips" then logged = logged + 1 end return realLog(self, place, err) end
+		F.icon.fxMaxRead = nil
+		function InCombatLockdown() return true end
+		RunOnUpdate(0.02, 120)
+		check("  none seen before: one log line for the whole combat", logged == 1, tostring(logged))
+		function InCombatLockdown() return false end
+		cast(931, 0)
+		RunOnUpdate(0.02, 10)
+		function InCombatLockdown() return true end
+		cast(931, 0)
+		RunOnUpdate(0.02, 120)
+		check("  the next combat logs once more", logged == 2, tostring(logged))
+		InCombatLockdown, CDTL3.LogFailure = realCombat, realLog
 		chargeData = nil
 		CH.cur = 3
 		SPELLCD[931] = nil

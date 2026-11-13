@@ -3116,8 +3116,13 @@ function CDTL3:ImportHandler(importString)
 	local mode = CDTL3.db.profile.global["importMode"]
 	why = CheckShare(plan, mode)
 	if why then
-		Fail(why)
 		local kind = plan.meta and plan.meta.kind
+		if kind == "LOOK" then
+			-- one clear line: where a look string goes
+			CDTL3:Print(why)
+			return nil
+		end
+		Fail(why)
 		if kind and kind ~= "LANE" and kind ~= mode then
 			CDTL3:Print(string.format(L["  This string is a \"%s\" export: pick that under Import and paste it again."], SHARE_KINDS[kind]))
 		end

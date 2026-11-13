@@ -179,12 +179,28 @@ end
 
 -- for pcall; the values left for FillPart (all of them may be hidden)
 private.cc, private.pipStart, private.pipDur, private.pipN = nil, nil, nil, 0
+private.ReadMax = function(max)
+	return max + 0	-- throws while the number is hidden
+end
+
+-- which combat we are in, so a failure is logged once per icon per combat (counted when PipsTick sees the change)
+private.combatId, private.wasCombat = 0, false
+
 private.ApplyPips = function(ic, id)
 	local cc, max, start, dur = private.Fetch(id)
 	if not max then
 		return false
 	end
-	local n = max + 0
+	-- the number of pips: the max when it can be read, else the last readable one (kept per icon)
+	local readable, n = pcall(private.ReadMax, max)
+	if readable then
+		ic.fxMaxRead = n
+	else
+		n = ic.fxMaxRead
+		if not n then
+			error("max charges hidden and none seen before", 0)
+		end
+	end
 	if n < 2 then
 		return false
 	end
@@ -259,9 +275,20 @@ private.PipsTick = function(ic, d)
 	end
 	ic.fxPipAt = now
 
+	local inCombat = InCombatLockdown() and true or false
+	if inCombat ~= private.wasCombat then
+		private.wasCombat = inCombat
+		if inCombat then
+			private.combatId = private.combatId + 1
+		end
+	end
+
 	local ok, applied = pcall(private.ApplyPips, ic, d["id"])
 	if not ok then
-		CDTL3:LogFailure("IconFx.Pips", applied)
+		if ic.fxFailCombat ~= private.combatId then	-- once per icon per combat, not every 0.1 s
+			ic.fxFailCombat = private.combatId
+			CDTL3:LogFailure("IconFx.Pips", applied)
+		end
 		private.PipsOff(ic)
 		return
 	end

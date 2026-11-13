@@ -167,6 +167,41 @@ if logOpen then
 	defaults.raidTicks.set({}, row2[1], true)
 	cast(ally, "Brannoc-Realm", PARTY, row2[1], sname2)
 	check("  ticking it again starts it", live(sname2, "raidcds") ~= nil)
+
+	-- affiliation bits: a member who is both party and raid (0x6) counts; the bits are masked, not compared whole
+	local late, calls, lateOK = "Player-9-LATE", 0, false
+	local prevInfo = GetPlayerInfoByGUID
+	GetPlayerInfoByGUID = function(guid)
+		if guid == late then
+			calls = calls + 1
+			if lateOK then return "MAGE", "MAGE", "Human", "Human", 2, "Late", "Realm" end
+			return nil
+		end
+		return prevInfo(guid)
+	end
+	local function ownerTimer(owner)
+		for _, c in ipairs(CDTL3.cooldowns) do if c.data.owner == owner then return c end end
+	end
+	cast(late, "Late-Realm", 0x406, row[1], sname)
+	local lf = ownerTimer("Late-Realm")
+	check("a caster flagged party and raid (0x6) is accepted", lf ~= nil)
+	cast("Player-9-RAIDONLY", "Rai-Realm", 0x404, row[1], sname)
+	check("  a raid-only caster too (0x4)", ownerTimer("Rai-Realm") ~= nil)
+	cast("Player-9-NPC", "Npc-Realm", 0x80A, row[1], sname)
+	check("  a party-flagged NPC (type 0x800, no player bit) is refused", ownerTimer("Npc-Realm") == nil)
+	cast("Player-9-STR", "Str-Realm", 0x408, row[1], sname)
+	check("  an outsider (0x408) is refused", ownerTimer("Str-Realm") == nil)
+
+	-- a failed class lookup is not kept for the session: retried at the caster's next cast, at most every 10 s
+	check("a failed class lookup: the timer still starts, with no class yet", lf and lf.data.class == nil and calls == 1, "calls " .. calls)
+	cast(late, "Late-Realm", 0x406, row[1], sname)
+	check("  the next cast inside 10 s does not look again", calls == 1, "calls " .. calls)
+	lateOK = true
+	RunOnUpdate(0.1, 110)
+	cast(late, "Late-Realm", 0x406, row[1], sname)
+	lf = ownerTimer("Late-Realm")
+	check("  after 10 s it looks again and learns the class", calls == 2 and lf and lf.data.class == "MAGE", "calls " .. calls .. " class " .. tostring(lf and lf.data.class))
+	GetPlayerInfoByGUID = prevInfo
 	cast(ally, "Brannoc-Realm", PARTY, row[1], sname, "SPELL_AURA_APPLIED")
 	check("only a successful cast counts", true)
 	defaults.raidCasts.set({}, false)
@@ -355,6 +390,23 @@ filterDefaults.burstPack.func({})
 check("a different Burst lane moves the whole pack there", (function() for _, e in pairs(CDTL3.db.profile.tables.items) do if e.burst and e.lane ~= 2 then return false end end return lanes.lane2.name == "Burst" end)())
 filterDefaults.burstLane.set({}, 3)
 filterDefaults.burstPack.func({})
+
+-- the confirm says what it will do; the pack only touches this character's entries
+do
+	local c = filterDefaults.burstPack.confirm and filterDefaults.burstPack.confirm({})
+	check("the pack asks first, saying what it does (adds, renames lane 3 Burst, long scale, moves same-named entries, not other characters')",
+		type(c) == "string" and c:find("lane 3 Burst", 1, true) and c:find("long-buff scale", 1, true) and c:find("moves your existing entries", 1, true)
+		and c:find("Other characters' entries are not touched", 1, true) and true, tostring(c))
+	local foreign
+	for _, e in pairs(CDTL3.db.profile.tables.items) do if e.itemID == 100 then foreign = e end end
+	local mine = foreign.usedBy
+	foreign.usedBy, foreign.lane, foreign.readyFrame = { "Player-9-OTHER" }, 1, 1
+	local fl = #CDTL3.db.profile.tables.items
+	filterDefaults.burstPack.func({})
+	check("an entry only another character uses is left where it was, with its users", foreign.lane == 1 and foreign.readyFrame == 1 and #foreign.usedBy == 1
+		and foreign.usedBy[1] == "Player-9-OTHER" and #CDTL3.db.profile.tables.items == fl, tostring(foreign.lane))
+	foreign.usedBy, foreign.lane, foreign.readyFrame = mine, 3, 3
+end
 
 ---------------------------------------------------------------- Burst strip
 check("the Burst strip is off by default: no frame", CDTL3_BurstStrip == nil and filterDefaults.burstStripX.hidden() == true)

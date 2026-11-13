@@ -154,7 +154,7 @@ private.RaidList = function()
 	return nil
 end
 
-private.byID, private.byName, private.classOf = {}, {}, {}
+private.byID, private.byName, private.classOf, private.classTry = {}, {}, {}, {}
 
 private.BuildRaid = function()
 	for k in pairs(private.byID) do private.byID[k] = nil end
@@ -179,9 +179,9 @@ private.RaidCast = function(srcGUID, srcName, srcFlags, spellID, spellName)
 	if type(srcFlags) ~= "number" or type(srcName) ~= "string" then
 		return
 	end
-	-- a player in my party or raid (affiliation bits 2 and 4, type bit 0x400)
-	local aff = srcFlags % 16
-	if (aff ~= 2 and aff ~= 4) or math.floor(srcFlags / 1024) % 2 ~= 1 then
+	-- a player in my party or raid: any affiliation bit for party (0x2) or raid (0x4), and the player type bit (0x400)
+	local partyOrRaid = (COMBATLOG_OBJECT_AFFILIATION_PARTY or 0x2) + (COMBATLOG_OBJECT_AFFILIATION_RAID or 0x4)
+	if bit.band(srcFlags, partyOrRaid) == 0 or bit.band(srcFlags, COMBATLOG_OBJECT_TYPE_PLAYER or 0x400) == 0 then
 		return
 	end
 	local e = private.byID[spellID] or private.byName[spellName]
@@ -190,9 +190,18 @@ private.RaidCast = function(srcGUID, srcName, srcFlags, spellID, spellName)
 	end
 	local class = private.classOf[srcGUID]
 	if not class then
-		local ok, c = pcall(function() return select(2, GetPlayerInfoByGUID(srcGUID)) end)
-		class = ok and c or false
-		private.classOf[srcGUID] = class
+		-- a failed lookup is not kept: the next cast of that caster tries again, at most every 10 s
+		local now = GetTime()
+		local last = private.classTry[srcGUID]
+		if not last or now - last >= 10 then
+			private.classTry[srcGUID] = now
+			local ok, c = pcall(function() return select(2, GetPlayerInfoByGUID(srcGUID)) end)
+			if ok and c then
+				class = c
+				private.classOf[srcGUID] = c
+				private.classTry[srcGUID] = nil
+			end
+		end
 	end
 	CDTL3:StartTimer("raidcds", srcGUID .. ":" .. e.id, { name = e.name, icon = e.icon, duration = e.cd,
 		startedAt = GetTime(), owner = srcName, class = class or nil })
@@ -492,10 +501,30 @@ private.Route = function(s, cdType, n)
 	end
 end
 
+-- The pack only changes entries that belong to this character (CDTL3:IsMyEntry). A same-named entry
+-- that only other characters use is left alone and counted in private.skipped.
+private.skipped = 0
+private.MyAuraCustom = function(name)
+	for _, e in pairs(CDTL3.db.profile.tables["customs"]) do
+		if e["name"] == name and e["triggerType"] == "aura" then
+			if CDTL3:IsMyEntry(e) then
+				return e
+			end
+			private.skipped = private.skipped + 1
+			return nil, true
+		end
+	end
+	return nil, false
+end
+
 private.ItemEntry = function(itemID, mark)
 	local list = CDTL3.db.profile.tables["items"]
 	for _, e in pairs(list) do
 		if e["itemID"] == itemID then
+			if not CDTL3:IsMyEntry(e) then
+				private.skipped = private.skipped + 1
+				return nil
+			end
 			e["burst"] = mark
 			return e, false
 		end
@@ -515,12 +544,15 @@ end
 function CDTL3:BuildBurstPack()
 	local n = private.BurstLane()
 	local added, moved = 0, 0
+	private.skipped = 0
 
 	for _, row in ipairs(private.BurstList() or {}) do
 		local name, icon = CDTL3:GetSpellInfo(row[1])
 		if name then
-			local s = CDTL3:GetCustomSpellSettings(name, "aura")
-			if s then
+			local s, foreign = private.MyAuraCustom(name)
+			if foreign then
+				s = nil
+			elseif s then
 				moved = moved + 1
 			else
 				s = CDTL3:ApplyEntryDefaults({ id = row[1], name = name, icon = icon, type = "customs", bCD = row[2] * 1000,
@@ -528,8 +560,10 @@ function CDTL3:BuildBurstPack()
 				table.insert(CDTL3.db.profile.tables["customs"], s)
 				added = added + 1
 			end
-			s["burst"] = row[3] == 1 and "lust" or "sated"
-			private.Route(s, "customs", n)
+			if s then
+				s["burst"] = row[3] == 1 and "lust" or "sated"
+				private.Route(s, "customs", n)
+			end
 		end
 	end
 
@@ -546,15 +580,17 @@ function CDTL3:BuildBurstPack()
 			if proc then
 				local name, icon = CDTL3:GetSpellInfo(proc[1])
 				if name then
-					local c = CDTL3:GetCustomSpellSettings(name, "aura")
-					if not c then
+					local c, foreign = private.MyAuraCustom(name)
+					if not c and not foreign then
 						c = CDTL3:ApplyEntryDefaults({ id = proc[1], name = name, icon = icon, type = "customs", bCD = proc[2] * 1000,
 							setCustomCD = false, triggerType = "aura", link = CDTL3:GetSpellLink(proc[1]) }, "customs")
 						table.insert(CDTL3.db.profile.tables["customs"], c)
 						added = added + 1
 					end
-					c["burst"], c["burstItem"] = "proc", itemID
-					private.Route(c, "customs", n)
+					if c then
+						c["burst"], c["burstItem"] = "proc", itemID
+						private.Route(c, "customs", n)
+					end
 				end
 			end
 		end
@@ -598,6 +634,9 @@ function CDTL3:BuildBurstPack()
 	end
 	private.RebuildSlots()
 	CDTL3:Print(string.format(L["Burst pack: %d added, %d already there, all on lane %d."], added, moved, n))
+	if private.skipped > 0 then
+		CDTL3:Print(string.format(L["Burst pack: %d entries only other characters use were left alone."], private.skipped))
+	end
 	return added, moved
 end
 
@@ -838,7 +877,9 @@ function CDTL3:AddGroupDefaultsArgs(args)
 			end,
 		order = 901,
 		type = "execute",
-		confirm = true,
+		confirm = function(info)
+				return string.format(L["The Burst pack will add timers for lust and Sated (where this client has them), your two trinkets and a potion you carry. It names lane %d Burst (if it still has its default name), sets it to the long-buff scale and moves your existing entries with the same names there. Other characters' entries are not touched. Go ahead?"], private.BurstLane())
+			end,
 		func = function(info)
 				CDTL3:BuildBurstPack()
 			end,

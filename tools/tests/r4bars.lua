@@ -158,6 +158,20 @@ check("a class with no mana pool: the gauge is invisible", gauge:GetAlpha() == 0
 POW[0] = { 62, 100 }
 RunOnUpdate(0.05, 4)
 check("mana pool back: visible again", gauge:GetAlpha() == 1 and gauge.pct:GetText() == "62%")
+-- whether there is a mana pool is remembered while the numbers are hidden: no pool stays invisible, a pool stays visible
+POW[0] = { 0, 0 }
+RunOnUpdate(0.05, 4)
+HIDDEN[0] = true; HIDDENMAX[0] = true
+RunOnUpdate(0.05, 4)
+check("no mana pool seen, then the values hide in combat: the gauge stays invisible", gauge:GetAlpha() == 0)
+HIDDEN[0] = false; HIDDENMAX[0] = false
+POW[0] = { 62, 100 }
+RunOnUpdate(0.05, 4)
+HIDDEN[0] = true; HIDDENMAX[0] = true
+RunOnUpdate(0.05, 4)
+check("a mana pool seen, then hidden: the gauge stays visible", gauge:GetAlpha() == 1)
+HIDDEN[0] = false; HIDDENMAX[0] = false
+RunOnUpdate(0.05, 4)
 l1.gauge.showPercent = false; CDTL3:RefreshLane(1)
 check("Show percent off: no text", gauge.pct:IsShown() == false)
 l1.gauge.showPercent = true; l1.gauge.width, l1.gauge.height, l1.gauge.gap = 30, 80, 12; CDTL3:RefreshLane(1)
@@ -257,6 +271,14 @@ do
 	check("  readable again: the change comes back", colorIs(lane, th.color) and lane.secretRange ~= true)
 	l1.tracking.primaryTracking = "NONE"
 	th.enabled = false
+	RunOnUpdate(0.02, 12)
+	-- no value at all (nil): the bar reads empty and nothing throws (the value is never tested outside a pcall)
+	function UnitStagger() return nil end
+	l1.tracking.primaryTracking = "STAGGER"
+	e0 = #ERRORS
+	RunOnUpdate(0.02, 12)
+	check("  no stagger value: empty bar, no errors", lane.__val == 0 and #ERRORS == e0, tostring(lane.__val) .. " errors " .. (#ERRORS - e0))
+	l1.tracking.primaryTracking = "NONE"
 	RunOnUpdate(0.02, 12)
 	UnitStagger = nil
 	l1.tracking.primaryTracking = "STAGGER"
