@@ -1,9 +1,11 @@
 -- Profiles (feature panel card 39). Real files, real AceDB / AceDBOptions / LibDualSpec:
 --   new characters: the Default profile (as before), the last profile used, or a chosen one
 --   shared entries: off by default and nothing changes; on copies this profile's lists into the
---     account-wide ones, every profile then uses them; off gives the profile a copy; round trips;
---     other profiles join and get them back; Copy From, Reset Profile and imports while shared;
---     a logout saves each table once, and a reload finds everything again
+--     account-wide ones, every profile then uses them; off gives the profile exactly the shared
+--     lists; round trips; other profiles join (only missing names, marks combined, ranks one
+--     entry) and get them back; Copy From and Reset Profile leave the shared lists; imports (All,
+--     Cooldown Data Only, into a new profile) write into them, the string winning by name;
+--     deletions while shared stay deleted; a logout saves each table once, a reload finds it all
 --   profiles by zone: raid, dungeon (party, scenario), PvP (battleground, arena), open world; back
 --     afterwards; a hand-picked profile stays; waits out combat; zone profiles win over spec profiles
 dofile(HARNESS_DIR .. "/wow.lua")
@@ -65,9 +67,16 @@ CDTL3DB = {
 			customs = { C("Pull Timer", { MAIN }) },
 			items = { { id = 60001, name = "Use Hearthstone", itemName = "Hearthstone", itemID = 6948, type = "items", bCD = 900000, usedBy = { MAIN } } },
 		} },
-		Alt = { tables = { spells = { E(5000, "Alt Spell", { ALT }), E(2139, "Counterspell", { ALT }, { lane = 2 }) } } },
-		Seed = { tables = { spells = { E(7000, "Seed Spell", { MAIN }), E(2139, "Counterspell", { MAIN }, { lane = 1, color = { r = 1 } }) } } },
-		Raid = {}, Dungeon = {}, PvP = {}, World = {}, Other = {}, SpecA = {},
+		-- Alt's character ticked Counterspell in My spells (pickedBy)
+		Alt = { tables = { spells = { E(5000, "Alt Spell", { ALT }), E(2139, "Counterspell", { ALT }, { lane = 2, pickedBy = { ALT } }),
+			E(9100, "Doomed Spell", { ALT, ME }) } } },
+		Seed = { lanes = { lane1 = { width = 321 } },
+			tables = { spells = { E(7000, "Seed Spell", { MAIN }), E(2139, "Counterspell", { MAIN }, { lane = 1, color = { r = 1 } }) } } },
+		-- another rank of Blink (Era, TBC, Forever save each rank's own spell ID)
+		Ranks = { tables = { spells = { E(1954, "Blink", { ALT }, { lane = 2, pickedBy = { ALT } }) } } },
+		Late = { tables = { spells = { E(9100, "Doomed Spell", { ALT }), E(9200, "Late Spell", { ALT }) } } },
+		Raid = {}, Dungeon = {}, PvP = {}, World = {}, SpecA = {},
+		Other = { tables = { spells = { E(1953, "Blink", { ME }, { lane = 2, pickedBy = { ME } }) } } },
 	},
 	global = { newCharacterProfile = "LAST", lastProfile = "Main" },
 }
@@ -164,45 +173,123 @@ check("  Alt's own entry joined", byName(T().spells, "Alt Spell") ~= nil)
 local cs = byName(T().spells, "Counterspell")
 check("  Counterspell keeps the shared settings (lane 3), with Alt's character added",
 	cs.lane == 3 and table.concat(cs.usedBy, ",") == MAIN .. "," .. ALT, tostring(cs.lane) .. " " .. table.concat(cs.usedBy, ","))
-check("  Alt's own lists unchanged", names(Own("Alt").spells) == "Alt Spell,Counterspell" and byName(Own("Alt").spells, "Counterspell").lane == 2)
+check("  Alt's My spells tick on Counterspell joins too (pickedBy)", table.concat(cs.pickedBy or {}, ",") == ALT, table.concat(cs.pickedBy or {}, ","))
+check("  Alt's own lists unchanged", names(Own("Alt").spells) == "Alt Spell,Counterspell,Doomed Spell" and byName(Own("Alt").spells, "Counterspell").lane == 2)
+db:SetProfile("Ranks")
+local blinks = 0
+for _, e in pairs(T().spells) do if e.name == "Blink" then blinks = blinks + 1 end end
+local bl = byName(T().spells, "Blink")
+check("a profile with another rank of Blink joins: still one Blink in the shared lists", blinks == 1, tostring(blinks))
+check("  it keeps the shared settings (lane 1, as every lookup by name finds it), both characters and the tick added",
+	bl.lane == 1 and CDTL3:GetSpellSettings("Blink", "spells") == bl and table.concat(bl.usedBy, ",") == MAIN .. "," .. ME .. "," .. ALT
+	and table.concat(bl.pickedBy or {}, ",") == ALT, tostring(bl.lane) .. " " .. table.concat(bl.usedBy, ","))
 db:SetProfile("Main")
 check("back on Main: the same shared lists, Alt's spell listed", T() == Store().lists and byName(T().spells, "Alt Spell") ~= nil)
 
--- Copy From while shared: the shared lists aren't written over
-local sharedCS = DeepCopy(byName(T().spells, "Counterspell"))
+-- Copy From and Reset Profile while shared: the profile's settings only, never the shared lists
+local pa = CDTL3:GetFullOptions().args.profiles.args
+local function confirmText(o) return type(o.confirm) == "function" and o.confirm() or tostring(o.confirmText) end
+check("Copy From and Reset Profile ask first, saying the shared lists stay (sharing is on)",
+	confirmText(pa.copyfrom):find("lists all your characters share stay as they are", 1, true) ~= nil
+	and confirmText(pa.reset):find("lists all your characters share stay as they are", 1, true) ~= nil, confirmText(pa.copyfrom))
+local sharedBefore = DeepCopy(T())
 db:CopyProfile("Seed")
-check("Copy From Seed while shared: the shared Counterspell is unchanged", Same(byName(T().spells, "Counterspell"), sharedCS))
-check("  Seed's new spell joins, every shared entry still there", byName(T().spells, "Seed Spell") ~= nil and names(T().spells) == "Alt Spell,Blink,Counterspell,Seed Spell", names(T().spells))
-check("  Main's own lists now hold Seed's spells and keep what they held", names(Own("Main").spells) == "Blink,Counterspell,Seed Spell"
+check("Copy From Seed while shared: the shared lists are unchanged (Seed's spell doesn't join, Counterspell as it was)",
+	Same(T(), sharedBefore) and T() == Store().lists and byName(T().spells, "Seed Spell") == nil, names(T().spells))
+check("  Seed's settings were copied (lane 1 width 321)", CDTL3.db.profile.lanes.lane1.width == 321, tostring(CDTL3.db.profile.lanes.lane1.width))
+check("  Main's own lists keep what they held", names(Own("Main").spells) == "Blink,Counterspell"
 	and byName(Own("Main").customs, "Pull Timer") ~= nil, names(Own("Main").spells))
 db:ResetProfile()
-check("Reset Profile while shared: every shared entry kept", names(T().spells) == "Alt Spell,Blink,Counterspell,Seed Spell" and T() == Store().lists)
-check("  Main's own lists keep their entries too", names(Own("Main").spells) == "Blink,Counterspell,Seed Spell")
+check("Reset Profile while shared: the shared lists are unchanged, the settings reset", Same(T(), sharedBefore) and T() == Store().lists
+	and CDTL3.db.profile.lanes.lane1.width == 400, names(T().spells))
+check("  Main's own lists keep their entries too", names(Own("Main").spells) == "Blink,Counterspell")
 
--- imports while shared
+-- imports while shared: the string's lists go into the shared ones
+print("[imports while shared " .. FLAVOR .. "]")
 local AS, LD = LibStub("AceSerializer-3.0"), LibStub("LibDeflate")
 LD.CompressDeflate = function(_, s) return s end
 LD.DecompressDeflate = function(_, s) return s end
+local function str(data) return LD:EncodeForPrint(AS:Serialize(data)) end
 local function import(mode, data)
 	CDTL3.db.profile.global.importMode = mode
 	local e = #ERRORS
-	xpcall(function() CDTL3:ImportHandler(LD:EncodeForPrint(AS:Serialize(data))) end, ERRH)
+	xpcall(function() CDTL3:ImportHandler(str(data)) end, ERRH)
 	return #ERRORS - e
 end
+local function preview(mode, data)
+	CDTL3.db.profile.global.importMode = mode
+	return tostring(CDTL3:ImportPreview(str(data)))
+end
+-- the export box's strings carry a "!CDTL3:2!" header and wrap the data (as settings.lua's decode)
+local function decode(s)
+	local body = type(s) == "string" and s:match("^!CDTL3:2!(.*)$")
+	local ok, t = AS:Deserialize(LD:DecompressDeflate(LD:DecodeForPrint(body or s)))
+	if not ok then return nil end
+	if body then return type(t) == "table" and t.data end
+	return t
+end
+local SHARED_CHANGE = "the Filters lists all your characters share change"
 CDTL3.db.profile.global.exportMode = "ALL"
-local full = DeepCopy(CDTL3:GetFullOptions().args.importexport and (function()
-	local ok, s = pcall(CDTL3:GetFullOptions().args.importexport.args.exportbox.get, {})
-	local okd, t = AS:Deserialize(LD:DecodeForPrint(s))
-	return okd and t
-end)())
+local full = DeepCopy(decode(CDTL3:GetFullOptions().args.importexport.args.exportbox.get({})))
 check("an All Settings and Data export while shared carries the shared entries", full and count(full.tables.spells) == 4, full and tostring(count(full.tables.spells)))
-full.tables.spells = { E(8000, "Imported Spell", { ME }) }
+full.tables.spells = { E(8000, "Imported Spell", { "Player-9" }), E(2139, "Counterspell", { "Player-9" }, { lane = 1, setCustomCD = true, customCDTime = 7000 }) }
+full.tables.customs = {}
+full.lanes.lane1.width = 333
+check("  its preview says the lists all your characters share change", preview("ALL", full):find(SHARED_CHANGE, 1, true) ~= nil, preview("ALL", full))
 local errs = import("ALL", full)
 check("All Settings and Data import while shared: no Lua errors, its spell joins, nothing shared lost", errs == 0
-	and names(T().spells) == "Alt Spell,Blink,Counterspell,Imported Spell,Seed Spell" and T() == Store().lists, names(T().spells))
+	and names(T().spells) == "Alt Spell,Blink,Counterspell,Doomed Spell,Imported Spell" and T() == Store().lists, names(T().spells))
+cs = byName(T().spells, "Counterspell")
+check("  the string's Counterspell wins (lane 1, Custom CD Time 7 s), every character and tick kept, this one claimed",
+	cs.lane == 1 and cs.setCustomCD == true and cs.customCDTime == 7000 and table.concat(cs.usedBy, ",") == MAIN .. "," .. ALT .. ",Player-9," .. ME
+	and table.concat(cs.pickedBy or {}, ",") == ALT, tostring(cs.lane) .. " " .. table.concat(cs.usedBy, ","))
+check("  a list the string leaves empty (Customs) stays as it was", names(T().customs) == "Pull Timer,Shared Custom", names(T().customs))
+check("  its settings were imported (lane 1 width 333)", CDTL3.db.profile.lanes.lane1.width == 333)
 local aliased = false
 for k, v in pairs(Own("Main")) do if Store().lists[k] == v then aliased = true end end
 check("  Main's own lists share no table with the shared ones", not aliased)
+
+local cdData = { spells = {}, customs = { C("Friend Custom", { "Player-9" }) } }
+check("Cooldown Data Only while shared: the preview says the lists all your characters share change",
+	preview("CDDATA", cdData):find(SHARED_CHANGE, 1, true) ~= nil, preview("CDDATA", cdData))
+errs = import("CDDATA", cdData)
+check("  imported: its Custom joins, every shared list kept (none wiped)", errs == 0 and T() == Store().lists
+	and names(T().customs) == "Friend Custom,Pull Timer,Shared Custom" and names(T().spells) == "Alt Spell,Blink,Counterspell,Doomed Spell,Imported Spell"
+	and count(T().items) == 1, names(T().customs) .. " | " .. names(T().spells))
+check("  claimed for this character", table.concat(byName(T().customs, "Friend Custom").usedBy, ",") == "Player-9," .. ME)
+db:SetProfile("Alt")
+check("  Alt sees the same lists", names(T().customs) == "Friend Custom,Pull Timer,Shared Custom" and count(T().spells) == 5)
+db:SetProfile("Main")
+
+db.global.importNewProfile = true
+local intoNew = { customs = { C("New Profile Custom", { "Player-9" }) } }
+check("Import into a new profile while shared: the preview says the shared lists change too", preview("CDDATA", intoNew):find(SHARED_CHANGE, 1, true) ~= nil)
+errs = import("CDDATA", intoNew)
+check("  on the new profile, its Custom joins the shared lists, nothing wiped", errs == 0 and db:GetCurrentProfile() == "Imported" and T() == Store().lists
+	and names(T().customs) == "Friend Custom,New Profile Custom,Pull Timer,Shared Custom" and count(T().spells) == 5, names(T().customs))
+db.global.importNewProfile = nil
+db:SetProfile("Main")
+check("  back on Main: the same lists", names(T().customs) == "Friend Custom,New Profile Custom,Pull Timer,Shared Custom")
+
+-- deleting while shared: gone from the shared lists for good
+print("[deleting while shared " .. FLAVOR .. "]")
+local fopts = CDTL3:GetFilterOptions()
+local function delete(t, name, button)
+	CDTL3.currentFilter[t] = name; CDTL3.currentFilterHidden[t] = false
+	button.func({})
+end
+delete("spells", "Doomed Spell", fopts.args.spells.args.clearSettings)
+check("Filters › Clear Individual Settings on Doomed Spell while shared: gone from the shared lists", byName(T().spells, "Doomed Spell") == nil
+	and byName(Store().lists.spells, "Doomed Spell") == nil)
+db:SetProfile("Late")
+check("  a profile holding it joins later: its other spell joins, Doomed Spell stays deleted", byName(T().spells, "Late Spell") ~= nil
+	and byName(T().spells, "Doomed Spell") == nil, names(T().spells))
+db:SetProfile("Main")
+db:CopyProfile("Late")
+check("  Copy From that profile while shared: still deleted", byName(T().spells, "Doomed Spell") == nil and T() == Store().lists)
+delete("customs", "Shared Custom", fopts.args.customs.args.saved.args.clearSettings)
+check("  a Custom deleted while shared (Main's own lists still hold it)", byName(T().customs, "Shared Custom") == nil
+	and byName(Own("Main").customs, "Shared Custom") ~= nil)
 
 ---------------------------------------------------------------- logout and reload
 print("[logout and reload " .. FLAVOR .. "]")
@@ -234,26 +321,39 @@ db = CDTL3.db
 xpcall(function() CDTL3:RefreshConfig() end, ERRH)
 check("reload: still shared, on Main, every shared entry there", PR.Sharing() and db:GetCurrentProfile() == "Main" and T() == Store().lists
 	and Same(Store().lists.spells, storeBefore.spells) and Same(Store().lists.customs, storeBefore.customs))
-check("  Main's own lists came back too (the import's spell and what they held)", names(Own("Main").spells) == "Blink,Counterspell,Imported Spell,Seed Spell",
-	names(Own("Main").spells))
+check("  Main's own lists came back too, as they were", names(Own("Main").spells) == "Blink,Counterspell", names(Own("Main").spells))
+check("  what was deleted while shared is still marked deleted", Store().deleted and Store().deleted.spells and Store().deleted.spells["n:Doomed Spell"] == true)
 
 ---------------------------------------------------------------- switching off with another profile in it
 print("[switching off " .. FLAVOR .. "]")
 n0 = #CHAT
+local SHARED_SPELLS = "Alt Spell,Blink,Counterspell,Imported Spell,Late Spell"
 opt("shareEntries").set({}, false)
-check("off: Main gets every shared entry, its own lists in use", rawget(db.profile, "tables") == Own("Main")
-	and names(T().spells) == "Alt Spell,Blink,Counterspell,Imported Spell,Seed Spell", names(T().spells))
-check("  Counterspell has the shared settings (lane 3)", byName(T().spells, "Counterspell").lane == 3)
+check("off: Main gets exactly the shared lists, its own lists in use", rawget(db.profile, "tables") == Own("Main")
+	and Same(T(), Store().lists) and T().spells ~= Store().lists.spells and names(T().spells) == SHARED_SPELLS, names(T().spells))
+check("  Counterspell has the shared settings (lane 1, from the import)", byName(T().spells, "Counterspell").lane == 1)
+check("  the Custom deleted while shared stays deleted (nothing merged back from Main's old lists)",
+	byName(T().customs, "Shared Custom") == nil and names(T().customs) == "Friend Custom,New Profile Custom,Pull Timer", names(T().customs))
 check("  a chat line says so", chatSince(n0, "Sharing is off"))
 check("  the shared copy is kept, Alt still waiting for its copy", Store() and Store().joined.Alt == true and Store().joined.Main == nil)
 db:SetProfile("Alt")
-check("Alt, used again: it gets every shared entry", names(T().spells) == "Alt Spell,Blink,Counterspell,Imported Spell,Seed Spell"
+check("Alt, used again: it gets exactly the shared lists", Same(T(), Store().lists) and names(T().spells) == SHARED_SPELLS
 	and rawget(db.profile, "tables") == Own("Alt") and Store().joined.Alt == nil, names(T().spells))
-check("  its own Counterspell takes the shared settings (lane 3), both characters kept", byName(T().spells, "Counterspell").lane == 3
-	and #byName(T().spells, "Counterspell").usedBy == 2)
+check("  Doomed Spell, deleted while shared, doesn't come back from Alt's old lists", byName(T().spells, "Doomed Spell") == nil)
+check("  its Counterspell has the shared settings (lane 1), every character and tick kept", byName(T().spells, "Counterspell").lane == 1
+	and #byName(T().spells, "Counterspell").usedBy == 4 and table.concat(byName(T().spells, "Counterspell").pickedBy or {}, ",") == ALT)
 db:SetProfile("Main")
-check("no entry anywhere was lost", byName(Own("Main").customs, "Pull Timer") ~= nil and byName(Own("Main").customs, "Shared Custom") ~= nil
-	and count(Own("Main").items) == 1)
+check("nothing else was lost", byName(Own("Main").customs, "Pull Timer") ~= nil and count(Own("Main").items) == 1)
+
+-- switching on from a profile that never took part: its settings win, the marks are combined
+db:SetProfile("Other")
+opt("shareEntries").set({}, true)
+bl = byName(T().spells, "Blink")
+check("on from Other: its Blink settings win (lane 2), every character and every tick kept", bl.lane == 2
+	and table.concat(bl.usedBy, ",") == MAIN .. "," .. ME .. "," .. ALT and table.concat(bl.pickedBy or {}, ",") == ALT .. "," .. ME,
+	tostring(bl.lane) .. " " .. table.concat(bl.pickedBy or {}, ","))
+opt("shareEntries").set({}, false)
+db:SetProfile("Main")
 
 ---------------------------------------------------------------- profiles by zone
 print("[profiles by zone " .. FLAVOR .. "]")

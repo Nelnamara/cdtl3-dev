@@ -5,19 +5,24 @@
 	SHARED ENTRIES (db.global.shareEntries, off by default)
 	"Share my Custom timers and spell settings with all my characters" keeps one account-wide set of
 	Filters lists (db.global.sharedEntries.lists: spells, items, auras, Customs, with their settings
-	and their characters) that every profile uses while it is on. Nothing is deleted either way:
+	and their characters) that every profile uses while it is on: they are the lists.
+	  - One entry per name, as every lookup finds them (P.EntryKey): spell ranks are one entry.
+	    Per-character marks (usedBy, pickedBy: every field ending in "By") are combined on every
+	    merge, never dropped or overwritten.
 	  - switching it on copies this profile's entries into the shared lists (this profile's settings
-	    win where both hold an entry); another profile's entries join the first time it is used with
-	    sharing on (the shared settings win there, so an old copy never undoes a newer change).
-	    Each profile keeps its own lists as they were, unused while sharing is on.
-	  - switching it off gives this profile every shared entry (the shared settings win); each other
-	    profile that took part gets them the next time it is used.
+	    win where both hold an entry); another profile joins the first time it is used with sharing
+	    on and adds only the entries the shared lists don't have (the shared settings win, and an
+	    entry deleted while sharing stays deleted: sharedEntries.deleted).
+	  - an import (All, Cooldown Data Only, into a new profile) writes the lists it carries into the
+	    shared ones (P.ImportLists, from Helpers.lua's ApplyShare): its entry wins for each name it
+	    has, the others stay. Copy From and Reset Profile change the profile's settings only.
+	  - switching it off gives this profile exactly the shared lists; each other profile that took
+	    part gets them the next time it is used.
 	While sharing is on, profile.tables points at the shared lists (all code keeps reading
 	CDTL3.db.profile.tables) and is pointed back at the profile's own lists before AceDB shuts the
 	profile or the database down (OnProfileShutdown, OnDatabaseShutdown), so the saved file never
 	holds the shared lists twice. RefreshConfig (wrapped below) points it again after a profile
-	switch, Copy From, Reset Profile or an import; lists that replaced the profile's own while shared
-	add their entries to the shared ones (shared settings win) and to the profile's own.
+	switch, Copy From, Reset Profile or an import.
 
 	NEW CHARACTERS (db.global.newCharacterProfile: nil = the Default profile, as before; LAST; CHOSEN)
 	A character with no profile yet is put on the last profile used (db.global.lastProfile: kept at
@@ -75,28 +80,35 @@ end
 
 ------------------------------------------------------------------------ SHARED ENTRIES
 
--- What makes two saved entries the same one: Customs by name and trigger (as
--- GetCustomSpellSettings finds them), items by item, everything else by spell ID, else by name
+-- What makes two saved entries the same one, as every lookup finds them: Customs by name and
+-- trigger (GetCustomSpellSettings), items by item name, everything else by name (GetSpellSettings),
+-- so the ranks of one spell (Era, TBC, Forever) are one entry
 P.EntryKey = function(list, e)
 	if list == "customs" then
 		if e["name"] ~= nil then
 			return "c:"..tostring(e["name"]).."|"..tostring(e["triggerType"])
 		end
-	elseif list == "items" and e["itemID"] ~= nil then
-		return "i:"..tostring(e["itemID"])
+	elseif list == "items" and e["itemName"] ~= nil then
+		return "i:"..tostring(e["itemName"])
 	end
 
-	if e["id"] ~= nil then
-		return "s:"..tostring(e["id"])
-	elseif e["name"] ~= nil then
+	if e["name"] ~= nil then
 		return "n:"..tostring(e["name"])
+	elseif e["id"] ~= nil then
+		return "s:"..tostring(e["id"])
 	end
+end
+
+-- a per-character mark: a list of the characters it holds (usedBy, pickedBy)
+local function IsMark(k)
+	return type(k) == "string" and k:sub(-2) == "By"
 end
 
 -- every character on either list, each once, in order
 local function Owners(a, b)
 	local out, seen = {}, {}
-	for _, list in ipairs({ a, b }) do
+	for i = 1, 2 do
+		local list = (i == 1) and a or b
 		if type(list) == "table" then
 			for _, guid in ipairs(list) do
 				if not seen[guid] then
@@ -110,11 +122,11 @@ local function Owners(a, b)
 	return out
 end
 
--- Copy source's entries into target, list by list, never removing anything. An entry target
--- lacks is added (a copy). One both hold gets source's characters added and, when sourceWins,
--- source's settings too (fields only target has are kept); otherwise target's entry stays as it
--- is apart from the characters. Returns the number of entries added.
-P.Merge = function(target, source, sourceWins)
+-- Copy source's entries into target, list by list, never removing an entry. An entry target
+-- lacks is added (a copy), unless skip[list][key] (deleted while sharing). One both hold gets
+-- the marks of both and, when sourceWins, source's settings in place of its own; otherwise
+-- target's settings stay. Returns the number of entries added.
+P.Merge = function(target, source, sourceWins, skip)
 	if type(target) ~= "table" or type(source) ~= "table" or target == source then
 		return 0
 	end
@@ -144,23 +156,35 @@ P.Merge = function(target, source, sourceWins)
 						local key = P.EntryKey(list, e)
 						local have = key and index[key]
 						if not have then
-							local copy = DeepCopy(e)
-							table.insert(into, copy)
-							if key then
-								index[key] = copy
+							if not (key and type(skip) == "table" and type(skip[list]) == "table" and skip[list][key]) then
+								local copy = DeepCopy(e)
+								table.insert(into, copy)
+								if key then
+									index[key] = copy
+								end
+								added = added + 1
 							end
-							added = added + 1
 						elseif have ~= e then
-							local owners = Owners(have["usedBy"], e["usedBy"])
-							if sourceWins then
-								for k, v in pairs(e) do
-									if k ~= "usedBy" then
-										have[k] = DeepCopy(v)
+							local marks = {}
+							for _, side in ipairs({ have, e }) do
+								for k, v in pairs(side) do
+									if IsMark(k) and type(v) == "table" then
+										marks[k] = Owners(have[k], e[k])
 									end
 								end
 							end
-							if have["usedBy"] ~= nil or e["usedBy"] ~= nil then
-								have["usedBy"] = owners
+							if sourceWins then
+								for k in pairs(have) do
+									if e[k] == nil then
+										have[k] = nil
+									end
+								end
+								for k, v in pairs(e) do
+									have[k] = DeepCopy(v)
+								end
+							end
+							for k, v in pairs(marks) do
+								have[k] = v
 							end
 						end
 					end
@@ -207,8 +231,61 @@ P.Store = function(create)
 	if type(store["joined"]) ~= "table" then
 		store["joined"] = {}
 	end
+	if type(store["deleted"]) ~= "table" then
+		store["deleted"] = {}
+	end
 
 	return store
+end
+
+-- Sharing off: a profile that took part gets exactly the shared lists (copies), so what was
+-- deleted while sharing stays deleted
+P.TakeShared = function(own, lists)
+	for list, entries in pairs(lists) do
+		own[list] = DeepCopy(entries)
+	end
+end
+
+-- The shared lists are in use (attached to the profile in use)
+local function Attached()
+	local a, store = P.attached, P.Sharing() and P.Store(false)
+	return store and a and a.lists == store["lists"] and a.profile == CDTL3.db:GetCurrentProfile() and a or nil
+end
+
+-- An import while sharing (Helpers.lua ApplyShare): before = profile.tables before the import,
+-- lists = the Filters lists the string carries. Each joins the shared one, the string's entry
+-- winning for every name it has (marks combined); the others stay; an empty list changes nothing.
+-- profile.tables points at the shared lists again. False when not sharing (the import goes on
+-- as before).
+P.ImportLists = function(before, lists)
+	local a = Attached()
+	if not a or before ~= a.lists then
+		return false
+	end
+
+	P.Merge(a.lists, lists, true)
+	rawset(CDTL3.db.profile, "tables", a.lists)
+	return true
+end
+
+-- An entry deleted while sharing (Filters: Delete, Clear Settings, Clear Quest Items) stays out
+-- of the shared lists: a profile joining later doesn't bring it back
+P.Forget = function(list, e)
+	local a = Attached()
+	local key = a and type(e) == "table" and P.EntryKey(list, e)
+	if not key then
+		return
+	end
+
+	local deleted = P.Store(false)["deleted"]
+	if type(deleted[list]) ~= "table" then
+		deleted[list] = {}
+	end
+	deleted[list][key] = true
+end
+
+function CDTL3:ForgetSharedEntry(list, e)
+	P.Forget(list, e)
 end
 
 -- every list the profile defaults name (spells ... flights) exists in the shared lists
@@ -225,7 +302,7 @@ end
 P.attached = nil
 
 -- Sharing on: point profile.tables at the shared lists. Sharing off: give a profile that took part
--- the shared entries back. Runs at login and at the top of every RefreshConfig.
+-- the shared lists. Runs at login and at the top of every RefreshConfig.
 P.Attach = function()
 	local db = CDTL3.db
 	if not db then
@@ -244,7 +321,7 @@ P.Attach = function()
 				cur = {}
 				rawset(profile, "tables", cur)
 			end
-			P.Merge(cur, store["lists"], true)
+			P.TakeShared(cur, store["lists"])
 			store["joined"][name] = nil
 		end
 		return
@@ -262,15 +339,13 @@ P.Attach = function()
 
 	local a = P.attached
 	if a and a.profile == name and a.lists == lists then
-		-- this profile's own lists were replaced while shared (Copy From, Reset Profile, an import):
-		-- their entries join the shared ones, and the profile's own keep what they held
-		P.Merge(lists, cur, false)
-		if a.own ~= cur then
-			P.Merge(cur, a.own, false)
-		end
+		-- this profile's lists were replaced while shared (Copy From, Reset Profile): they change
+		-- its settings only; the shared lists and the profile's own stay as they were
+		cur = a.own
 	elseif not store["joined"][name] then
-		-- the first use of this profile since sharing began: its entries join
-		P.Merge(lists, cur, false)
+		-- the first use of this profile since sharing began: the entries the shared lists don't
+		-- have join (not ones deleted while sharing); the others keep the shared settings
+		P.Merge(lists, cur, false, store["deleted"])
 	end
 	store["joined"][name] = true
 
@@ -293,7 +368,7 @@ P.Detach = function()
 	end
 end
 
--- The option: switch sharing on or off (both directions copy, nothing is deleted)
+-- The option: switch sharing on or off
 P.SetSharing = function(on)
 	local db = CDTL3.db
 	if on == P.Sharing() then
@@ -313,7 +388,7 @@ P.SetSharing = function(on)
 		store["joined"][name] = true
 		db.global["shareEntries"] = true
 		CDTL3:RefreshConfig()
-		CDTL3:Print("Your Custom timers and spell settings are now shared by all your characters. Each profile's own lists are kept, unused, until you switch sharing off.")
+		CDTL3:Print("Your Custom timers and spell settings are now shared by all your characters: every profile uses the same Filters lists until you switch sharing off.")
 	else
 		P.Detach()
 		db.global["shareEntries"] = false
@@ -324,7 +399,7 @@ P.SetSharing = function(on)
 				own = {}
 				rawset(db.profile, "tables", own)
 			end
-			P.Merge(own, store["lists"], true)
+			P.TakeShared(own, store["lists"])
 			store["joined"][name] = nil
 		end
 		CDTL3:RefreshConfig()
@@ -596,7 +671,7 @@ P.Options = function()
 		},
 		shareEntries = {
 			name = "Share my Custom timers and spell settings with all my characters",
-			desc = "One Filters list (spells, items, auras, Custom timers and their settings) for every character on this account; switching it off gives this profile a copy, and nothing is deleted either way",
+			desc = "One Filters list (spells, items, auras, Custom timers and their settings) for every character on this account; switching it off gives this profile a copy of it",
 			type = "toggle",
 			width = "full",
 			order = 201,

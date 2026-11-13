@@ -1616,6 +1616,8 @@ function CDTL3:GetFilterOptions()
 								for _, v in pairs(list) do
 									if private.KeepAfterClear(v) then
 										table.insert(kept, v)
+									else
+										CDTL3:ForgetSharedEntry(string.lower(default), v)
 									end
 								end
 								for k in pairs(list) do
@@ -1652,6 +1654,8 @@ function CDTL3:GetFilterOptions()
 									
 									if classID ~= 12 or private.KeepAfterClear(v) then
 										table.insert(cleanTable, v)
+									else
+										CDTL3:ForgetSharedEntry("items", v)
 									end
 								end
 								
@@ -3649,6 +3653,7 @@ private.GetFilterSet = function(t, o)
 							local _, index = private.SelectedEntry(t)
 
 							if index then
+								CDTL3:ForgetSharedEntry(t, CDTL3.db.profile.tables[t][index])
 								table.remove(CDTL3.db.profile.tables[t], index)
 
 								-- back to this tab's own placeholder: the custom editor for
@@ -7390,13 +7395,20 @@ private.ConfirmProfileWipes = function(profile)
 		reset = "Reset this profile to the default settings?\n\nEvery character on this profile loses its Filters lists: saved spells, items and auras, Customs and Custom CD Times.",
 		copyfrom = "Copy the chosen profile over this one?\n\nEvery character on this profile loses its Filters lists (saved spells, items and auras, Customs and Custom CD Times) and gets the chosen profile's instead.",
 	}
+	-- while sharing (Profiles.lua) the lists every character uses aren't touched
+	local sharedTexts = {
+		reset = "Reset this profile to the default settings?\n\nSharing is on: the Filters lists all your characters share stay as they are. Only this profile's settings are reset.",
+		copyfrom = "Copy the chosen profile's settings over this one?\n\nSharing is on: the Filters lists all your characters share stay as they are. Only this profile's settings change.",
+	}
 	for key, text in pairs(texts) do
 		if args[key] then
 			local copy = {}
 			for k, v in pairs(args[key]) do
 				copy[k] = v
 			end
-			copy.confirm = true
+			copy.confirm = function()
+					return CDTL3:SharingEntries() and sharedTexts[key] or text
+				end
 			copy.confirmText = text
 			args[key] = copy
 		end
