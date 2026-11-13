@@ -822,6 +822,7 @@ local defaults = {
 				defaultLane = 1,
 				defaultReady = 1,
 				defaultBar = 1,
+				hideUnknown = false,	-- Filters > Spells > Hide spells I don't know
 			},
 			
 			items = {
@@ -1824,6 +1825,14 @@ function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer,
 				CDTL3:AddUsedBy(auraType, s["id"], CDTL3.player["guid"])
 			end
 
+			-- a buff pulled from the Cooldown Manager before it was ever seen learns its length now
+			if s["cdmPulled"] and (s["bCD"] or 0) <= 0 then
+				local seen = CDTL3:AuraExists("player", spellName)
+				if seen and (seen["bCD"] or 0) > 0 then
+					s["bCD"] = seen["bCD"]
+				end
+			end
+
 			if not s["ignored"] then
 				local ef = CDTL3:GetExistingCooldown(s["name"], auraType)
 				if ef then
@@ -2350,7 +2359,8 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 					CDTL3.spellCastTimes[s["id"]] = CDTL3.spellCastTimes[spellID]
 				end
 
-				if not s["ignored"] then
+				-- the Ignored box, or a Filters > Spells rule (Show only the ticked spells, Only for this spec)
+				if not CDTL3:IsIgnored(s, "spells") then
 					local ef = CDTL3:GetExistingCooldown(s["name"], "spells")
 					if ef then
 						CDTL3:SendToLane(ef)
@@ -2797,6 +2807,21 @@ function CDTL3:RUNE_UPDATED()
 	end)
 end
 
+-- The spellbook changed (talents, a new spell, a spec switch): Filters > Spells' Hide spells I don't
+-- know and Only for this spec follow it. Bursts of the event are folded into one pass.
+function CDTL3:SPELLS_CHANGED()
+	CDTL3:ForgetSpellbook()
+	if CDTL3.spellsChangedPending then
+		return
+	end
+	CDTL3.spellsChangedPending = true
+	C_Timer.After(1, function()
+		CDTL3.spellsChangedPending = nil
+		CDTL3:ForgetSpellbook()
+		CDTL3:ApplyEntryRules()
+	end)
+end
+
 function CDTL3:PLAYER_ENTERING_WORLD()	
 	local turnOn = CDTL3:DetermineOnOff()
 	
@@ -2903,6 +2928,7 @@ function CDTL3:TurnOn()
 		CDTL3:RegisterUnitEvents("UNIT_POWER_UPDATE", "player")
 
 		CDTL3:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
+		CDTL3:RegisterEvent("SPELLS_CHANGED")
 		
 		if CDTL3.retailAPI then
 			CDTL3:RegisterUnitEvents("UNIT_AURA", "player")
@@ -2932,6 +2958,7 @@ function CDTL3:TurnOff()
 		CDTL3.unitEventFrame:UnregisterEvent("UNIT_POWER_UPDATE")
 
 		CDTL3:UnregisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
+		CDTL3:UnregisterEvent("SPELLS_CHANGED")
 		
 		if CDTL3.retailAPI then
 			CDTL3.unitEventFrame:UnregisterEvent("UNIT_AURA")

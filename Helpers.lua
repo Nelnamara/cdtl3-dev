@@ -100,14 +100,19 @@ function CDTL3:NewItemEntry(spellName, spellID, itemId, bCD)
 end
 
 -- Save a new entry and start its icon unless it starts ignored or its type is switched off.
+-- noIcon saves it without starting one (an entry made from the options before it's used).
 -- Returns the new cooldown frame, if one was made.
-function CDTL3:SaveNewEntry(s, type)
+function CDTL3:SaveNewEntry(s, type, noIcon)
 	-- the combat log may already have told us the school (it can arrive before the cast event)
 	s["school"] = s["school"] or (CDTL3.spellSchools and CDTL3.spellSchools[s["name"]])
 
 	table.insert(CDTL3.db.profile.tables[type], s)
 
-	if not s["ignored"] and CDTL3.db.profile.global[type]["enabled"] then
+	if s["ignored"] then
+		CDTL3:NoteAutoIgnore(s, type)
+	end
+
+	if not noIcon and not CDTL3:IsIgnored(s, type) and CDTL3.db.profile.global[type]["enabled"] then
 		return CDTL3:CreateCooldown(CDTL3:GetUID(), type, s)
 	end
 end
@@ -308,7 +313,7 @@ function CDTL3:CheckEdgeCases(spellName)
 	if spellName == "Vanish" then
 		local s = CDTL3:GetSpellSettings("Stealth", "spells")
 		if s then
-			if not s["ignored"] then
+			if not CDTL3:IsIgnored(s, "spells") then
 				local ef = CDTL3:GetExistingCooldown("Stealth", "spells")
 				if ef then
 					CDTL3:SendToLane(ef)
@@ -346,7 +351,7 @@ function CDTL3:CheckEdgeCases(spellName)
 	if spellName == "Shadowmeld" then
 		local s = CDTL3:GetSpellSettings("Shadowmeld", "spells")
 		if s then
-			if not s["ignored"] then
+			if not CDTL3:IsIgnored(s, "spells") then
 				local ef = CDTL3:GetExistingCooldown("Shadowmeld", "spells")
 				if ef then
 					CDTL3:SendToLane(ef)
@@ -407,7 +412,7 @@ function CDTL3:CheckEdgeCases(spellName)
 				if spellName ~= secondarySpellName then
 					local s = CDTL3:GetSpellSettings(secondarySpellName, "spells")
 					if s then
-						if not s["ignored"] then
+						if not CDTL3:IsIgnored(s, "spells") then
 							local ef = CDTL3:GetExistingCooldown(secondarySpellName, "spells")
 							if ef then
 								if ef.data["currentCD"] < lockoutTime then
@@ -469,7 +474,7 @@ function CDTL3:CheckEdgeCases(spellName)
 			
 			local s = CDTL3:GetSpellSettings(secondarySpellName, "spells")
 			if s then
-				if not s["ignored"] then
+				if not CDTL3:IsIgnored(s, "spells") then
 					local ef = CDTL3:GetExistingCooldown(secondarySpellName, "spells")
 					if ef then
 						if ef.data["currentCD"] < lockoutTime then
@@ -1278,6 +1283,10 @@ function CDTL3:OnTalentChanges()
 			end
 		end
 	end
+
+	-- Filters > Spells rules (Hide spells I don't know, Only for this spec): the spellbook changed
+	CDTL3:ForgetSpellbook()
+	CDTL3:ApplyEntryRules()
 end
 
 function CDTL3:RecycleOffensiveCD()
@@ -1363,6 +1372,630 @@ function CDTL3:ResetStaleFilters()
 	end
 end
 
+-- FILTERS: WHY AN ENTRY ISN'T SHOWING, MY SPELLS, SPEC RULES, THE COOLDOWN MANAGER'S BUFFS
+-- Everything new here is off until the player turns it on: no rule hides anything by default.
+
+-- type names as the Filters tabs and the Defaults list show them
+private.filterTabNames = { spells = "Spells", items = "Items", buffs = "Buffs", debuffs = "Debuffs",
+	offensives = "Offensives", petspells = "Petspells", runes = "Runes", customs = "Custom" }
+private.filterTypeNames = { spells = "Spells", items = "Items", buffs = "Buffs", debuffs = "Debuffs",
+	offensives = "Offensives", petspells = "Pet Spells", runes = "Runes", customs = "Customs" }
+private.filterAuraTypes = { buffs = true, debuffs = true, offensives = true }
+private.filterLaneKeys = { "lane1", "lane2", "lane3" }
+
+private.HasValue = function(list, value)
+	if type(list) ~= "table" then
+		return false
+	end
+	for _, v in pairs(list) do
+		if v == value then
+			return true
+		end
+	end
+	return false
+end
+
+private.RemoveValue = function(list, value)
+	for i = #list, 1, -1 do
+		if list[i] == value then
+			table.remove(list, i)
+		end
+	end
+end
+
+-- 90 -> "90", 1.5 -> "1.5"
+private.Seconds = function(n)
+	if n == math.floor(n) then
+		return string.format("%d", n)
+	end
+	return string.format("%.1f", n)
+end
+
+-- Why the ignore rule (IgnoredByDefault) ignores this entry: "its cooldown is 3 s or less", "its
+-- 180 s cooldown is over the ... Ignore Threshold (120 s)", or nil when the rule wouldn't (then it
+-- was ignored by hand). Saved lengths are plain numbers; callers still run this in a pcall.
+private.AutoIgnoreText = function(s, kind)
+	local word = private.filterAuraTypes[kind] and "duration" or "cooldown"
+	local seconds = (tonumber(s["bCD"]) or 0) / 1000
+	if seconds <= 3 then
+		return "its " .. word .. " is 3 s or less"
+	end
+
+	local threshold = CDTL3.db.profile.global[kind] and CDTL3.db.profile.global[kind]["ignoreThreshold"]
+	if threshold and seconds > threshold then
+		return "its " .. private.Seconds(seconds) .. " s " .. word .. " is over the " .. private.filterTypeNames[kind]
+			.. " Ignore Threshold (" .. private.Seconds(threshold) .. " s)"
+	end
+end
+
+-- The first automatic ignore ever (on this account) says so in chat, once
+function CDTL3:NoteAutoIgnore(s, kind)
+	local g = CDTL3.db and CDTL3.db.global
+	if not g or g["autoIgnoreNoted"] or type(s) ~= "table" or not private.filterTabNames[kind] then
+		return
+	end
+
+	local ok, why = pcall(private.AutoIgnoreText, s, kind)
+	if not ok or not why then
+		return
+	end
+
+	g["autoIgnoreNoted"] = true
+	local name = tostring((kind == "items" and s["itemName"]) or s["name"] or "?")
+	CDTL3:Print(name .. " won't show: CDTL3 ignored it because " .. why .. ". To show it, type /cdtl3 filters, pick it on the "
+		.. private.filterTabNames[kind] .. " tab and click Show anyway. (This note shows once.)")
+end
+
+-- Ignored as far as showing goes: the entry's own Ignored box, or a Filters > Spells rule
+function CDTL3:IsIgnored(s, kind)
+	if s and s["ignored"] then
+		return true
+	end
+
+	return CDTL3:RuleHides(s, kind) ~= nil
+end
+
+-- Which Filters > Spells rule hides this spell, if any: "unticked" (Show only the ticked spells),
+-- "spec" (Only for this spec) or "unknown" (Hide spells I don't know). Spells only.
+function CDTL3:RuleHides(s, kind)
+	if kind ~= "spells" or not s then
+		return nil
+	end
+
+	if CDTL3:OnlyTickedSpells() and not CDTL3:IsTicked(s) then
+		return "unticked"
+	end
+
+	if CDTL3:IsSpecLimited(s) then
+		local spec = CDTL3:CurrentSpec()
+		if spec and not private.HasValue(s["onlySpecs"], spec) then
+			return "spec"
+		end
+	end
+
+	local g = CDTL3.db.profile.global["spells"]
+	if g and g["hideUnknown"] and not CDTL3:KnowsSpell(s) then
+		return "unknown"
+	end
+
+	return nil
+end
+
+-- MY SPELLS (Filters > Spells): this character's ticks live on the entry (pickedBy, like usedBy);
+-- Show only the ticked spells is per character too
+function CDTL3:OnlyTickedSpells()
+	local c = CDTL3.db and CDTL3.db.char
+	return (c and c["onlyTickedSpells"]) and true or false
+end
+
+function CDTL3:SetOnlyTickedSpells(on)
+	CDTL3.db.char["onlyTickedSpells"] = on and true or nil
+	CDTL3:ApplyEntryRules()
+end
+
+function CDTL3:IsTicked(s)
+	local guid = CDTL3.player["guid"]
+	return guid ~= nil and private.HasValue(s["pickedBy"], guid)
+end
+
+-- The player's spellbook (this spec's tabs): every spell name, and the spells with a cooldown for
+-- My spells (a later slot of the same name, a higher rank, wins). Cached until it changes.
+private.Book = function()
+	if private.book then
+		return private.book
+	end
+
+	local book = { names = {}, byName = {}, list = {} }
+	local function add(name, id, passive)
+		if type(name) ~= "string" or name == "" or type(id) ~= "number" then
+			return
+		end
+		book.names[name] = true
+		if passive then
+			return
+		end
+
+		local okCD, hasCD = pcall(function()
+			local ms = GetSpellBaseCooldown and GetSpellBaseCooldown(id)
+			if ms and ms > 0 then
+				return true
+			end
+			local _, maxCharges, _, chargeCD = CDTL3:GetSpellCharges(id)
+			return (maxCharges and maxCharges > 1 and chargeCD and chargeCD > 0) and true or false
+		end)
+		if okCD and hasCD then
+			local _, icon = CDTL3:GetSpellInfo(id)
+			local e = book.byName[name]
+			if not e then
+				e = {}
+				book.byName[name] = e
+				table.insert(book.list, e)
+			end
+			e.id, e.name, e.icon = id, name, icon
+		end
+	end
+
+	pcall(function()
+		if CDTL3.retailAPI then
+			local bank = Enum.SpellBookSpellBank.Player
+			for i = 1, C_SpellBook.GetNumSpellBookSkillLines() do
+				local line = C_SpellBook.GetSpellBookSkillLineInfo(i)
+				if line and not line.shouldHide and not (line.offSpecID and line.offSpecID ~= 0) then
+					for j = line.itemIndexOffset + 1, line.itemIndexOffset + line.numSpellBookItems do
+						local itemType, id = C_SpellBook.GetSpellBookItemType(j, bank)
+						if itemType == Enum.SpellBookItemType.Spell then
+							local passive = C_SpellBook.IsSpellBookItemPassive and C_SpellBook.IsSpellBookItemPassive(j, bank)
+							add(C_SpellBook.GetSpellBookItemName(j, bank), id, passive)
+						end
+					end
+				end
+			end
+		else
+			for i = 1, GetNumSpellTabs() do
+				local _, _, offset, numSlots, _, offSpecID = GetSpellTabInfo(i)
+				if not (offSpecID and offSpecID ~= 0) then
+					for j = offset + 1, offset + numSlots do
+						local name, _, id = GetSpellBookItemName(j, BOOKTYPE_SPELL)
+						local kind = GetSpellBookItemInfo and GetSpellBookItemInfo(j, BOOKTYPE_SPELL)
+						if kind == nil or kind == "SPELL" then
+							add(name, id, IsPassiveSpell and IsPassiveSpell(j, BOOKTYPE_SPELL))
+						end
+					end
+				end
+			end
+		end
+	end)
+
+	table.sort(book.list, function(a, b) return a.name < b.name end)
+	private.book = book
+	return book
+end
+
+function CDTL3:ForgetSpellbook()
+	private.book = nil
+end
+
+-- Does this character know the spell now? By its ID (or an override of it), else by name, since the
+-- saved entry can hold another rank's ID
+function CDTL3:KnowsSpell(s)
+	local id = s["id"]
+	if type(id) == "number" then
+		local ok, known = pcall(function()
+			return CDTL3.Compat.IsSpellKnown(id) or CDTL3.Compat.IsSpellKnownOrOverridesKnown(id)
+		end)
+		if ok and known then
+			return true
+		end
+	end
+
+	return s["name"] ~= nil and private.Book().names[s["name"]] == true
+end
+
+-- My spells' list: the spellbook's spells with a cooldown, plus any ticked one it no longer lists.
+-- { key = name, label = icon and name }, sorted by name
+function CDTL3:MySpellsList()
+	local list, seen = {}, {}
+	local function icon(i)
+		return "|T" .. tostring(i or 134400) .. ":16:16:0:0:64:64:5:59:5:59|t "
+	end
+
+	for _, spell in ipairs(private.Book().list) do
+		seen[spell.name] = true
+		table.insert(list, { key = spell.name, label = icon(spell.icon) .. spell.name })
+	end
+
+	for _, s in pairs(CDTL3.db.profile.tables["spells"]) do
+		if type(s["name"]) == "string" and not seen[s["name"]] and CDTL3:IsTicked(s) then
+			seen[s["name"]] = true
+			table.insert(list, { key = s["name"], label = icon(s["icon"]) .. s["name"] .. " |cff808080(not in your spellbook)|r" })
+		end
+	end
+
+	table.sort(list, function(a, b) return a.key < b.key end)
+	return list
+end
+
+function CDTL3:IsSpellTicked(name)
+	local s = CDTL3:GetSpellSettings(name, "spells")
+	return s ~= nil and CDTL3:IsTicked(s)
+end
+
+-- Tick (or untick) a spell in My spells. Ticking makes its entry before it's ever cast (or claims
+-- the saved one for this character) and un-ignores it; unticking keeps the entry and its settings.
+function CDTL3:TickSpell(name, on)
+	if not CDTL3.player["guid"] then
+		CDTL3:GetCharacterData()
+	end
+	local guid = CDTL3.player["guid"]
+	if not guid or type(name) ~= "string" then
+		return
+	end
+
+	local s = CDTL3:GetSpellSettings(name, "spells")
+	if on then
+		if not s then
+			local spell = private.Book().byName[name]
+			if not spell then
+				return
+			end
+			s = CDTL3:NewSpellEntry(spell.id, name, spell.icon, "spells")
+			s["ignored"] = false
+			s["pickedBy"] = { guid }
+			CDTL3:SaveNewEntry(s, "spells", true)
+		else
+			if not private.IsMine(s) then
+				if type(s["usedBy"]) ~= "table" then
+					s["usedBy"] = {}
+				end
+				table.insert(s["usedBy"], guid)
+			end
+			if type(s["pickedBy"]) ~= "table" then
+				s["pickedBy"] = {}
+			end
+			if not private.HasValue(s["pickedBy"], guid) then
+				table.insert(s["pickedBy"], guid)
+			end
+			if s["ignored"] then
+				s["ignored"] = false
+				local ef = CDTL3:GetExistingCooldown(s["name"], "spells")
+				if ef then
+					ef.data["ignored"] = false
+					CDTL3:RefreshIcon(ef)
+				end
+			end
+		end
+	elseif s and type(s["pickedBy"]) == "table" then
+		private.RemoveValue(s["pickedBy"], guid)
+		if not next(s["pickedBy"]) then
+			s["pickedBy"] = nil
+		end
+	end
+
+	CDTL3:ApplyEntryRules()
+end
+
+-- SPECS (MoP Classic and Retail; not Forever, Era or TBC)
+function CDTL3:HasSpecs()
+	if CDTL3.tocversion < 50000 then
+		return false
+	end
+
+	local SI = C_SpecializationInfo
+	return ((SI and SI.GetSpecialization) or GetSpecialization) ~= nil
+end
+
+-- The spec you're in: its ID and name, or nil (no specs here, or none chosen yet)
+function CDTL3:CurrentSpec()
+	if not CDTL3:HasSpecs() then
+		return nil
+	end
+
+	local ok, id, name = pcall(function()
+		local SI = C_SpecializationInfo
+		local getSpec = (SI and SI.GetSpecialization) or GetSpecialization
+		local getInfo = (SI and SI.GetSpecializationInfo) or GetSpecializationInfo
+		local index = getSpec()
+		if type(index) ~= "number" or index < 1 or not getInfo then
+			return nil
+		end
+		local specID, specName = getInfo(index)
+		if type(specID) == "number" and specID > 0 then
+			return specID, specName
+		end
+	end)
+	if ok then
+		return id, name
+	end
+end
+
+private.SpecName = function(specID)
+	local ok, name = pcall(function()
+		local byID = (C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfoByID) or GetSpecializationInfoByID
+		if byID then
+			local _, n = byID(specID)
+			return n
+		end
+	end)
+	if ok and type(name) == "string" and name ~= "" then
+		return name
+	end
+	return "spec " .. tostring(specID)
+end
+
+-- "Arcane, Fire" for an entry's onlySpecs
+function CDTL3:SpecNames(specs)
+	local names = {}
+	for _, id in pairs(type(specs) == "table" and specs or {}) do
+		table.insert(names, private.SpecName(id))
+	end
+	table.sort(names)
+	return table.concat(names, ", ")
+end
+
+function CDTL3:IsSpecLimited(s)
+	return type(s) == "table" and type(s["onlySpecs"]) == "table" and next(s["onlySpecs"]) ~= nil
+end
+
+-- Only for this spec: on adds the spec you're in to the specs the spell shows in; off shows it in
+-- every spec again
+function CDTL3:SetOnlyThisSpec(s, on)
+	if not s then
+		return
+	end
+
+	if on then
+		local spec = CDTL3:CurrentSpec()
+		if not spec then
+			return
+		end
+		if type(s["onlySpecs"]) ~= "table" then
+			s["onlySpecs"] = {}
+		end
+		if not private.HasValue(s["onlySpecs"], spec) then
+			table.insert(s["onlySpecs"], spec)
+		end
+	else
+		s["onlySpecs"] = nil
+	end
+
+	CDTL3:ApplyEntryRules()
+end
+
+function CDTL3:SetHideUnknownSpells(on)
+	CDTL3.db.profile.global["spells"]["hideUnknown"] = on and true or false
+	CDTL3:ApplyEntryRules()
+end
+
+-- Live icons follow the Filters > Spells rules at once: a spell a rule now hides leaves its lane,
+-- bar frame and Ready frame; when one comes back, the login scan puts a running cooldown back.
+function CDTL3:ApplyEntryRules()
+	local rescan = false
+	for _, f in pairs(CDTL3.cooldowns) do
+		local d = f.data
+		if d and d["type"] == "spells" and f.icon and f.bar then
+			local s = CDTL3:GetSpellSettings(d["name"], "spells")
+			if s and CDTL3:RuleHides(s, "spells") then
+				f.ruleHeld = true
+				CDTL3:SendToHolding(f)
+				CDTL3:SendToBarHolding(f)
+			elseif f.ruleHeld then
+				f.ruleHeld = nil
+				rescan = true
+			end
+		end
+	end
+
+	if rescan and CDTL3.player["class"] then
+		CDTL3:ScanCurrentCooldowns(CDTL3.player["class"], CDTL3.player["race"])
+	end
+end
+
+-- WHY ISN'T IT SHOWING (each Filters entry)
+-- The lane an entry goes on when Show anyway takes it off Hide: its type's Default Lane, else the
+-- first lane that's switched on, else lane 1
+private.LaneToUse = function(kind)
+	local lanes = CDTL3.db.profile.lanes
+	local d = tonumber(CDTL3.db.profile.global[kind] and CDTL3.db.profile.global[kind]["defaultLane"])
+	if d and private.filterLaneKeys[d] and lanes[private.filterLaneKeys[d]]["enabled"] then
+		return d
+	end
+	for n, key in ipairs(private.filterLaneKeys) do
+		if lanes[key]["enabled"] then
+			return n
+		end
+	end
+	return 1
+end
+
+-- a lane's Max Time and Hide Long Timers in its current mode
+private.laneModeKeys = { LINEAR = "linear", LINEAR_ABS = "linearAbs", SPLIT = "split", SPLIT_ABS = "splitAbs" }
+private.LaneMax = function(ls)
+	local mode = ls["mode"]
+	local m = mode and mode[private.laneModeKeys[mode["type"]] or ""]
+	if m then
+		return tonumber(m["max"]), m["hideTimeSurplus"] == true
+	end
+end
+
+private.WhyNotShowing = function(s, kind)
+	local g = CDTL3.db.profile.global
+	local typeName = private.filterTypeNames[kind]
+
+	if s["ignored"] then
+		local why = private.AutoIgnoreText(s, kind)
+		if why then
+			return "Ignored automatically: " .. why .. ".", "unignore"
+		end
+		return "Ignored by hand: the Ignored box below is ticked.", "unignore"
+	end
+
+	local rule = CDTL3:RuleHides(s, kind)
+	if rule == "unticked" then
+		return "Hidden: it isn't ticked in My spells (below), and Show only the ticked spells is on.", "tick"
+	elseif rule == "spec" then
+		return "Hidden: it's set to show only for " .. CDTL3:SpecNames(s["onlySpecs"]) .. " (Only for this spec).", "spec"
+	elseif rule == "unknown" then
+		return "Hidden: this character doesn't know it right now, and Hide spells I don't know is on (top of this tab)."
+	end
+
+	if s["enabled"] == false then
+		return "Switched off: its Enabled box below is unticked.", "enable"
+	end
+
+	if g[kind] and g[kind]["enabled"] == false then
+		return "Switched off: all " .. typeName .. " are off (Filters > Defaults, pick " .. typeName .. ", Enabled).", "type"
+	end
+
+	local lane = tonumber(s["lane"]) or 0
+	local key = private.filterLaneKeys[lane]
+	if not key then
+		local text = "Not on a lane: its Lane below is set to Hide."
+		local bar = tonumber(s["barFrame"])
+		local bf = bar and CDTL3.db.profile.barFrames["frame" .. bar]
+		if bf and bf["enabled"] then
+			text = text .. " (Its bar still shows in " .. tostring(bf["name"]) .. ".)"
+		end
+		return text, "lane", private.LaneToUse(kind)
+	end
+
+	local ls = CDTL3.db.profile.lanes[key]
+	local laneName = tostring(ls["name"])
+	if not ls["enabled"] then
+		return "Not showing: " .. laneName .. " is switched off (Lanes > " .. laneName .. " > General > Enabled).", "laneOn", lane
+	end
+
+	local max, hide = private.LaneMax(ls)
+	local seconds = (tonumber(s["bCD"]) or 0) / 1000
+	if s["setCustomCD"] and tonumber(s["customCDTime"]) then
+		seconds = s["customCDTime"] / 1000
+	end
+	if hide and max and seconds > max then
+		return "Hidden until " .. private.Seconds(max) .. " s are left: its " .. private.Seconds(seconds) .. " s is longer than "
+			.. laneName .. "'s Max Time and Hide Long Timers is on. To see it the whole time, raise Lanes > " .. laneName
+			.. " > General > Max Time to " .. math.ceil(seconds) .. " or untick Hide Long Timers there."
+	end
+
+	return nil
+end
+
+-- One line on why a Filters entry won't show, and what Show anyway does: "unignore", "tick", "spec",
+-- "enable", "type", "lane" (onto lane n), "laneOn" (switch lane n on), or nil when the line says which
+-- setting to change instead (Max Time, Hide spells I don't know). nil when nothing stops it.
+function CDTL3:WhyNotShowing(s, kind)
+	if type(s) ~= "table" or not private.filterTabNames[kind] then
+		return nil
+	end
+
+	local ok, text, fix, n = pcall(private.WhyNotShowing, s, kind)
+	if ok then
+		return text, fix, n
+	end
+end
+
+-- THE COOLDOWN MANAGER'S TRACKED BARS (Filters > Buffs, Retail and Forever)
+-- Saved buffs of this character that aren't in Tracked Bars (estimated in combat), sorted
+function CDTL3:BuffsNotInTrackedBars(bars)
+	if not bars then
+		local CT = CDTL3.CombatTimers
+		bars = CT and CT.TrackedBarBuffs and CT:TrackedBarBuffs()
+		if not bars then
+			return nil
+		end
+	end
+
+	local tracked = {}
+	for _, bar in ipairs(bars) do
+		for _, n in ipairs(bar.names) do
+			tracked[n] = true
+		end
+	end
+
+	local list = {}
+	for _, e in pairs(CDTL3.db.profile.tables["buffs"]) do
+		if type(e["name"]) == "string" and not e["ignored"] and private.IsMine(e) and not tracked[e["name"]] then
+			table.insert(list, e["name"])
+		end
+	end
+	table.sort(list)
+	return list
+end
+
+-- Pull from Cooldown Manager: one Buffs entry for every Tracked Bars buff, made before it's ever seen
+-- (with Filters > Defaults' lane, bar frame and Ready frame) or claimed for this character, and not
+-- ignored. A buff on you now shows at once. Returns what it did, or nil where there's no Cooldown Manager.
+function CDTL3:PullTrackedBuffs()
+	local CT = CDTL3.CombatTimers
+	local bars, viewerOn = nil, false
+	if CT and CT.TrackedBarBuffs then
+		bars, viewerOn = CT:TrackedBarBuffs()
+	end
+	if not bars then
+		return nil
+	end
+
+	if not CDTL3.player["guid"] then
+		CDTL3:GetCharacterData()
+	end
+	local guid = CDTL3.player["guid"]
+	local result = { made = {}, claimed = {}, tracked = #bars, viewerOn = viewerOn }
+
+	for _, bar in ipairs(bars) do
+		local s = nil
+		for _, n in ipairs(bar.names) do
+			s = s or CDTL3:GetSpellSettings(n, "buffs")
+		end
+
+		if s then
+			if guid and not private.IsMine(s) then
+				if type(s["usedBy"]) ~= "table" then
+					s["usedBy"] = {}
+				end
+				table.insert(s["usedBy"], guid)
+			end
+			if s["ignored"] then
+				s["ignored"] = false
+				local ef = CDTL3:GetExistingCooldown(s["name"], "buffs")
+				if ef then
+					ef.data["ignored"] = false
+					CDTL3:RefreshIcon(ef)
+				end
+			end
+			table.insert(result.claimed, s["name"])
+		else
+			local _, icon = CDTL3:GetSpellInfo(bar.spellID)
+			s = CDTL3:ApplyEntryDefaults({
+				id = bar.spellID,
+				name = bar.name,
+				type = "buffs",
+				icon = icon,
+				bCD = 0,
+				setCustomCD = false,
+				cdmPulled = true,	-- learns its length the first time it's seen (OnPlayerAuraApplied)
+			}, "buffs")
+			s["link"] = CDTL3:GetSpellLink(bar.spellID)
+			s["ignored"] = false
+
+			-- on you now and readable: its length is known already
+			local up = CDTL3:AuraExists("player", bar.name)
+			if up and (up["bCD"] or 0) > 0 then
+				s["bCD"] = up["bCD"]
+			end
+
+			CDTL3:SaveNewEntry(s, "buffs", true)
+			table.insert(result.made, s["name"])
+		end
+
+		-- on you right now: show it at once, as unticking Ignored does
+		if CDTL3.db.profile.global["buffs"]["enabled"] and (s["bCD"] or 0) > 0
+				and not CDTL3:GetExistingCooldown(s["name"], "buffs") and CDTL3:AuraExists("player", s["name"]) then
+			CDTL3:CreateCooldown(CDTL3:GetUID(), "buffs", s)
+		end
+	end
+
+	result.notTracked = CDTL3:BuffsNotInTrackedBars(bars) or {}
+	return result
+end
+
 function CDTL3:RemoveHighlights(f, s)
 	if f.hl.agBorderPulse then
 		f.hl.agBorderPulse:Stop()
@@ -1403,7 +2036,7 @@ function CDTL3:ScanSharedSpellCooldown(initialName, initialDuration)
 					else
 						local s = CDTL3:GetSpellSettings(spell["name"], "spells")
 						if s then
-							if not s["ignored"] then
+							if not CDTL3:IsIgnored(s, "spells") then
 								if CDTL3.db.profile.global["spells"]["enabled"] then
 									CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
 								end
@@ -1456,7 +2089,7 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 
 					local s = CDTL3:GetSpellSettings(spellName, "spells")
 					if s then
-						if not s["ignored"] then
+						if not CDTL3:IsIgnored(s, "spells") then
 							local ef = CDTL3:GetExistingCooldown(s["name"], "spells")
 							if ef then
 								CDTL3:SendToLane(ef)
@@ -1466,7 +2099,7 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 								if CDTL3.db.profile.global["spells"]["enabled"] then
 									CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
 									CDTL3:CheckEdgeCases(spellName)
-									
+
 									if CDTL3:IsUsedBy("spells", s["id"]) then
 										--CDTL3:Print("USEDBY MATCH: "..s["id"])
 									else
@@ -1500,7 +2133,7 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 
 						local s = CDTL3:GetSpellSettings(spellName, "spells")
 						if s then
-							if not s["ignored"] then
+							if not CDTL3:IsIgnored(s, "spells") then
 								local ef = CDTL3:GetExistingCooldown(s["name"], "spells")
 								if ef then
 									CDTL3:SendToLane(ef)

@@ -1411,6 +1411,9 @@ private.CooldownUpdate = function(f, elapsed)
 							d["ignored"] = false
 							CDTL3:SetItemData(d["itemID"], "ignored", false)
 						else
+							if not d["ignored"] then
+								CDTL3:NoteAutoIgnore({ name = d["name"], itemName = d["itemName"], bCD = duration * 1000 }, "items")
+							end
 							d["ignored"] = true
 							CDTL3:SetItemData(d["itemID"], "ignored", true)
 							
@@ -1493,6 +1496,9 @@ private.CooldownUpdate = function(f, elapsed)
 							d["ignored"] = false
 							CDTL3:SetSpellData(d["name"], "offensives", "ignored", false)
 						else
+							if not d["ignored"] then
+								CDTL3:NoteAutoIgnore({ name = d["name"], bCD = s["bCD"] }, "offensives")
+							end
 							d["ignored"] = true
 							CDTL3:SetSpellData(d["name"], "offensives", "ignored", true)
 							

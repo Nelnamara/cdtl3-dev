@@ -54,6 +54,10 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
   old code (kept in the file as the reference) over 864 layouts, the secondary marker on vertical lanes
   and on a hidden GCD, Secondary Tracking from the options, live lane texts, Hide out of combat by
   frame number, Override Autohide on an empty lane, whole Split Counts, Edit Mode ranges.
+- `filtercards.lua`: the Filters cards of the 12 Nov feature panel: each entry's reason line and Show
+  anyway, the once-only auto-ignore note, Hide spells I don't know, Only for this spec (MoP and Retail),
+  My spells and Show only the ticked spells, Pull from Cooldown Manager (Retail and Forever, with just
+  enough of the Cooldown Manager faked).
 - The `/cdtl3 probe` test build and its `probe.lua` harness live on branch `cdm-probe`.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).
