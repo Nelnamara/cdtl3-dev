@@ -68,7 +68,10 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 	if cdData["charges"] then
 		f.data["charges"] = cdData["charges"]
 	end
-	
+
+	-- warnings and buff alerts (IconFx.lua)
+	CDTL3.IconFx:CopyEntry(f.data, cdData)
+
 	if cdData["school"] then
 		f.data["school"] = cdData["school"]
 	end
@@ -1432,6 +1435,8 @@ private.CooldownUpdate = function(f, elapsed)
 								end
 								d["currentCD"] = start + duration - GetTime()
 
+								CDTL3.IconFx:PollCharges(f)	-- charge pips: the icon rides the recharge (IconFx.lua)
+
 								--if d["name"] == "Primal Rage" or d["name"] == "Implosive Trap" then
 									--CDTL3:Print(d["name"].." - "..d["currentCD"].." : "..tostring(duration))
 								--end
@@ -1742,6 +1747,11 @@ private.IconUpdate = function(f, elapsed)
 				end
 			end
 			
+			-- charge pips, the ready-soon pulse, buff alerts, GCD waits (IconFx.lua)
+			if CDTL3.IconFx:LaneIcon(f, ic, s, d) then
+				return	-- it went to its Ready frame to wait out the GCD
+			end
+
 			-- the slide and the texts follow the Update rate and Pause while hidden (IconVisual)
 			local visual, force = private.IconVisual(f, ic, s)
 
@@ -1809,14 +1819,19 @@ private.IconUpdate = function(f, elapsed)
 			elseif d["type"] == "test" then
 				
 			else
+				CDTL3.IconFx:Ended(f)	-- a buff that was up: the lane flash (IconFx.lua)
 				CDTL3:FireTimer("CDTL3_TimerReady", f)
 				CDTL3:SendToReady(f)
 				CDTL3:FireTimerIfHeld(f)
 			end
 		end
 	elseif p == "CDTL3_Ready_1_MF" or p == "CDTL3_Ready_2_MF" or p == "CDTL3_Ready_3_MF" then
+		-- a GCD wait ends here, and the lane's pips and pulse go (IconFx.lua)
+		CDTL3.IconFx:ReadyFrame(f, ic)
+
 		if ic.readyTime > 0 then
-			if not f.data["pinned"] then
+			-- an icon waiting out the GCD holds its time until the wait is over
+			if not f.data["pinned"] and not ic.fxGCD then
 				ic.readyTime = ic.readyTime - elapsed
 			end
 			
@@ -1982,6 +1997,7 @@ function CDTL3:SendToLane(f)
 	f.data["currentCD"] = f.data["pendingCD"] or f.data["baseCD"]
 	f.data["pendingCD"] = nil
 	CDTL3:FireTimer("CDTL3_TimerStarted", f)
+	CDTL3.IconFx:Started(f)
 end
 
 -- Move a cooldown to its (newly set) lane without restarting it. SendToLane restarts the
@@ -2045,6 +2061,11 @@ end
 -- sound), else the frame's Highlight or Normal Sound as before; its spoken name; and Flash when
 -- ready for RefreshIcon. Mute ready sounds (Ready tab) silences the sounds and the name.
 private.ReadyAlert = function(f, s)
+	-- an icon waiting out the GCD in its Ready frame arrives silent (IconFx.lua)
+	if CDTL3.IconFx.silent then
+		return
+	end
+
 	local e = private.SavedEntry(f.data)
 	f.data["readyLit"] = (e and e["readyFlash"]) and true or nil
 

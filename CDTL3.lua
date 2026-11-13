@@ -146,6 +146,15 @@ local laneDefaults = {
 	-- Pause while hidden: icons skip their visual updates while the lane is faded to nothing (Cooldown.lua)
 	pauseHidden = false,
 
+	-- Effects (IconFx.lua), all off until turned on: charge pips on spell icons, GCD waits sent to the
+	-- Ready frame, the burst window (shaded on a Time lane, and/or a Ready-by list) and the refresh zone
+	fx = {
+		chargePips = false,
+		gcdWait = false,
+		burst = { enabled = false, secs = 25, shaded = true, list = false },
+		refresh = { enabled = false, pct = 30 },
+	},
+
 	iconOffset = 0,
 
 	tracking = {

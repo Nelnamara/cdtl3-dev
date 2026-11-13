@@ -1009,6 +1009,21 @@ function CT:OwnsText(f, tf, s)
 	return false
 end
 
+-- From IconFx.lua: a FontString of the caller's own follows a riding spell's timer (the Ready-by list's
+-- timers in combat). Spells only. False = not riding or no timer text: the caller shows its estimate.
+function CT:BindText(f, tf)
+	local ct = f.ct
+	if not (ct and ct.riding and ct.kind ~= "buff" and not ct.noText and tf) then
+		return false
+	end
+	local ok, err = pcall(private.BindText, f, ct, tf)
+	if ok then
+		return true
+	end
+	private.Error(err, "CombatTimers.BindText")
+	return false
+end
+
 -- STACKING: GROUPED leaves riding icons out (their positions are hidden) and skips a pass when any
 -- other position reads back hidden. Returns nil to skip.
 function CT:GroupedChildren(list, count)

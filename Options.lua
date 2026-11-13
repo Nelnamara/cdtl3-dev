@@ -4201,6 +4201,7 @@ private.GetFilterSet = function(t, o)
 
 	private.AddEntryColorArgs(options.args, t)
 	private.AddEntryReadyArgs(options.args, t)
+	CDTL3.IconFx:AddEntryArgs(options.args, t)
 
 	-- Combat timers: tell the user if this buff gets an exact timer in combat
 	if t == "buffs" then
@@ -6446,6 +6447,7 @@ private.GetLaneSet = function(i)
 	private.AddCopyArgs(options.args.general.args, "lanes", i, L["Lane"])
 	private.AddShowArgs(options.args.general.args, function() return lane end, function() CDTL3:RefreshLane(i) end)
 	private.AddShareLaneArgs(options.args.general.args, i)
+	CDTL3.IconFx:AddLaneArgs(options.args, i)
 
 	return options
 end
