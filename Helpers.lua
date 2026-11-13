@@ -2875,10 +2875,12 @@ local function ApplyShare(plan, mode)
 		if CDTL3.Profiles then
 			CDTL3.Profiles.ImportLists(own, lists)
 		end
+		-- while sharing, the lists that stay are the ones all your characters share
+		local whose = (CDTL3.Profiles and CDTL3.Profiles.Sharing()) and "the shared" or "this profile's own"
 		if carried == 0 then
-			CDTL3:Print("This string has no Filters lists (a Settings Only export leaves them empty): its settings were imported and this profile's Filters lists were kept.")
+			CDTL3:Print("This string has no Filters lists (a Settings Only export leaves them empty): its settings were imported and "..whose.." Filters lists were kept.")
 		elseif #kept > 0 then
-			CDTL3:Print("Imported. This profile's own "..table.concat(kept, ", ").." Filters lists were kept: the string's were empty.")
+			CDTL3:Print("Imported. "..(whose:gsub("^%l", string.upper)).." "..table.concat(kept, ", ").." Filters lists were kept: the string's were empty.")
 		end
 
 	elseif mode == "SETTINGS" then
