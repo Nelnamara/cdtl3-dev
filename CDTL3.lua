@@ -173,7 +173,13 @@ local laneDefaults = {
 
 		stWidth = 5,
 		stHeight = 44,
+
+		-- Change color at (ResourceBars.lua, Primary Tracking on Class Power): the whole fill takes this color at or above value
+		threshold = { enabled = false, value = 40, color = { r = 0.949, g = 0.761, b = 0.188, a = 1 } },
 	},
+
+	-- Mana gauge (ResourceBars.lua): an upright gauge at the lane's Ready end
+	gauge = { enabled = false, showPercent = true, width = 16, height = 44, gap = 6, color = { r = 0.165, g = 0.373, b = 0.839, a = 1 } },
 
 	stacking = {
 		enabled = false,
@@ -660,6 +666,8 @@ local readyDefaults = {
 	hTime = 10,
 	hSound = "None",
 	pTime = 10,
+	-- NORMAL: icons wait their Normal Duration. STAY: a board of the pinned cooldowns that stays up (ReadyBoard.lua)
+	mode = "NORMAL",
 
 	posX = -300,
 	posY = -75,
@@ -808,6 +816,14 @@ local defaults = {
 			-- CombatTimers.lua: on for everyone since 3.1.0 (the owner's call), with a notice on the
 			-- first login after the update. Blizzard's Tracked Bars stay visible unless the player hides them.
 			combatTimers = { enabled = true, hideBlizzardBars = false },
+
+			-- FightTimeline.lua: off until switched on. flag1..3 are seconds into the fight (0 = no flag).
+			fightTimeline = {
+				enabled = false, hideOutOfCombat = false,
+				width = 340, span = 360, iconSize = 22,
+				flag1 = 120, flag2 = 180, flag3 = 300,
+				point = "CENTER", x = 0, y = -150,
+			},
 
 			exportMode = "SETTINGS",
 			importMode = "SETTINGS",

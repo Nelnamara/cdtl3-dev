@@ -32,6 +32,9 @@ Cooldown.lua
 API.lua
 CombatTimers.lua
 IconFx.lua
+ResourceBars.lua
+FightTimeline.lua
+ReadyBoard.lua
 FlightData\Retail.lua
 Flights.lua
 Group.lua

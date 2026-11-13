@@ -28,6 +28,9 @@ Cooldown.lua
 API.lua
 CombatTimers.lua
 IconFx.lua
+ResourceBars.lua
+FightTimeline.lua
+ReadyBoard.lua
 FlightData\TBC.lua
 Flights.lua
 Group.lua

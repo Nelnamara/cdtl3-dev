@@ -100,7 +100,8 @@ private.ReadyUpdate = function(f, elapsed)
 	-- pTime after combat ends or its last icon arrives; an icon with Normal or Highlight Duration left
 	-- keeps it showing. Autohide only runs on an update, so a change asks for one (the flag was set
 	-- after the only Autohide call that reads it: never hid).
-	local forceHide = (not CDTL3.combat and f.combatTimer >= s["pTime"] and private.OnlyPinned(f)) and true or false
+	-- (a Stay until used board, ReadyBoard.lua, keeps its frame up)
+	local forceHide = (not CDTL3.combat and f.combatTimer >= s["pTime"] and not f.boardOn and private.OnlyPinned(f)) and true or false
 	if forceHide ~= f.forceHide then
 		f.forceHide = forceHide
 		f.mf.triggerUpdate = true
@@ -229,7 +230,7 @@ private.ReadyUpdate = function(f, elapsed)
 		f.mf:ClearAllPoints()
 		f.mf:SetPoint(mfAnchor, xOffset, yOffset)
 		
-		f.childCount = count
+		f.childCount = count + (f.boardCount or 0)
 		
 		if s["enabled"] then
 			CDTL3:Autohide(f, s)
