@@ -633,7 +633,8 @@ if RETAILAPI then
 			if s then return { name = s[1], iconID = s[2] or 136000, originalIconID = s[2] or 136000, spellID = id } end
 			if type(id) == "number" then return { name = "Spell " .. id, iconID = 136000, originalIconID = 136000, spellID = id } end
 		end,
-		GetSpellCooldown = function(id) return cdOf(id) end,
+		-- the game returns nil for a spell it doesn't have: WoW: Forever has no GCD spell (61304)
+		GetSpellCooldown = function(id) if FLAVOR == "forever" and id == 61304 then return nil end return cdOf(id) end,
 		GetSpellCharges = function(id) return nil end,
 		GetSpellLink = function(id) return "|cff71d5ff|Hspell:" .. tostring(id) .. "|h[x]|h|r" end,
 		IsSpellUsable = function() return true, false end,

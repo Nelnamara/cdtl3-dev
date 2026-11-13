@@ -522,7 +522,7 @@ private.SplitCurve = function(s, variant, total)
 	end
 
 	local xs = { 0, span, span * (1 - 1e-6) }
-	local count = math.min(tonumber(ss["count"]) or 0, 3)
+	local count = math.min(CDTL3:SplitCount(ss) or 0, 3)
 	for i = 1, count do
 		local v = ss["s" .. i .. "v"]
 		if type(v) == "number" then
@@ -642,7 +642,7 @@ end
 -- (0, 0), each active split point, (max, 1); nil unless values and positions strictly increase
 private.SplitKnots = function(s)
 	local ss = s["mode"]["splitAbs"]
-	local count, max = tonumber(ss["count"]), tonumber(ss["max"])
+	local count, max = CDTL3:SplitCount(ss), tonumber(ss["max"])
 	if not (count and max) or count < 1 or count > 3 or count ~= math.floor(count) then
 		return nil
 	end

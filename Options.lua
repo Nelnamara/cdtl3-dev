@@ -45,6 +45,30 @@ private.KeepAfterClear = function(entry)
 	return false
 end
 
+-- Filters › Clear Individual Settings: the saved entry of list t that Filters shows this character
+-- under the selected name (items by item name), and its index
+private.SelectedEntry = function(t)
+	local name = CDTL3.currentFilter[t] or ""
+	local index = nil
+	for k, spell in pairs(CDTL3.db.profile.tables[t]) do
+		local n = (t == "items") and spell["itemName"] or spell["name"]
+		if n == name and CDTL3:IsMyEntry(spell) then
+			index = k
+		end
+	end
+	return index and CDTL3.db.profile.tables[t][index], index
+end
+
+-- another character on this profile uses the entry too
+private.UsedByOthers = function(entry)
+	for _, guid in pairs(entry["usedBy"] or {}) do
+		if guid ~= CDTL3.player["guid"] then
+			return true
+		end
+	end
+	return false
+end
+
 -- Border texture, colour, size and padding controls, added to args: texture and colour at
 -- first, first+1 (default base+1), size and padding at base+11, base+12. border() returns
 -- the live { style, color, size, padding } settings table.
@@ -3580,7 +3604,17 @@ private.GetFilterSet = function(t, o)
 				
 						return "This will clear cooldown settings for "..s
 					end,
-				confirm = true,
+				-- an entry other characters use too asks with its own warning, then goes for everyone
+				confirm = function(info)
+						if not (t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>") then
+							local entry = private.SelectedEntry(t)
+							if entry and private.UsedByOthers(entry) then
+								return "Other characters on this profile use these settings for "..tostring(CDTL3.currentFilter[t])
+									..".\n\nClearing them resets them for every character on this profile."
+							end
+						end
+						return true
+					end,
 				order = 401,
 				type = "execute",
 				hidden = function(info)
@@ -3609,27 +3643,13 @@ private.GetFilterSet = function(t, o)
 							CDTL3.custom = {}
 							CDTL3.customIsValid = false
 						else
-							local s = ""
-							
-							if CDTL3.currentFilter[t] then
-								s = CDTL3.currentFilter[t]
-							end
-							
-							-- items are selected by item name in this tab; only this character's
-							-- entry (the one Filters lists). An entry other characters also use
-							-- only loses this character from usedBy, as Defaults > Clear Settings does.
-							local index = nil
-							for k, spell in pairs(CDTL3.db.profile.tables[t]) do
-								local n = (t == "items") and spell["itemName"] or spell["name"]
-								if n == s and CDTL3:IsMyEntry(spell) then
-									index = k
-								end
-							end
+							-- only this character's entry (the one Filters lists) goes; one other
+							-- characters use too was confirmed above and goes for all of them (only
+							-- dropping this character from it let the next cast claim it back)
+							local _, index = private.SelectedEntry(t)
 
 							if index then
-								if not private.KeepAfterClear(CDTL3.db.profile.tables[t][index]) then
-									table.remove(CDTL3.db.profile.tables[t], index)
-								end
+								table.remove(CDTL3.db.profile.tables[t], index)
 
 								-- back to this tab's own placeholder: the custom editor for
 								-- Custom, otherwise "nothing selected" with the details hidden
@@ -4884,7 +4904,7 @@ private.GetLaneSet = function(i)
 						step = 1,
 						bigStep = 1,
 						get = function(info, index)
-								return lane["mode"]["split"]["count"]
+								return CDTL3:SplitCount(lane["mode"]["split"])
 							end,
 						set = function(info, val)
 								lane["mode"]["split"]["count"] = val
@@ -4951,7 +4971,7 @@ private.GetLaneSet = function(i)
 						order = 420,
 						hidden = function(info)
 							if lane["mode"]["type"] == "SPLIT" then
-								if lane["mode"]["split"]["count"] >= 2 then
+								if CDTL3:SplitCount(lane["mode"]["split"]) >= 2 then
 									return false
 								end
 							end
@@ -4965,7 +4985,7 @@ private.GetLaneSet = function(i)
 						type = "range",
 						hidden = function(info)
 							if lane["mode"]["type"] == "SPLIT" then
-								if lane["mode"]["split"]["count"] >= 2 then
+								if CDTL3:SplitCount(lane["mode"]["split"]) >= 2 then
 									return false
 								end
 							end
@@ -4988,7 +5008,7 @@ private.GetLaneSet = function(i)
 						type = "range",
 						hidden = function(info)
 							if lane["mode"]["type"] == "SPLIT" then
-								if lane["mode"]["split"]["count"] >= 2 then
+								if CDTL3:SplitCount(lane["mode"]["split"]) >= 2 then
 									return false
 								end
 							end
@@ -5011,7 +5031,7 @@ private.GetLaneSet = function(i)
 						order = 430,
 						hidden = function(info)
 							if lane["mode"]["type"] == "SPLIT" then
-								if lane["mode"]["split"]["count"] >= 2 then
+								if CDTL3:SplitCount(lane["mode"]["split"]) >= 2 then
 									return false
 								end
 							end
@@ -5025,7 +5045,7 @@ private.GetLaneSet = function(i)
 						type = "range",
 						hidden = function(info)
 							if lane["mode"]["type"] == "SPLIT" then
-								if lane["mode"]["split"]["count"] >= 3 then
+								if CDTL3:SplitCount(lane["mode"]["split"]) >= 3 then
 									return false
 								end
 							end
@@ -5048,7 +5068,7 @@ private.GetLaneSet = function(i)
 						type = "range",
 						hidden = function(info)
 							if lane["mode"]["type"] == "SPLIT" then
-								if lane["mode"]["split"]["count"] >= 3 then
+								if CDTL3:SplitCount(lane["mode"]["split"]) >= 3 then
 									return false
 								end
 							end
@@ -5092,7 +5112,7 @@ private.GetLaneSet = function(i)
 						step = 1,
 						bigStep = 1,
 						get = function(info, index)
-								return lane["mode"]["splitAbs"]["count"]
+								return CDTL3:SplitCount(lane["mode"]["splitAbs"])
 							end,
 						set = function(info, val)
 								lane["mode"]["splitAbs"]["count"] = val
@@ -5159,7 +5179,7 @@ private.GetLaneSet = function(i)
 						order = 520,
 						hidden = function(info)
 							if lane["mode"]["type"] == "SPLIT_ABS" then
-								if lane["mode"]["splitAbs"]["count"] >= 2 then
+								if CDTL3:SplitCount(lane["mode"]["splitAbs"]) >= 2 then
 									return false
 								end
 							end
@@ -5173,7 +5193,7 @@ private.GetLaneSet = function(i)
 						type = "range",
 						hidden = function(info)
 							if lane["mode"]["type"] == "SPLIT_ABS" then
-								if lane["mode"]["splitAbs"]["count"] >= 2 then
+								if CDTL3:SplitCount(lane["mode"]["splitAbs"]) >= 2 then
 									return false
 								end
 							end
@@ -5196,7 +5216,7 @@ private.GetLaneSet = function(i)
 						type = "range",
 						hidden = function(info)
 							if lane["mode"]["type"] == "SPLIT_ABS" then
-								if lane["mode"]["splitAbs"]["count"] >= 2 then
+								if CDTL3:SplitCount(lane["mode"]["splitAbs"]) >= 2 then
 									return false
 								end
 							end
@@ -5219,7 +5239,7 @@ private.GetLaneSet = function(i)
 						order = 530,
 						hidden = function(info)
 							if lane["mode"]["type"] == "SPLIT_ABS" then
-								if lane["mode"]["splitAbs"]["count"] >= 2 then
+								if CDTL3:SplitCount(lane["mode"]["splitAbs"]) >= 2 then
 									return false
 								end
 							end
@@ -5233,7 +5253,7 @@ private.GetLaneSet = function(i)
 						type = "range",
 						hidden = function(info)
 							if lane["mode"]["type"] == "SPLIT_ABS" then
-								if lane["mode"]["splitAbs"]["count"] >= 3 then
+								if CDTL3:SplitCount(lane["mode"]["splitAbs"]) >= 3 then
 									return false
 								end
 							end
@@ -5256,7 +5276,7 @@ private.GetLaneSet = function(i)
 						type = "range",
 						hidden = function(info)
 							if lane["mode"]["type"] == "SPLIT_ABS" then
-								if lane["mode"]["splitAbs"]["count"] >= 3 then
+								if CDTL3:SplitCount(lane["mode"]["splitAbs"]) >= 3 then
 									return false
 								end
 							end

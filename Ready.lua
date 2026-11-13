@@ -76,6 +76,16 @@ private.CreateReady = function(frameNumber)
 	table.insert(CDTL3.readyFrames, f)
 end
 
+-- every icon showing in the frame is pinned (IconUpdate keeps each icon's pinned flag current)
+private.OnlyPinned = function(f)
+	for _, child in ipairs(f.validChildren) do
+		if not child.pinned then
+			return false
+		end
+	end
+	return true
+end
+
 private.ReadyUpdate = function(f, elapsed)
 	local s = nil
 	if f.number == 1 then
@@ -86,10 +96,11 @@ private.ReadyUpdate = function(f, elapsed)
 		s = CDTL3.db.profile.ready["ready3"]
 	end
 	
-	-- Pinned Hide Time (with Auto-hide Frames): out of combat, the frame hides pTime after combat
-	-- ends or its last icon arrives, pinned icons and all. Autohide only runs on an update, so a
-	-- change asks for one (the flag was set after the only Autohide call that reads it: never hid).
-	local forceHide = (not CDTL3.combat and f.combatTimer >= s["pTime"]) and true or false
+	-- Pinned Hide Time (with Auto-hide Frames): out of combat, a frame holding only pinned icons hides
+	-- pTime after combat ends or its last icon arrives; an icon with Normal or Highlight Duration left
+	-- keeps it showing. Autohide only runs on an update, so a change asks for one (the flag was set
+	-- after the only Autohide call that reads it: never hid).
+	local forceHide = (not CDTL3.combat and f.combatTimer >= s["pTime"] and private.OnlyPinned(f)) and true or false
 	if forceHide ~= f.forceHide then
 		f.forceHide = forceHide
 		f.mf.triggerUpdate = true

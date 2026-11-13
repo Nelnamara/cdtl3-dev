@@ -1,6 +1,7 @@
 -- Red team of 12 Nov, cooldown and Ready frame fixes (cards 7, 8, 12, 15, 21, 23): a switched-off
 -- lane keeps its cooldowns' bars, an early reset of a hidden long cooldown shows in Ready, Highlight
--- Duration, Pinned Hide Time, a switched-off Ready frame takes nothing, and a new item shows nothing
+-- Duration, Pinned Hide Time (only while the frame holds pinned icons alone), a switched-off Ready
+-- frame takes nothing, and a new item shows nothing
 -- while its cooldown is hidden. Real files, real AceDB.
 dofile(HARNESS_DIR .. "/wow.lua")
 PLAYER.class = "MAGE"
@@ -182,6 +183,40 @@ RunOnUpdate(0.1, 20)
 check("2 s after combat: still showing", CDTL3_Ready_1:GetAlpha() ~= 0)
 RunOnUpdate(0.1, 20)
 check("4 s after combat: hidden again", CDTL3_Ready_1:GetAlpha() == 0)
+-- Pinned Hide Time hides only a frame holding pinned icons alone: an icon with Normal Duration left
+-- keeps it showing (Normal Duration 15, Pinned Hide Time 10)
+print("[21 Pinned Hide Time, unpinned icons " .. FLAVOR .. "]")
+P.data.pinned = false
+RunOnUpdate(0.1, 80)   -- the unpinned P counts its Normal Duration (5 s) and leaves
+r1.nTime, r1.pTime = 15, 10
+cast(902, 60)
+RunOnUpdate(0.02, 5)
+reset(902)
+RunOnUpdate(0.02, 55)
+check("plain icon in Ready 1 (Normal Duration 15), frame showing", pname(S.icon) == "CDTL3_Ready_1_MF" and CDTL3_Ready_1:GetAlpha() ~= 0,
+	string.format("%s alpha=%s", pname(S.icon), tostring(CDTL3_Ready_1:GetAlpha())))
+RunOnUpdate(0.1, 110)   -- ~12 s: past Pinned Hide Time, ~3 s of Normal Duration left
+check("~12 s: past Pinned Hide Time, the icon has time left: still showing", pname(S.icon) == "CDTL3_Ready_1_MF" and CDTL3_Ready_1:GetAlpha() ~= 0,
+	string.format("%s readyTime=%.1f alpha=%s", pname(S.icon), S.icon.readyTime or -1, tostring(CDTL3_Ready_1:GetAlpha())))
+RunOnUpdate(0.1, 50)   -- ~17 s
+check("~17 s: Normal Duration over, icon gone, empty frame hidden", pname(S.icon) ~= "CDTL3_Ready_1_MF" and CDTL3_Ready_1:GetAlpha() == 0,
+	string.format("%s alpha=%s", pname(S.icon), tostring(CDTL3_Ready_1:GetAlpha())))
+-- a pinned and a plain icon together: the frame stays while the plain one has time, then hides with
+-- only the pinned one left
+r1.pTime = 3
+P.data.pinned = true
+cast(904, 20); cast(902, 60)
+RunOnUpdate(0.02, 5)
+reset(904); reset(902)
+RunOnUpdate(0.02, 55)
+check("pinned + plain in Ready 1, showing", pname(P.icon) == "CDTL3_Ready_1_MF" and pname(S.icon) == "CDTL3_Ready_1_MF" and CDTL3_Ready_1:GetAlpha() ~= 0)
+RunOnUpdate(0.1, 60)   -- ~7 s: past Pinned Hide Time 3, the plain icon has ~8 s left
+check("~7 s: the plain icon has time left: still showing", pname(S.icon) == "CDTL3_Ready_1_MF" and CDTL3_Ready_1:GetAlpha() ~= 0,
+	string.format("alpha=%s", tostring(CDTL3_Ready_1:GetAlpha())))
+RunOnUpdate(0.1, 100)  -- ~17 s
+check("~17 s: only the pinned icon left: hidden, the pinned icon still in it", pname(S.icon) ~= "CDTL3_Ready_1_MF" and pname(P.icon) == "CDTL3_Ready_1_MF"
+	and CDTL3_Ready_1:GetAlpha() == 0, string.format("%s / %s alpha=%s", pname(P.icon), pname(S.icon), tostring(CDTL3_Ready_1:GetAlpha())))
+r1.nTime = 5
 g["autohide"] = false
 CDTL3:RefreshReady(1); instantFades(CDTL3_Ready_1)
 P.data.pinned = false
