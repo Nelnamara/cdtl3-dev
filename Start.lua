@@ -265,6 +265,20 @@ function private.RestoreValues(snap, p)
 	end
 end
 
+-- the saved Filters entry a live cooldown of a setup's types was made from (nil: none, or another type)
+function private.EntryOf(d)
+	local t = d["type"]
+	for _, k in ipairs(private.TYPES) do
+		if k == t then
+			if t == "items" then
+				return CDTL3:GetSpellSettings(d["itemName"] or d["name"], t, true)
+			end
+			return CDTL3:GetSpellSettings(d["name"], t)
+		end
+	end
+	return nil
+end
+
 function private.Restore(snap, p)
 	p = p or Profile()
 	private.RestoreValues(snap, p)
@@ -273,6 +287,15 @@ function private.Restore(snap, p)
 	end
 	for cd, lane in pairs(snap.cooldowns) do
 		MoveCooldown(cd, lane)
+	end
+	-- A cooldown made while the preview was up (a buff gained, a spell cast) isn't in the snapshot: it was made on
+	-- the preview's lane, and every recast restarts it on that lane. It goes to the lane its entry is back on; it
+	-- used to stay on the preview's lane (hidden past that lane's Max Time) while Filters named its own, until a /reload.
+	for _, cd in ipairs(CDTL3.cooldowns) do
+		if snap.cooldowns[cd] == nil then
+			local e = private.EntryOf(cd.data)
+			MoveCooldown(cd, e and tonumber(e["lane"]))
+		end
 	end
 	CDTL3:RefreshConfig()
 end
