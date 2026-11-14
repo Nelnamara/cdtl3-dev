@@ -1253,10 +1253,15 @@ private.CalcTransitionIndicator = function(f, s)
 		
 		f.bar.transitionThreshold = ms["max"]
 		
-		-- INDICATIOR
+		-- INDICATOR: only on a bar that will hand off to its lane (the lane is on, Transition bars is
+		-- on and the cooldown is longer than the lane's Max Time), and never past the bar's end. A
+		-- 1 minute spell on a 5 minute lane put its line five bar widths out to the right, over
+		-- other frames; a bar whose lane is off never hands off at all.
 		local position = 0
 		local width = s["transition"]["width"]
-		if s["transition"]["showTI"] then
+		local baseCD = f.data["baseCD"] or 0
+		local handsOff = ls["enabled"] and s["transition"]["hideTransitioned"] and (baseCD <= 0 or baseCD > ms["max"])
+		if s["transition"]["showTI"] and handsOff then
 			local style = s["transition"]["style"]
 			
 			if style == "SHORTEN" then
@@ -1269,10 +1274,10 @@ private.CalcTransitionIndicator = function(f, s)
 					end
 					
 					--position = (ms["max"] / f.data["baseCD"]) * bWidth
-					position = f.data["baseCD"] > 0 and (ms["max"] / f.data["baseCD"]) * bWidth or bWidth
+					position = baseCD > 0 and math.min(ms["max"] / baseCD, 1) * bWidth or bWidth
 				elseif style == "REGION" then
 					-- same zero guard as LINE: a not-yet-learned cooldown (baseCD 0) spans the bar
-					local percent = f.data["baseCD"] > 0 and ms["max"] / f.data["baseCD"] or 1
+					local percent = baseCD > 0 and math.min(ms["max"] / baseCD, 1) or 1
 					
 					local bWidth = s["width"] - width
 					if s["bar"]["iconEnabled"] then

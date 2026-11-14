@@ -66,6 +66,7 @@
 - **Grouped stacking** does far less work and looks the same; a lone icon in a short stack stays in the lane
 - **TBC Anniversary**: flights that don't start from the flight map no longer count down under internal names
 - **Undo on a setup preview** puts a buff you gained, or a spell you cast, during the preview back on its own lane, instead of leaving it on the preview's lane until a reload
+- **Bar frames**: the transition indicator line stays inside its bar, and shows only on a bar that will hand off to its lane; it used to sit far out to the right, over other frames, when the lane held more time than the whole cooldown
 - **Test mode** no longer lists test cooldowns twice
 - **Classic clients** read buffs and the combat log through Blizzard's current names, ahead of the old ones being removed
 

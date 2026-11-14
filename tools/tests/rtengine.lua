@@ -91,6 +91,17 @@ SPELLCD[905].startTime = NOW - 200   -- 100 s left, under lane 2's Max Time (120
 RunOnUpdate(0.02, 60)
 check("lane 2 off, 100 s left, Transition bars on: the bar keeps showing", f5.bar.valid == true and f5.bar:GetAlpha() == 1,
 	string.format("valid=%s alpha=%s cd=%.1f", tostring(f5.bar.valid), tostring(f5.bar:GetAlpha()), f5.data.currentCD))
+-- the transition indicator marks where a bar hands off to its lane; a bar whose lane is off never
+-- does, so it has no line (it used to sit at Max Time / cooldown x bar width, past the bar's end
+-- when the lane held more than the whole cooldown, out over other frames: walk 14 Nov)
+local function ti(cd) return cd.bar.bar and cd.bar.bar.ti end
+local function barWidth(cd)
+	local bs = CDTL3.db.profile.barFrames["frame" .. cd.data.barFrame]
+	return bs.width - bs.transition.width - (bs.bar.iconEnabled and bs.height or 0)
+end
+CDTL3:RefreshAllBars()
+check("  its transition indicator is hidden (lane off: no hand-off to mark)", ti(f5) and ti(f5):GetAlpha() == 0,
+	ti(f5) and ("alpha " .. tostring(ti(f5):GetAlpha())) or "no indicator")
 -- an enabled lane still takes its cooldowns over (control), and switching it off mid-session gives the bar back
 local l3 = CDTL3.db.profile.lanes["lane3"]
 cast(906, 300)
@@ -101,6 +112,23 @@ RunOnUpdate(0.02, 60)
 check("lane 3 on, 100 s left: bar handed over to the lane (hidden), icon on lane 3",
 	f6.bar.valid == false and f6.bar:GetAlpha() == 0 and pname(f6.icon) == "CDTL3_Lane_3" and f6.icon:GetAlpha() == 1,
 	string.format("bar valid=%s alpha=%s icon %s", tostring(f6.bar.valid), tostring(f6.bar:GetAlpha()), pname(f6.icon)))
+do
+	CDTL3:RefreshAllBars()
+	local x = ti(f6) and select(2, ti(f6):GetPoint(1))
+	local want = (l3.mode.linear.max / 300) * barWidth(f6)
+	check("  lane 3 on, 300 s cooldown: its indicator shows inside the bar, at Max Time / 300 of it",
+		ti(f6) and ti(f6):GetAlpha() == 1 and type(x) == "number" and math.abs(x - want) < 0.01 and x <= barWidth(f6),
+		string.format("x=%s want=%.2f bar=%.1f", tostring(x), want, barWidth(f6)))
+	-- a cooldown shorter than its lane's Max Time never shows a bar on an enabled lane: no line either
+	local base = f6.data.baseCD
+	f6.data.baseCD = 60
+	CDTL3:RefreshAllBars()
+	local x2 = select(2, ti(f6):GetPoint(1))
+	check("  a 60 s cooldown on a 120 s lane: no indicator, and none past the bar's end", ti(f6):GetAlpha() == 0 and x2 <= barWidth(f6),
+		string.format("alpha=%s x=%s bar=%.1f", tostring(ti(f6):GetAlpha()), tostring(x2), barWidth(f6)))
+	f6.data.baseCD = base
+	CDTL3:RefreshAllBars()
+end
 l3.enabled = false
 CDTL3:RefreshLane(3)   -- what Lanes › Lane 3 › Enabled does
 RunOnUpdate(0.02, 10)
