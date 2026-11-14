@@ -95,6 +95,48 @@ CDTL3.LSM:Register("sound", "CDTL3 Click", [[Interface\Addons\CooldownTimeline3\
 CDTL3.LSM:Register("sound", "CDTL3 Rattle", [[Interface\Addons\CooldownTimeline3\Media\ready-rattle.ogg]])
 CDTL3.LSM:Register("sound", "CDTL3 Tinks", [[Interface\Addons\CooldownTimeline3\Media\ready-tinks.ogg]])
 
+-- Blizzard sounds worth offering as ready alerts: file data IDs that exist in every client's SoundKitEntry
+-- (Era, Forever, TBC, MoP, Retail; see docs/sounds-shortlist.md and tools/spell-list-check/sounds.js)
+CDTL3.LSM:Register("sound", "Blizzard: Raid Warning", 567397)
+CDTL3.LSM:Register("sound", "Blizzard: PvP Warning", 567488)
+CDTL3.LSM:Register("sound", "Blizzard: Quest Complete", 567439)
+CDTL3.LSM:Register("sound", "Blizzard: Quest Accepted", 567400)
+CDTL3.LSM:Register("sound", "Blizzard: Quest Progress", 567516)
+CDTL3.LSM:Register("sound", "Blizzard: Level Up", 569593)
+CDTL3.LSM:Register("sound", "Blizzard: Reputation Rank Up", 568016)
+CDTL3.LSM:Register("sound", "Blizzard: Queue Joined", 568587)
+CDTL3.LSM:Register("sound", "Blizzard: Queue Pop", 568011)
+CDTL3.LSM:Register("sound", "Blizzard: Alarm Clock 1", 567436)
+CDTL3.LSM:Register("sound", "Blizzard: Alarm Clock 2", 567399)
+CDTL3.LSM:Register("sound", "Blizzard: Alarm Clock 3", 567458)
+CDTL3.LSM:Register("sound", "Blizzard: Text Ping", 567484)
+CDTL3.LSM:Register("sound", "Blizzard: Whisper", 567421)
+CDTL3.LSM:Register("sound", "Blizzard: Group Invite", 567451)
+CDTL3.LSM:Register("sound", "Blizzard: Map Ping", 567416)
+CDTL3.LSM:Register("sound", "Blizzard: Friend Online", 567518)
+CDTL3.LSM:Register("sound", "Blizzard: Battle.net Toast", 567402)
+CDTL3.LSM:Register("sound", "Blizzard: Store Toast", 915759)
+CDTL3.LSM:Register("sound", "Blizzard: Flight Point Discovered", 567497)
+CDTL3.LSM:Register("sound", "Blizzard: Coin", 567428)
+CDTL3.LSM:Register("sound", "Blizzard: Night Elf Bell", 566558)
+CDTL3.LSM:Register("sound", "Blizzard: Shay's Bell", 568154)
+CDTL3.LSM:Register("sound", "Blizzard: Holy Cast", 569763)
+CDTL3.LSM:Register("sound", "Blizzard: Sparkle Chime", 5259954)
+CDTL3.LSM:Register("sound", "Blizzard: Gold Cast", 6226466)
+CDTL3.LSM:Register("sound", "Blizzard: Trading Post Celebration", 4906957)
+CDTL3.LSM:Register("sound", "Blizzard: Trading Post Coins", 4910746)
+
+-- Plays a sound the owner just picked in a dropdown, once, so it can be heard on the spot (None is silent)
+function CDTL3:PlayPicked(name)
+	if type(name) ~= "string" or name == "" or name == "None" then
+		return false
+	end
+	local ok = pcall(function()
+		PlaySoundFile(CDTL3.LSM:Fetch("sound", name), "SFX")
+	end)
+	return ok
+end
+
 -- Backgrounds
 CDTL3.LSM:Register("background", "CDTL3 Icon Shadow", [[Interface\Addons\CooldownTimeline3\Media\icon-shadow.tga]])
 

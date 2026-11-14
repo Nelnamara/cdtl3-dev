@@ -29,11 +29,12 @@ end
 -- volume, overlap) and the player's voice settings in C_TTSSettings (a case below takes it away)
 local SPOKEN = {}
 local VOICE = 3
+VOICES = { { voiceID = 7, name = "Voice" }, { voiceID = 3, name = "Other" } }	-- the installed voices; the option picks 3
 local VoiceChat = {
 	SpeakText = function(voiceID, text, rate, volume, overlap)
 		SPOKEN[#SPOKEN + 1] = { voiceID = voiceID, text = text, rate = rate, volume = volume, overlap = overlap }
 	end,
-	GetTtsVoices = function() return { { voiceID = 7, name = "Voice" } } end,
+	GetTtsVoices = function() return VOICES end,
 }
 local TTSSettings = {
 	GetVoiceOptionID = function() return VOICE end,
@@ -174,7 +175,22 @@ do
 	ready(915)
 	check("no voice picked in the game's options: the first voice", #SPOKEN == 1 and SPOKEN[1].voiceID == 7, SPOKEN[1] and tostring(SPOKEN[1].voiceID))
 	leave()
+	VOICE = 99
+	SPOKEN = {}
+	ready(915)
+	check("the picked voice is not installed: the first installed voice, not the stale ID", #SPOKEN == 1 and SPOKEN[1].voiceID == 7, SPOKEN[1] and tostring(SPOKEN[1].voiceID))
+	leave()
 	VOICE = 3
+	local realVoices = VOICES
+	VOICES = {}
+	SPOKEN = {}
+	local n0, e0v = CDTL3:FailureCount("Say its name"), #ERRORS
+	ready(915)
+	check("no voice installed: nothing spoken, no error, the reason in /cdtl3 log", #SPOKEN == 0 and #ERRORS == e0v
+		and CDTL3:FailureCount("Say its name") == n0 + 1 and CDTL3:LogText():find("no text to speech voice", 1, true) ~= nil,
+		tostring(CDTL3:FailureCount("Say its name")))
+	leave()
+	VOICES = realVoices
 
 	-- the Filters controls
 	local fa = CDTL3:GetFilterOptions().args.spells.args
@@ -188,6 +204,14 @@ do
 	fa.ownSound.set({}, true)
 	check("ticking Own ready sound starts from its Ready frame's Normal Sound", e.ownSound == true and e.sound == "CDTL3 Click"
 		and fa.sound.hidden({}) == false and fa.sound.get({}) == "CDTL3 Click", tostring(e.sound))
+	played = {}
+	fa.sound.set({}, "CDTL3 Rattle")
+	check("picking a sound in Filters plays it once, so you know what it is", playedOnly("CDTL3 Rattle"), shown())
+	played = {}
+	fa.sound.set({}, "None")
+	check("  picking None plays nothing", #played == 0, shown())
+	fa.sound.set({}, "Blizzard: Raid Warning")
+	check("  a Blizzard sound plays by its file data ID", #played == 1 and played[1] == 567397, shown())
 	fa.sound.set({}, "CDTL3 Rattle")
 	ready(911)
 	check("  picked Rattle: Rattle plays", playedOnly("CDTL3 Rattle"), shown())
@@ -232,6 +256,26 @@ do
 	played = {}
 	gen.nSoundTest.func({})
 	check("Ready 1 > Play sound (Normal): plays it, even muted", playedOnly("CDTL3 Click") and gen.nSoundTest.name == "Play sound", shown())
+	played = {}
+	gen.nSound.set({}, "CDTL3 Tinks")
+	check("Ready 1 > Normal Sound: picking plays it once", playedOnly("CDTL3 Tinks"), shown())
+	gen.nSound.set({}, "CDTL3 Click")
+	played = {}
+	gen.hSound.set({}, "None")
+	check("Ready 1 > Highlight Sound: picking None plays nothing", #played == 0, shown())
+	gen.hSound.set({}, "CDTL3 Rattle")
+	check("  picking Rattle plays it once", playedOnly("CDTL3 Rattle"), shown())
+	gen.hSound.set({}, "None")
+	check("Blizzard sounds are registered, named Blizzard: <name>, with numeric file data IDs", (function()
+		local n, bad = 0, nil
+		for name, path in pairs(LibStub("LibSharedMedia-3.0"):HashTable("sound")) do
+			if name:find("^Blizzard: ") then
+				n = n + 1
+				if type(path) ~= "number" then bad = name end
+			end
+		end
+		return n >= 20 and not bad
+	end)(), "")
 	played = {}
 	gen.hSoundTest.func({})
 	check("  Play sound (Highlight) with Highlight Sound None: nothing", #played == 0, shown())

@@ -1063,7 +1063,10 @@ function private.SimpleTab()
 				order = 31, type = "select", dialogControl = "LSM30_Sound",
 				values = AceGUIWidgetLSMlists and AceGUIWidgetLSMlists.sound or {},
 				get = function() return p().ready.ready1["nSound"] end,
-				set = function(info, val) p().ready.ready1["nSound"] = val end,
+				set = function(info, val)
+					p().ready.ready1["nSound"] = val
+					CDTL3:PlayPicked(val)
+				end,
 			},
 			playSound = {
 				name = L["Play"],

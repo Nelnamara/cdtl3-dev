@@ -1272,7 +1272,10 @@ function FX:AddEntryArgs(args, t)
 			values = AceGUIWidgetLSMlists.sound,
 			hidden = function(info) return hidden() or not shown() end,
 			get = function(info) return get(key, default) end,
-			set = function(info, val) apply(key, val) end,
+			set = function(info, val)
+				apply(key, val)
+				CDTL3:PlayPicked(val)
+			end,
 		}
 	end
 

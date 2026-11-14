@@ -2037,22 +2037,37 @@ function CDTL3:SpeakText(text)
 		return false
 	end
 
-	return pcall(function()
-		local voiceID = C_TTSSettings.GetVoiceOptionID((Enum and Enum.TtsVoiceType and Enum.TtsVoiceType.Standard) or 0)
-		if voiceID == nil and C_VoiceChat.GetTtsVoices then
-			local voices = C_VoiceChat.GetTtsVoices()
-			voiceID = voices and voices[1] and voices[1].voiceID
+	local ok, err = pcall(function()
+		-- the voice as Blizzard's TextToSpeech_GetSelectedVoice picks it: the option's ID only when
+		-- an installed voice has it, else the first installed voice
+		local voices = C_VoiceChat.GetTtsVoices and C_VoiceChat.GetTtsVoices()
+		local optionID = C_TTSSettings.GetVoiceOptionID((Enum and Enum.TtsVoiceType and Enum.TtsVoiceType.Standard) or 0)
+		local voiceID
+		if type(voices) == "table" then
+			for _, voice in ipairs(voices) do
+				if voice.voiceID == optionID then
+					voiceID = voice.voiceID
+					break
+				end
+			end
+			if voiceID == nil and voices[1] then
+				voiceID = voices[1].voiceID
+			end
 		end
 		if voiceID == nil then
-			error("no text to speech voice")
+			error("no text to speech voice installed")
 		end
 
 		local rate = C_TTSSettings.GetSpeechRate and C_TTSSettings.GetSpeechRate() or 0
 		local volume = C_TTSSettings.GetSpeechVolume and C_TTSSettings.GetSpeechVolume() or 100
 		C_VoiceChat.SpeakText(voiceID, text, rate, volume, false)
 	end)
-end
+	if not ok then
+		CDTL3:LogFailure("Say its name", err)
+	end
 
+	return ok
+end
 -- The saved Filters entry of a live cooldown (nil for test icons, flights and anything unsaved)
 private.SavedEntry = function(d)
 	local t = d["type"]
