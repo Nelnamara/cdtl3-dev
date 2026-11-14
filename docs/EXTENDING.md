@@ -22,7 +22,7 @@ Each message carries one table of plain data, new for every message:
 
 | Field | Meaning |
 | --- | --- |
-| `type` | `"spells"`, `"petspells"`, `"items"`, `"buffs"`, `"debuffs"`, `"offensives"`, `"customs"`, `"runes"` or `"flights"` |
+| `type` | `"spells"`, `"petspells"`, `"items"`, `"buffs"`, `"debuffs"`, `"offensives"`, `"customs"`, `"runes"` or `"flights"`, or the lower-case key of a timer type another addon registered (see below) |
 | `id` | The spell, item or aura ID CDTL3 tracks it under |
 | `name` | Display name |
 | `icon` | Icon texture ID |
@@ -71,7 +71,7 @@ end
 An addon can put its own timers on CDTL3's lanes, bars and Ready frames. They show like CDTL3's custom timers (lane, bar, Ready, sound) and send the messages above.
 
 - `CDTL3:RegisterTimerType(key, { name = "Group cooldowns", icon = fileIDOrPath })` registers a type and returns `true` (`false` for a bad argument or a key CDTL3 uses itself, such as `spells`). Keys are not case-sensitive. Registering again is harmless and updates the name and icon. The type gets a section in Filters > Defaults with Enabled, Default Lane, Default Bar and Default Ready, so the player can send it to a lane of their own.
-- `CDTL3:StartTimer(key, id, { name, icon, duration, startedAt, owner, class })` starts or restarts one timer (`id` is a string or number, one timer per type and id) and returns `true` when it started. `duration` is in seconds, `startedAt` a local `GetTime()` value (default: now). Both must be plain numbers, never hidden values. The timer counts down to `startedAt + duration`; one that is already over is ignored (`false`). `owner` is `"Name-Realm"`, and the text tag `[cd.owner]` shows its short name (`Name`) on an icon or bar. `class` is a class tag such as `"DRUID"`; it picks the bar's class colour where the bar frame uses class colours. `icon` falls back to the type's icon.
+- `CDTL3:StartTimer(key, id, { name, icon, duration, startedAt, owner, class })` starts or restarts one timer (`id` is a string or number, one timer per type and id) and returns `true` when it started. It returns `false` when the player has switched the type off (Filters > Defaults > Enabled). `duration` is in seconds, `startedAt` a local `GetTime()` value (default: now). Both must be plain numbers, never hidden values. The timer counts down to `startedAt + duration`; one that is already over is ignored (`false`). `owner` is `"Name-Realm"`, and the text tag `[cd.owner]` shows its short name (`Name`) on an icon or bar. `class` is a class tag such as `"DRUID"`; it picks the bar's class colour where the bar frame uses class colours. `icon` falls back to the type's icon.
 - `CDTL3:StopTimer(key, id)` takes a timer off the lanes at once, with no Ready (listeners get Ended), and returns `true` when there was one.
 
 An unknown key or a bad argument returns `false` and does nothing.
@@ -81,6 +81,10 @@ CDTL3:RegisterTimerType("groupcd", { name = "Group cooldowns", icon = 136080 })
 CDTL3:StartTimer("groupcd", "Tania-Realm:Rebirth", { name = "Rebirth", icon = 136080,
 	duration = 600, startedAt = GetTime(), owner = "Tania-Realm", class = "DRUID" })
 ```
+
+### A working example: CooldownCollaborator
+
+The addon CooldownCollaborator uses exactly these three calls (its `Bridge.lua`). When both addons are loaded it registers the type `cdcGroup`, named "Group cooldowns", then calls `StartTimer` for each tracked group cooldown (yours and those of group members who also run CooldownCollaborator), with `owner` and `class` set so a lane's Caster lane can show each caster's name in class colour. It calls `StopTimer` when a timer is cleared or the player switches the bridge off. Every call is guarded, so it does nothing when CDTL3 is missing or older than the API. Use it as a model: check `CDTL3 and CDTL3.RegisterTimerType` first, register once at login, and pass only plain numbers.
 
 Notes: flights (`type` flights) and the custom timers still use their own code in CDTL3; moving them onto this API is a follow-up, not part of this pass.
 

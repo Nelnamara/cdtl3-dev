@@ -1143,6 +1143,10 @@ function private.HelpTab()
 				end,
 		}
 	end
+	args["collaborator"] = {
+		name = "\n" .. L["Works with the addon CooldownCollaborator: its group cooldowns show on Lane 1. To change the lane, pick Group cooldowns under Filters › Defaults."],
+		type = "description", fontSize = "medium", order = (#(CDTL3.helpLines or {}) + 1) * 2 + 2,
+	}
 	return { name = L["Help"], type = "group", order = 2007, args = args }
 end
 
@@ -1198,7 +1202,7 @@ function private.Extend(options)
 			local lane = lanes.args["lane" .. n]
 			if lane and lane.args.general then
 				lane.args.general.args.estimateLegend = {
-					name = "\n" .. L["A ~ before a time means CDTL3's estimate; plain numbers follow the game's own timer. Switch it on under Global > Mark estimated times with ~."],
+					name = "\n" .. L["A ~ before a time means CDTL3's estimate; plain numbers follow the game's own timer. Switch it on under Global › Mark estimated times with ~."],
 					type = "description", order = 890,
 					hidden = function() return not CDTL3.retailAPI end,
 				}

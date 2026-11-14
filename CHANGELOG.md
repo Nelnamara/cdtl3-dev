@@ -20,7 +20,8 @@
 **Boards and groups**
 - **A Ready frame that shows every pinned defensive** (*Stay until used*), bright when ready and dimmed with its time when cooling
 - **A fight timeline** with flags at 2, 3 and 5 minutes showing where each pinned cooldown will be
-- **A Caster lane** for other players' cooldowns, with each caster's name under their icon: from the combat log on MoP, TBC and Classic Era, and from CooldownCollaborator on any client
+- **A Caster lane** for other players' cooldowns, with each caster's name under their icon: from the combat log on MoP, TBC and Classic Era, and from CooldownCollaborator where it is installed
+- **Group cooldowns from CooldownCollaborator** show on CDTL3's lanes — yours and those of group members who also run it. They land on Lane 1; Filters › Defaults › Group cooldowns picks another lane, bar frame and Ready frame, or switches them off
 - **Externals you gave** — a strip on your cooldown icon with the target's name and the effect's time left
 - **Burst pack** (Filters › Defaults) sets up lust, Sated, your trinkets and potion on a Burst lane, with an optional Burst strip
 
@@ -50,7 +51,7 @@
 **For bug reports and other addons**
 - `/cdtl3 report` opens a ready-to-copy bug report, `/cdtl3 log` shows what failed quietly, `/cdtl3 perf` shows memory and frame counts, and `/cdtl3 help` lists every command
 - **Update rate** (Global tab) and **Pause while hidden** (per lane) for slower machines; timers and Ready stay on time
-- Other addons can listen for a timer starting, getting ready and ending, and read what's tracked: see [Extending CDTL3](https://github.com/Nelnamara/cdtl3-dev/blob/main/docs/EXTENDING.md)
+- Other addons can listen for a timer starting, getting ready and ending, read what's tracked, and add their own timers to the lanes: see [Extending CDTL3](https://github.com/Nelnamara/cdtl3-dev/blob/main/docs/EXTENDING.md)
 
 **Fixes**
 - **Importing a "Settings only" string as "All settings and data" no longer empties your Filters lists**, and a damaged string is refused before it can change anything
@@ -69,6 +70,7 @@
 - **Bar frames**: the transition indicator line stays inside its bar, and shows only on a bar that will hand off to its lane; it used to sit far out to the right, over other frames, when the lane held more time than the whole cooldown
 - **Test mode** no longer lists test cooldowns twice
 - **Classic clients** read buffs and the combat log through Blizzard's current names, ahead of the old ones being removed
+- **WoW: Forever**: Haunt leaves the built-in Warlock list, as Blizzard has removed it from the class
 
 ## v3.1.1
 
