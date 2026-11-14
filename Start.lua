@@ -1083,7 +1083,7 @@ function private.SimpleTab()
 			readySound = {
 				name = L["Ready sound"],
 				desc = L["The sound that plays when a cooldown is back"],
-				order = 31, type = "select", dialogControl = "LSM30_Sound",
+				order = 31, type = "select", width = "double", dialogControl = "LSM30_Sound",
 				values = AceGUIWidgetLSMlists and AceGUIWidgetLSMlists.sound or {},
 				get = function() return p().ready.ready1["nSound"] end,
 				set = function(info, val)

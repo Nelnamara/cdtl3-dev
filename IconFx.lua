@@ -1267,7 +1267,7 @@ function FX:AddEntryArgs(args, t)
 	end
 	local function sound(key, name, desc, order, default, shown)
 		return {
-			name = name, desc = desc, order = order, type = "select",
+			name = name, desc = desc, order = order, type = "select", width = "double",
 			dialogControl = "LSM30_Sound",
 			values = AceGUIWidgetLSMlists.sound,
 			hidden = function(info) return hidden() or not shown() end,
