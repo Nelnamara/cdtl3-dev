@@ -65,6 +65,32 @@ h3 { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: 
 .counts b { color: var(--fg); font-weight: 600; }
 .status { color: var(--muted); margin: 0; }
 .status.warn { color: var(--later); }
+[hidden] { display: none !important; }
+/* The status switches stay at the top while the lines scroll under them */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.meter {
+	position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
+	display: flex; flex-direction: column; gap: 10px;
+	background: var(--bg); padding-block: 10px;
+	border-bottom: 1px solid var(--line);
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+	font: inherit; font-size: 14px; font-weight: 500;
+	display: inline-flex; align-items: center; gap: 7px;
+	min-height: 38px; padding: 0 14px; border-radius: 19px; cursor: pointer;
+	border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+}
+.chip i { width: 9px; height: 9px; border-radius: 50%; box-sizing: border-box; }
+.chip[data-f="all"] i { display: none; }
+.chip[data-f="open"] i { border: 1.5px solid var(--muted); }
+.chip[data-f="fail"] i { background: var(--fail); }
+.chip[data-f="later"] i { background: var(--later); }
+.chip[data-f="pass"] i { background: var(--pass); }
+.chip b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.none { color: var(--muted); margin: 0; }
 .walk { display: flex; flex-direction: column; gap: 14px; }
 .walk-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
 .walk-head small { color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -121,13 +147,21 @@ details.folded > .walk { padding: 16px 14px; }
 <div class="page">
 	<header class="head">
 		<h1>CDTL3 Walk Sheet</h1>
-		<p class="sub">Test lines for Cooldown Timeline 3 builds. Mark each line Pass, Fail or Later (can't try it yet) and add a note where something looks off. Marks save as you go.</p>
-		<div class="lane" id="lane" role="img" aria-label="Progress"></div>
-		<div class="counts" id="counts"></div>
-		<p class="all" id="all" hidden></p>
+		<p class="sub">Test lines for Cooldown Timeline 3 builds. Mark each line Pass, Fail or Later (can't try it yet) and add a note where something looks off. Marks save as you go. The switches at the top show only Open, Fail, Later or Pass lines, from every walk.</p>
 		<p class="status" id="status">Loading saved marks…</p>
 	</header>
+	<div class="meter">
+		<div class="lane" id="lane" role="img" aria-label="Lines marked, every walk"></div>
+		<div class="chips" role="group" aria-label="Show lines">
+			<button type="button" class="chip" data-f="all" aria-pressed="true"><i></i>All <b id="c-all">0</b></button>
+			<button type="button" class="chip" data-f="open" aria-pressed="false"><i></i>Open <b id="c-open">0</b></button>
+			<button type="button" class="chip" data-f="fail" aria-pressed="false"><i></i>Fail <b id="c-fail">0</b></button>
+			<button type="button" class="chip" data-f="later" aria-pressed="false"><i></i>Later <b id="c-later">0</b></button>
+			<button type="button" class="chip" data-f="pass" aria-pressed="false"><i></i>Pass <b id="c-pass">0</b></button>
+		</div>
+	</div>
 	<main id="walks">
+		<p class="none" id="none" hidden></p>
 		<div class="empty" id="empty">No walk lines yet. Lines appear here when a test build is ready to try.</div>
 	</main>
 	<section id="done-wrap" hidden>
@@ -149,6 +183,11 @@ details.folded > .walk { padding: 16px 14px; }
 	var heads = {};        // walk -> its count labels
 	var touched = {};      // walks marked in this visit stay in place until the next visit
 	var foldOpen = {};     // finished walk -> unfolded
+	var filter = "all";    // the status switch: all, open, fail, later or pass, across every walk
+	var keepShown = {};    // lines marked while a switch is on stay in view until the switch changes
+	var groupsOf = {};     // walk -> [{ el, ids }]
+	var sectionOf = {};    // walk -> its section
+	var chipEls = {};
 	var db = null;
 	var readOnly = false;
 	var statusEl = document.getElementById("status");
@@ -156,7 +195,7 @@ details.folded > .walk { padding: 16px 14px; }
 	var emptyEl = document.getElementById("empty");
 	var doneEl = document.getElementById("done");
 	var doneWrap = document.getElementById("done-wrap");
-	var allEl = document.getElementById("all");
+	var noneEl = document.getElementById("none");
 
 	function setStatus(text, warn) {
 		statusEl.textContent = text;
@@ -258,6 +297,7 @@ details.folded > .walk { padding: 16px 14px; }
 		if (!d) { return; }
 		var next = d.status === mark ? "" : mark;
 		touched[d.walk] = true;
+		if (filter !== "all") { keepShown[id] = true; }
 		d.status = next;
 		paint(id);
 		render();
@@ -318,12 +358,9 @@ details.folded > .walk { padding: 16px 14px; }
 		return parts.join(" · ");
 	}
 
-	// the top counts cover the walks still open; the line under them covers every walk
-	function summary(list) {
-		list = list || [];
-		var shownIds = [], allIds = Object.keys(items), folded = 0;
-		list.forEach(function (w) { if (w.fold) { folded++; } else { shownIds = shownIds.concat(w.ids); } });
-		var n = tally(shownIds), total = n.total;
+	// the bar and the switch counts cover every walk
+	function summary() {
+		var n = tally(Object.keys(items)), total = n.total;
 		var lane = document.getElementById("lane");
 		lane.textContent = "";
 		[["p", n.pass], ["f", n.fail], ["l", n.later]].forEach(function (seg) {
@@ -334,22 +371,56 @@ details.folded > .walk { padding: 16px 14px; }
 				lane.appendChild(s);
 			}
 		});
-		var counts = document.getElementById("counts");
-		counts.textContent = "";
-		[["Pass", n.pass], ["Fail", n.fail], ["Later", n.later], ["Open", n.open], ["Lines", total]].forEach(function (c) {
-			var span = document.createElement("span");
-			var b = document.createElement("b");
-			b.textContent = c[1];
-			span.appendChild(b);
-			span.appendChild(document.createTextNode(" " + c[0]));
-			counts.appendChild(span);
+		lane.setAttribute("aria-label", total ? (n.pass + " pass, " + n.fail + " fail, " + n.later + " later, " + n.open + " open, of " + total + " lines") : "No lines yet");
+		[["all", total], ["open", n.open], ["fail", n.fail], ["later", n.later], ["pass", n.pass]].forEach(function (c) {
+			document.getElementById("c-" + c[0]).textContent = c[1];
 		});
-		if (folded) {
-			var a = tally(allIds);
-			allEl.textContent = "All " + list.length + " walks: " + a.pass + " pass · " + a.fail + " fail · " + a.later + " later · " + a.open + " open";
-		}
-		allEl.hidden = !folded;
 	}
+
+	function matches(id) {
+		if (filter === "all" || keepShown[id]) { return true; }
+		var s = items[id].status;
+		if (filter === "open") { return !s; }
+		if (filter === "pass") { return s === "pass" || s === "keep"; }
+		if (filter === "fail") { return s === "fail" || s === "change"; }
+		return s === "later";
+	}
+
+	// a switch hides the lines, headings and walks it doesn't cover; no redraw, so a box being typed in stays put
+	function applyFilter(list) {
+		var any = false;
+		list.forEach(function (w) {
+			var seen = 0;
+			(groupsOf[w.id] || []).forEach(function (g) {
+				var n = 0;
+				g.ids.forEach(function (id) {
+					var on = matches(id);
+					if (els[id]) { els[id].root.hidden = !on; }
+					if (on) { n++; }
+				});
+				g.el.hidden = n === 0;
+				seen += n;
+			});
+			if (sectionOf[w.id]) { sectionOf[w.id].hidden = seen === 0; }
+			if (seen) { any = true; }
+		});
+		var empty = { open: "Every line has a mark.", fail: "No lines marked Fail.", later: "No lines marked Later.", pass: "No lines marked Pass." };
+		noneEl.textContent = filter !== "all" && !any && list.length ? empty[filter] : "";
+		noneEl.hidden = !noneEl.textContent;
+	}
+
+	function setFilter(f) {
+		filter = f;
+		keepShown = {};
+		Object.keys(chipEls).forEach(function (k) { chipEls[k].setAttribute("aria-pressed", k === f ? "true" : "false"); });
+		render();
+		window.scrollTo(0, 0);
+	}
+
+	Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (b) {
+		chipEls[b.dataset.f] = b;
+		b.addEventListener("click", function () { setFilter(b.dataset.f); });
+	});
 
 	// walks with unmarked lines on top, newest first; a walk with every line marked folds below
 	// (unless marked in this visit); inside a walk, lines in their order under their headings
@@ -376,7 +447,8 @@ details.folded > .walk { padding: 16px 14px; }
 			w.title = w.title || w.id;
 			w.ids.sort(function (a, b) { return (items[a].order || 0) - (items[b].order || 0) || (a < b ? -1 : 1); });
 			w.n = tally(w.ids);
-			w.fold = w.n.open === 0 && !touched[w.id];
+			// with a switch on, every walk shows open so its matching lines can be seen
+			w.fold = filter === "all" && w.n.open === 0 && !touched[w.id];
 		});
 		list.sort(function (a, b) {
 			if (a.added !== b.added) { return a.added < b.added ? 1 : -1; }
@@ -384,7 +456,7 @@ details.folded > .walk { padding: 16px 14px; }
 			return a.id < b.id ? 1 : -1;
 		});
 		// a saved mark or note leaves the layout alone, so a box being typed in is never moved
-		var next = list.map(function (w) {
+		var next = filter + "\u0004" + list.map(function (w) {
 			return [w.id, w.title, w.fold ? "f" : "o", w.ids.map(function (id) {
 				return id + "\u0003" + (items[id].group || "");
 			}).join(",")].join("\u0001");
@@ -398,7 +470,8 @@ details.folded > .walk { padding: 16px 14px; }
 		list.forEach(function (w) {
 			(heads[w.id] || []).forEach(function (s) { s.textContent = countLine(w.n); });
 		});
-		summary(list);
+		summary();
+		applyFilter(list);
 	}
 
 	function buildWalk(w) {
@@ -413,6 +486,8 @@ details.folded > .walk { padding: 16px 14px; }
 		head.appendChild(h);
 		head.appendChild(small);
 		section.appendChild(head);
+		sectionOf[w.id] = section;
+		var groups = groupsOf[w.id] = [];
 		var group = null, lastGroup = null;
 		w.ids.forEach(function (id) {
 			var d = items[id];
@@ -420,6 +495,7 @@ details.folded > .walk { padding: 16px 14px; }
 				lastGroup = d.group;
 				group = document.createElement("div");
 				group.className = "group";
+				groups.push({ el: group, ids: [] });
 				if (d.group) {
 					var g = document.createElement("h3");
 					g.textContent = d.group;
@@ -429,6 +505,7 @@ details.folded > .walk { padding: 16px 14px; }
 			}
 			paint(id);
 			group.appendChild(els[id].root);
+			groups[groups.length - 1].ids.push(id);
 		});
 		return section;
 	}
@@ -437,6 +514,8 @@ details.folded > .walk { padding: 16px 14px; }
 		Array.prototype.slice.call(walksEl.querySelectorAll(".walk")).forEach(function (n) { n.remove(); });
 		doneEl.textContent = "";
 		heads = {};
+		groupsOf = {};
+		sectionOf = {};
 		var folded = 0;
 		list.forEach(function (w) {
 			var section = buildWalk(w);
