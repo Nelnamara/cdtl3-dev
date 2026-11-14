@@ -31,7 +31,9 @@
 - **Pull from Cooldown Manager** (Retail and WoW: Forever) — one button in Filters › Buffs sets up every buff in the Cooldown Manager's Tracked Bars
 
 **Ready sounds and showing**
-- **A ready sound per spell** — each entry can have its own sound, flash when ready, and say its name out loud (text to speech). The Ready tab gets *Mute ready sounds* and a *Play sound* button
+- **A ready sound per spell** — each entry can have its own sound, flash when ready, and say its name out loud (text to speech, in the voice you picked in the game's text to speech settings, or the first installed voice). The Ready tab gets *Mute ready sounds* and a *Play sound* button
+- **Hear a sound as you pick it** — every sound menu plays your choice once
+- **Blizzard sounds** — a selection of the game's own alerts and chimes (raid warning, quest complete, level up, alarm clocks, bells…) joins every sound menu, each one checked to exist on every client
 - **Show per lane, bar frame and Ready frame** — *Always*, *Only in combat* or *Boss fights only*, with *Dim instead of hide*. The default follows the Global tab's *Hide out of combat*, as before
 - **Preview with sample icons** — a button at the top of the Global tab (or Shift-click the minimap button) shows sample icons, then *Stop preview*
 - **Placing frames** — the "Frames unlocked" box says to drag the frames and then click Lock (and that Edit Mode can place them too) until your first lock. Your first flight says the countdown is CDTL3's and where to turn it off
@@ -63,6 +65,7 @@
 - **Edit Mode** sliders reach the same sizes as the options window; lane width now goes to 1000 and bar width to 600 in both
 - **Grouped stacking** does far less work and looks the same; a lone icon in a short stack stays in the lane
 - **TBC Anniversary**: flights that don't start from the flight map no longer count down under internal names
+- **Undo on a setup preview** puts a buff you gained, or a spell you cast, during the preview back on its own lane, instead of leaving it on the preview's lane until a reload
 - **Test mode** no longer lists test cooldowns twice
 - **Classic clients** read buffs and the combat log through Blizzard's current names, ahead of the old ones being removed
 

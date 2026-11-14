@@ -26,5 +26,8 @@ All the walk lines below stay on the walk sheet, marked Later until they can be 
 - Still open: **trinkets**. CDTL3 reads equipped trinkets through `GetInventoryItemCooldown("player", slot)`, which the probe didn't call. If it turns out hidden in combat, `C_Item.GetItemCooldown(itemID)`, readable here for the potion, is the switch. Check by running the probe again once the character has an on-use trinket.
 - Retail is unknown until someone runs the probe there.
 
+## Stacking in combat (Retail and Forever)
+From the owner's walk of test build 2 (13 Nov 2026): "No jump actually occurs" on Grouped stacking. Out of combat it jumps in every mode and orientation (real-icon checks in `tools/tests/lanes.lua`). In combat, spell icons ride the game's timer and their positions read back hidden, so `CT:GroupedChildren` (CombatTimers.lua) leaves them out of stacking and they can overlap until combat ends. The way to make them jump in combat would be to judge overlaps from estimated positions (cast time plus base cooldown), which can be off for talented cooldowns. Not built; waits for his word.
+
 ### Boss timing (feature panel card 6)
 **Probe result, Forever, 13 Nov 2026:** Forever has no boss timeline (`C_EncounterTimeline.IsFeatureAvailable()` false, Blizzard_EncounterTimeline not loaded). Boss markers on Forever would have to come from DBM or BigWigs messages, as on Classic. Retail is unknown until someone fights a Midnight boss with the probe running.
