@@ -462,6 +462,67 @@ pass[2].cx = 300
 RunNew(pass)
 check("past each other: both back in the lane", pass[1].sOffset == 0 and pass[2].sOffset == 0 and pass[1].stack ~= pass[2].stack,
 	string.format("offsets %s, %s", tostring(pass[1].sOffset), tostring(pass[2].sOffset)))
+
+-- the same look with real icons through the lane's own update: the position they read is the one their
+-- last SetPoint gave them (as in the game), in every mode and orientation. Two icons on the same spot
+-- jump apart, then settle back in the lane once one has moved on.
+print("[Grouped stacking, real icons in every mode " .. FLAVOR .. "]")
+local saved = { vertical = s2.vertical, reversed = s2.reversed, mode = s2.mode.type, width = s2.width, height = s2.height }
+local sa = s2.mode.splitAbs
+local savedAbs = { sa.s1v, sa.s2v, sa.s3v, sa.max }
+s2.width, s2.height = 600, 29
+s2.icons.size = 30
+s2.stacking.height = 80
+s2.stacking.grow = "UP"
+sa.s1v, sa.s2v, sa.s3v, sa.max = 30, 120, 600, 180
+local function RealIcon(name, cd)
+	local td = { id = 1, name = name, type = "testing", icon = 1, bCD = cd * 1000, lane = 2, barFrame = 1, readyFrame = 1, enabled = true, ignored = false, usedBy = {} }
+	local f = CDTL3:CreateCooldown(CDTL3:GetUID(), "testing", td)
+	CDTL3:SendToLane(f)
+	f.icon.GetCenter = function(self)
+		local p = self.__points[#self.__points]
+		if not p then return nil end
+		local size = s2.icons.size
+		if s2.vertical then
+			local y = 100 + p[3] + size / 2
+			if p[1] == "TOP" then y = 700 + p[3] - size / 2 end
+			return 500 + p[2], y
+		end
+		local x = 200 + p[2] + size / 2
+		if p[1] == "RIGHT" then x = 800 + p[2] - size / 2 end
+		return x, 400 + p[3]
+	end
+	return f
+end
+local ra, rb = RealIcon("Pass A", 100), RealIcon("Pass B", 100)
+lane2.GetChildren = function() return ra.icon, rb.icon end
+local errs0 = #ERRORS
+for _, mode in ipairs({ "SPLIT_ABS", "LINEAR", "LINEAR_ABS", "SPLIT" }) do
+	for _, vertical in ipairs({ true, false }) do
+		for _, reversed in ipairs({ false, true }) do
+			s2.vertical, s2.reversed, s2.mode.type = vertical, reversed, mode
+			CDTL3:RefreshLane(2)
+			lane2.triggerUpdate = true
+			ra.data.baseCD, rb.data.baseCD = 100, 100
+			ra.data.currentCD, rb.data.currentCD = 50, 50
+			RunOnUpdate(0.02, 10)
+			local together = ra.icon.sOffset + rb.icon.sOffset
+			rb.data.currentCD = 10
+			RunOnUpdate(0.02, 10)
+			local apart = ra.icon.sOffset + rb.icon.sOffset
+			check(string.format("%s%s%s: icons on one spot jump apart one icon, then settle back", mode,
+				vertical and ", vertical (Split (Time) 30/120/600 s, max 180 s, his lane)" or ", horizontal", reversed and ", reversed" or ""),
+				together == 30 and apart == 0, string.format("together %s, apart %s", tostring(together), tostring(apart)))
+		end
+	end
+end
+check("real icons: no lua errors", #ERRORS == errs0)
+ra.data.currentCD, rb.data.currentCD = -1, -1
+RunOnUpdate(0.02, 10)
+lane2.GetChildren = nil
+s2.vertical, s2.reversed, s2.mode.type, s2.width, s2.height = saved.vertical, saved.reversed, saved.mode, saved.width, saved.height
+sa.s1v, sa.s2v, sa.s3v, sa.max = savedAbs[1], savedAbs[2], savedAbs[3], savedAbs[4]
+
 s2.stacking.enabled = false
 s2.icons.size = 30
 lane2.validChildren, lane2.childCount = {}, 0
