@@ -6574,6 +6574,7 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, val)
 								ready["nSound"] = val
+								CDTL3:PlayPicked(val)
 							end,
 					},
 					spacer400 = {
@@ -6608,6 +6609,7 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, val)
 								ready["hSound"] = val
+								CDTL3:PlayPicked(val)
 							end,
 					},
 					spacer500 = {
@@ -7546,7 +7548,10 @@ private.AddEntryReadyArgs = function(args, t)
 				local s = entry()
 				return s and s["sound"] or "None"
 			end,
-		set = function(info, val) set("sound", val) end,
+		set = function(info, val)
+			set("sound", val)
+			CDTL3:PlayPicked(val)
+		end,
 	}
 	args["spacer753"] = {
 		name = "",
