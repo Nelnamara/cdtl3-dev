@@ -1,0 +1,155 @@
+Probe build 3.1.1-probe-items-boss (branch probe-items-boss), run by the owner on WoW: Forever, 13 Nov 2026,
+level 17 Druid, one Minor Rejuvenation Potion used in combat on a mob, no boss. Pasted report below, unedited
+except that items I2-I4 (carried Use: items never used while recording) are cut after their header lines:
+their call tables match I1's out-of-combat pattern with no uses (calls 3-5 ok in combat, 2c/2d secret in combat,
+6 nil, 12 and N not reached).
+
+CDTL3 probe report: items and boss timeline
+A read-only test build. It changes no settings, leaves CDTL3's own timers alone, never moves or changes Blizzard's frames and adds nothing to Blizzard's boss timeline: it reads values, draws its own panel, and copies what the Cooldown Manager's item icons are given.
+CDTL3 3.1.1 | recording ON | started 2026-11-13 19:21 | samples ooc 80, combat 8, boss 0 | combat entered 1 time(s), about 15 s in combat | encounters 0
+
+== 0. Client
+  GetBuildInfo: 1.60.1, build 70938, Nov 12 2026, interface 16001
+  CDTL3.isForever true | CDTL3.retailAPI true | WOW_PROJECT_ID 18
+  Class: Druid (DRUID), level 17 | spec: Druid (1484)
+  In an instance at report time: false (none)
+  Hidden-value flags (true = values are being hidden), sampled every 2 s:
+    C_Secrets.HasSecretRestrictions(): ooc ok: true x80 | combat ok: true x8 | boss -
+    C_Secrets.ShouldCooldownsBeSecret(): ooc ok: false x80 | combat ok: true x8 | boss -
+    C_Secrets.ShouldAurasBeSecret(): ooc ok: false x80 | combat ok: true x8 | boss -
+    C_InstanceEncounter.IsEncounterInProgress(): ooc ok: false x80 | combat ok: false x8 | boss -
+
+== 1. Items (feature 20: trinkets and potions exact in combat)
+  Carried items with a Use: effect: 14, watched: 4
+  I1 Minor Rejuvenation Potion (item 2456) | use spell Rejuvenation Potion (2370) | bag 0, slot 7 | action slots: 8 | item class 0, subclass 1
+    Cooldown lengths read while readable: C_ActionBar.GetActionCooldown duration 120.0 s (ooc); C_Container.GetItemCooldown duration 120.0 s (ooc); C_Item.GetItemCooldown duration 120.0 s (ooc); C_Spell.GetItemCooldown duration 120.0 s (ooc); C_Spell.GetSpellCooldown duration 120.0 s (ooc); action button timer object total 120.0 s (ooc); use spell timer object total 120.0 s (ooc)
+    Spell category from SPELL_UPDATE_COOLDOWN: 4 | SPELL_UPDATE_COOLDOWN for this item: +0.0 s (combat, with itemID), +0.0 s (combat)
+    Uses seen: 1. A signal ready at about +1 s saw only the global cooldown, not the item's.
+    use 1: combat at +28.2 s, seen by UNIT_SPELLCAST_SUCCEEDED. On/off times count from the use (only readable values count):
+      use spell: C_Spell.GetSpellCooldown().isActive: first read on cooldown at +0.1 s (combat), ready at +120.0 s (ooc) | 0 of 1172 reads hidden or failed
+      use spell: timer object IsActive(): first read on cooldown at +10.9 s (ooc), ready at +120.0 s (ooc) | 102 of 1172 reads hidden or failed
+      action button: C_ActionBar.GetActionCooldown().isActive: first read on cooldown at +0.1 s (combat), ready at +120.0 s (ooc) | 0 of 1172 reads hidden or failed
+      action button: timer object IsActive(): first read on cooldown at +10.9 s (ooc), ready at +120.0 s (ooc) | 102 of 1172 reads hidden or failed
+      C_Spell.GetItemCooldown(itemID).isActive (nil = not on cooldown): first read on cooldown at +0.1 s (combat), ready at +120.0 s (ooc) | 0 of 1172 reads hidden or failed
+      item cooldown numbers: start + duration still ahead: first read on cooldown at +0.1 s (combat), ready at +120.0 s (ooc) | 0 of 1172 reads hidden or failed
+    Calls:
+      1 C_Spell.GetSpellCooldownDuration(use spell, true): ooc ok: object x80 | combat ok: object x9 | boss -
+      1a   timer object HasSecretValues(): ooc ok: false x80 | combat ok: true x9 | boss -
+      1b   timer object IsZero(): ooc ok: false x55, ok: true x25 | combat secret x9 | boss -
+      1c   timer object IsActive(): ooc ok: false x25, ok: true x55 | combat secret x9 | boss -
+      1d   timer object GetTotalDuration(): ooc ok x80 | combat secret x9 | boss -
+      2 C_Spell.GetSpellCooldown(use spell): ooc ok: object x80 | combat ok: object x9 | boss -
+      2a   .isActive: ooc ok: false x25, ok: true x55 | combat ok: false x3, ok: true x6 | boss -
+      2b   .isOnGCD: ooc ok: false x55, ok: nil x25 | combat ok: false x6, ok: nil x3 | boss -
+      2c   .startTime: ooc ok x80 | combat secret x9 | boss -
+      2d   .duration: ooc ok x80 | combat secret x9 | boss -
+      3 C_Item.GetItemCooldown(itemID): ooc ok x80 | combat ok x9 | boss -
+      3a   start: ooc ok x80 | combat ok x9 | boss -
+      3b   duration: ooc ok x80 | combat ok x9 | boss -
+      3c   enabled: ooc ok: true x80 | combat ok: true x9 | boss -
+      4 C_Container.GetItemCooldown(itemID): ooc ok x80 | combat ok x9 | boss -
+      4a   start: ooc ok x80 | combat ok x9 | boss -
+      4b   duration: ooc ok x80 | combat ok x9 | boss -
+      4c   enabled: ooc ok x80 | combat ok x9 | boss -
+      5 C_Container.GetContainerItemCooldown(bag, slot): ooc ok x80 | combat ok x9 | boss -
+      5a   start: ooc ok x80 | combat ok x9 | boss -
+      5b   duration: ooc ok x80 | combat ok x9 | boss -
+      5c   enabled: ooc ok x80 | combat ok x9 | boss -
+      6 C_Spell.GetItemCooldown(itemID) (Forever): ooc ok: nil x25, ok: object x55 | combat ok: nil x3, ok: object x6 | boss -
+      6a   .isActive: ooc ok: true x55 | combat ok: true x6 | boss -
+      6b   .startTime: ooc ok x55 | combat ok x6 | boss -
+      6c   .duration: ooc ok x55 | combat ok x6 | boss -
+      7 C_ActionBar.GetActionCooldown(action slot): ooc ok: object x80 | combat ok: object x9 | boss -
+      7a   .isActive: ooc ok: false x25, ok: true x55 | combat ok: false x3, ok: true x6 | boss -
+      7b   .startTime: ooc ok x80 | combat secret x9 | boss -
+      7c   .duration: ooc ok x80 | combat secret x9 | boss -
+      8 C_ActionBar.GetActionCooldownDuration(action slot, true): ooc ok: object x80 | combat ok: object x9 | boss -
+      8a   timer object HasSecretValues(): ooc ok: false x80 | combat ok: true x9 | boss -
+      8b   timer object IsZero(): ooc ok: false x55, ok: true x25 | combat secret x9 | boss -
+      8c   timer object IsActive(): ooc ok: false x25, ok: true x55 | combat secret x9 | boss -
+      8d   timer object GetTotalDuration(): ooc ok x80 | combat secret x9 | boss -
+      9 C_Secrets.ShouldSpellCooldownBeSecret(use spell): ooc ok: false x80 | combat ok: true x9 | boss -
+      10 C_Secrets.GetSpellCooldownSecrecy(use spell): ooc ok: ContextuallySecret x80 | combat ok: ContextuallySecret x9 | boss -
+      11 C_Secrets.ShouldActionCooldownBeSecret(action slot): ooc ok: false x80 | combat ok: true x9 | boss -
+      12 C_Spell.GetLastCategoryCooldownSource(category): ooc ok x55, ok: nil x13 | combat secret x6 | boss -
+      12a   spellID: ooc ok x55, ok: nil x13 | combat secret x6 | boss -
+      12b   itemID: ooc ok x55, ok: nil x13 | combat secret x6 | boss -
+      S  panel: SetTimerDuration(timer object 1): ooc ok x83 | combat ok x43 | boss -
+      S  panel: text binding SetDuration(timer object 1): ooc ok x83 | combat ok x43 | boss -
+      A  panel: SetTimerDuration(timer object 8): ooc ok x83 | combat ok x43 | boss -
+      A  panel: text binding SetDuration(timer object 8): ooc ok x83 | combat ok x43 | boss -
+      N  panel: SetMinMaxValues(0, duration from 4): ooc ok x55 | combat ok x6 | boss -
+      N  panel: SetValue(seconds since the use): ooc ok x3771 | combat ok x735 | boss -
+  I2 Wild Harvest (item 247841) | use spell Herbalism Skill (1245609) | bag 0, slot 4 | action slots: none (row A and calls 7, 8, 11 skipped) | item class 0, subclass 8
+    Uses seen: none (use the item while the probe records).
+  I3 Digging Claw (item 5059) | use spell Harvest Silithid Egg (5166) | bag 0, slot 2 | action slots: none (row A and calls 7, 8, 11 skipped) | item class 12, subclass 0
+    Uses seen: none (use the item while the probe records).
+  I4 Sunscale Feather (item 5165) | use spell Raptor Feather (5316) | bag 2, slot 2 | action slots: none (row A and calls 7, 8, 11 skipped) | item class 12, subclass 0
+    Uses seen: none (use the item while the probe records).
+  Item events (any item):
+    register SPELL_UPDATE_COOLDOWN: ooc ok x1 | combat - | boss -
+    register BAG_UPDATE_COOLDOWN: ooc ok x1 | combat - | boss -
+    register ACTIONBAR_UPDATE_COOLDOWN: ooc ok x1 | combat - | boss -
+    register ACTIONBAR_SLOT_CHANGED: ooc ok x1 | combat - | boss -
+    register UNIT_SPELLCAST_SUCCEEDED (player): ooc ok x1 | combat - | boss -
+    ACTIONBAR_UPDATE_COOLDOWN fired: ooc fired x1 | combat fired x14 | boss -
+    SPELL_UPDATE_COOLDOWN payload itemID: ooc ok: nil x1 | combat ok x1, ok: nil x13 | boss -
+    UNIT_SPELLCAST_SUCCEEDED (player) spellID: ooc ok x1 | combat ok x5 | boss -
+    BAG_UPDATE_COOLDOWN fired: ooc - | combat fired x6 | boss -
+      was a watched item's use spell: ooc - | combat yes x1 | boss -
+      (with an itemID) spellID: ooc - | combat ok x1 | boss -
+      (with an itemID) baseSpellID: ooc - | combat ok: nil x1 | boss -
+      (with an itemID) category: ooc - | combat ok x1 | boss -
+      (with an itemID) startRecoveryCategory: ooc - | combat ok x1 | boss -
+      matched a watched item: ooc - | combat yes x2 | boss -
+
+== 2. Cooldown Manager and items
+  IsCooldownViewerAvailable: true, reason ""
+  CVar cooldownViewerEnabled: 1
+  Entries per category (learned/including unlearned): 0 Essential 2/10; 1 Utility 4/17; 2 TrackedBuff 12/39; 3 TrackedBar 0/0; 4 GroupBuff 0/0; 5 SpecAgnosticEssential 3/3; 6 SpecAgnosticTracked 0/0; 7 EquipSlotEssential 0/2; 8 EquipSlotTracked 0/0
+  Item entries (an equip slot or a spell category): 5
+    cooldownID 200345, SpecAgnosticEssential | equipSlot nil | spellCategoryID 1153 | spell nil | isKnown true
+    cooldownID 200346, SpecAgnosticEssential | equipSlot nil | spellCategoryID 2466 | spell nil | isKnown true
+    cooldownID 200347, SpecAgnosticEssential | equipSlot nil | spellCategoryID 24 | spell nil | isKnown true
+    cooldownID 200257, EquipSlotEssential (unlearned) | equipSlot 13 | spellCategoryID nil | spell nil | isKnown false
+    cooldownID 200258, EquipSlotEssential (unlearned) | equipSlot 14 | spellCategoryID nil | spell nil | isKnown false
+  Viewer frames:
+    EssentialCooldownViewer: exists, shown true, icons 2 (0 are items)
+    UtilityCooldownViewer: exists, shown true, icons 2 (0 are items)
+  Icon Cooldown frames hooked: 4
+  Row M1 / M2 copy: nothing yet (Blizzard drew no item icon while recording)
+  Blizzard's SetCooldown calls on item icons, per cooldownID:
+    none
+  Calls and copies:
+    hook OnAcquireItemFrame: ooc ok x2 | combat - | boss -
+    GetItemFrames(): ooc ok: object x162 | combat ok: object x16 | boss -
+    hook icon Cooldown SetCooldown: ooc ok x4 | combat - | boss -
+    C_Spell.GetLastCategoryCooldownSource(an entry's category): ooc ok: nil x240 | combat ok: nil x24 | boss -
+      spellID: ooc ok: nil x240 | combat ok: nil x24 | boss -
+      itemID: ooc ok: nil x240 | combat ok: nil x24 | boss -
+
+== 3. Boss timeline (feature 6: C_EncounterTimeline)
+  IsFeatureAvailable false | IsFeatureEnabled false | GetViewType 0 | tracks 5 | CVar encounterTimelineEnabled nil
+  Blizzard_EncounterTimeline loaded: false | Blizzard_EncounterWarnings loaded: false
+  C_EncounterWarnings: IsFeatureAvailable false | IsFeatureEnabled false
+  Events added while recording: none | encounters started: 0
+  Timeline and encounter calls (every 2 s) and events:
+    register ENCOUNTER_TIMELINE_* / ENCOUNTER_START / ENCOUNTER_END / ENCOUNTER_STATE_CHANGED / ENCOUNTER_WARNING: ooc ok x1 each
+    C_EncounterTimeline.IsFeatureAvailable(): ooc ok: false x80 | combat ok: false x8 | boss -
+    C_EncounterTimeline.IsFeatureEnabled(): ooc ok: false x80 | combat ok: false x8 | boss -
+    C_EncounterTimeline.HasAnyEvents(): ooc ok: false x80 | combat ok: false x8 | boss -
+    C_EncounterTimeline.HasActiveEvents(): ooc ok: false x80 | combat ok: false x8 | boss -
+    C_EncounterTimeline.GetEventList(): ooc ok: object x80 | combat ok: object x8 | boss -
+      event count: ooc ok x80 | combat ok x8 | boss -
+    C_EncounterTimeline.GetSortedEventList(): ooc ok: object x80 | combat ok: object x8 | boss -
+    C_InstanceEncounter.IsEncounterInProgress(): ooc ok: false x80 | combat ok: false x8 | boss -
+    C_InstanceEncounter.ShouldShowTimelineForEncounter(): ooc ok: false x80 | combat ok: false x8 | boss -
+
+== Probe internals (sampling, event handlers, registration)
+  none failed; 24 other step(s) OK
+
+== Log (first 60 entries)
+  [ooc +0.0s] recording started
+  [combat +23.5s] combat started
+  [combat +28.2s] Minor Rejuvenation Potion used (UNIT_SPELLCAST_SUCCEEDED)
+  [ooc +39.1s] combat ended
