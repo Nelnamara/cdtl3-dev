@@ -2068,6 +2068,7 @@ function CDTL3:SpeakText(text)
 
 	return ok
 end
+
 -- The saved Filters entry of a live cooldown (nil for test icons, flights and anything unsaved)
 private.SavedEntry = function(d)
 	local t = d["type"]
