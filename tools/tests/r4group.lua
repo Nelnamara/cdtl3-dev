@@ -168,6 +168,24 @@ if logOpen then
 	cast(ally, "Brannoc-Realm", PARTY, row2[1], sname2)
 	check("  ticking it again starts it", live(sname2, "raidcds") ~= nil)
 
+	-- CooldownCollaborator sending its Group cooldowns: the same casts are left to it, so none shows twice
+	local row3 = list[3]
+	local sname3 = (GetSpellInfo(row3[1]))
+	local bridgeOn = true
+	CooldownCollaborator = { BridgeActive = function() return bridgeOn end }
+	CDTL3:RegisterTimerType("cdcGroup", { name = "Group cooldowns" })
+	cast(ally, "Brannoc-Realm", PARTY, row3[1], sname3)
+	check("CooldownCollaborator sending: a party member's cast is left to it", live(sname3, "raidcds") == nil)
+	CDTL3:TimerTypeSettings("cdcgroup").enabled = false
+	cast(ally, "Brannoc-Realm", PARTY, row3[1], sname3)
+	check("  its type switched off in CDTL3: CDTL3 shows the cast itself", live(sname3, "raidcds") ~= nil)
+	CDTL3:TimerTypeSettings("cdcgroup").enabled = true
+	CDTL3:StopTimer("raidcds", ally .. ":" .. row3[1])
+	bridgeOn = false
+	cast(ally, "Brannoc-Realm", PARTY, row3[1], sname3)
+	check("  its own CDTL3 box off: CDTL3 shows the cast itself", live(sname3, "raidcds") ~= nil)
+	CooldownCollaborator = nil
+
 	-- affiliation bits: a member who is both party and raid (0x6) counts; the bits are masked, not compared whole
 	local late, calls, lateOK = "Player-9-LATE", 0, false
 	local prevInfo = GetPlayerInfoByGUID

@@ -21,7 +21,7 @@
 - **A Ready frame that shows every pinned defensive** (*Stay until used*), bright when ready and dimmed with its time when cooling
 - **A fight timeline** with flags at 2, 3 and 5 minutes showing where each pinned cooldown will be
 - **A Caster lane** for other players' cooldowns, with each caster's name under their icon: from the combat log on MoP, TBC and Classic Era, and from CooldownCollaborator where it is installed
-- **Group cooldowns from CooldownCollaborator** show on CDTL3's lanes — yours and those of group members who also run it. They land on Lane 1; Filters › Defaults › Group cooldowns picks another lane, bar frame and Ready frame, or switches them off
+- **Group cooldowns from CooldownCollaborator** show on CDTL3's lanes — yours and those of group members who also run it. They land on Lane 1; Filters › Defaults › Group cooldowns picks another lane, bar frame and Ready frame, or switches them off. Where CDTL3 also reads raid cooldowns from the combat log, it leaves those casts to CooldownCollaborator while it sends them, so none shows twice
 - **Externals you gave** — a strip on your cooldown icon with the target's name and the effect's time left
 - **Burst pack** (Filters › Defaults) sets up lust, Sated, your trinkets and potion on a Burst lane, with an optional Burst strip
 

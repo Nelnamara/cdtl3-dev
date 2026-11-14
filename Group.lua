@@ -175,6 +175,21 @@ private.TickedOff = function(id)
 	return type(g) == "table" and type(g["ticksOff"]) == "table" and g["ticksOff"][id] == true
 end
 
+-- CooldownCollaborator (1.1.0 on) hears the same casts from the combat log and sends them as "Group cooldowns":
+-- while it does, and that type is switched on here, these casts are left to it so none shows twice
+private.CollaboratorFeeds = function()
+	local cc = _G["CooldownCollaborator"]
+	if type(cc) ~= "table" or type(cc.BridgeActive) ~= "function" or not CDTL3.timerTypes["cdcgroup"] then
+		return false
+	end
+	local ok, on = pcall(cc.BridgeActive, cc)
+	if not (ok and on) then
+		return false
+	end
+	local s = CDTL3:TimerTypeSettings("cdcgroup")
+	return s ~= nil and s["enabled"] ~= false
+end
+
 private.RaidCast = function(srcGUID, srcName, srcFlags, spellID, spellName)
 	if type(srcFlags) ~= "number" or type(srcName) ~= "string" then
 		return
@@ -185,7 +200,7 @@ private.RaidCast = function(srcGUID, srcName, srcFlags, spellID, spellName)
 		return
 	end
 	local e = private.byID[spellID] or private.byName[spellName]
-	if not e or private.TickedOff(e.id) then
+	if not e or private.TickedOff(e.id) or private.CollaboratorFeeds() then
 		return
 	end
 	local class = private.classOf[srcGUID]
@@ -950,7 +965,7 @@ function CDTL3:AddGroupDefaultsArgs(args)
 	}
 	args["raidCasts"] = {
 		name = L["Track raid cooldowns"],
-		desc = L["Shows other party and raid members' big cooldowns from the combat log, one icon per caster, in the lane chosen under Defaults > Raid cooldowns. Tick the spells that count below. Turn on a lane's Caster lane box to see the names."],
+		desc = L["Shows other party and raid members' big cooldowns from the combat log, one icon per caster, in the lane chosen under Defaults › Raid cooldowns. Tick the spells that count below. Turn on a lane's Caster lane box to see the names. While CooldownCollaborator sends its Group cooldowns, the casts show from it instead, so none shows twice."],
 		order = 911,
 		type = "toggle",
 		hidden = noLog,
