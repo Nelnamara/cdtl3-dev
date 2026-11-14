@@ -3093,7 +3093,7 @@ private.foreverChanges = {
 	-- Warlock
 	[603] = { name = "Bane of Doom" },	-- Curse of Doom
 	[18708] = { bCD = 300000 },	-- Fel Domination
-	[403501] = { bCD = 15000 },	-- Haunt
+	[403501] = DROP,	-- Haunt (no longer in Forever's Warlock game data, build 1.60.1.70888)
 	[437169] = { bCD = 3600000 },	-- Portal of Summoning
 	-- Warrior
 	[403338] = DROP,	-- Intervene
