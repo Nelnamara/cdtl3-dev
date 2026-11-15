@@ -189,6 +189,42 @@ do
 	check("Run on combattimers runs the command (no errors)", #ERRORS == base)
 end
 
+---------------------------------------------------------------- tour and whatsnew on demand (3.2.1)
+print("[tour and whatsnew on demand " .. MODE .. " " .. FLAVOR .. "]")
+do
+	local function has(cmd)
+		for _, l in ipairs(CDTL3.helpLines) do if l[1] == cmd then return true end end
+		return false
+	end
+	check("help lists tour and whatsnew, and help stays last", has("tour") and has("whatsnew") and CDTL3.helpLines[#CDTL3.helpLines][1] == "help")
+	local e0 = #ERRORS
+	-- the tour is done or was never due here (fresh: Lock in place above; existing: never pending)
+	CDTL3:ChatCommand("tour")
+	local tour = _G["CDTL3_Tour"]
+	check("/cdtl3 tour starts the tour again after it was done", tour and tour:IsShown() and tour.head:GetText() == "1 of 3, Lane", tour and tour.head:GetText())
+	check("  a second start while it runs does nothing", S:StartTour(true) == false)
+	S:EndTour()
+	check("  ending it leaves nothing pending", CDTL3.db.global.tourPending == nil and not tour:IsShown())
+
+	local seenBefore = g.previousVersion
+	local made = 0
+	local realCreate = CreateFrame
+	CreateFrame = function(kind, name, ...)
+		if name == "CDTL3_Firstrun" then made = made + 1 end
+		return realCreate(kind, name, ...)
+	end
+	CDTL3:ChatCommand("whatsnew")
+	local w = _G["CDTL3_Firstrun"]
+	check("/cdtl3 whatsnew opens the What's new window", w and w:IsShown())
+	w:Hide()
+	CDTL3:ChatCommand("whatsnew")
+	CreateFrame = realCreate
+	check("  opening it again shows the same window", w:IsShown() and _G["CDTL3_Firstrun"] == w and made <= 1, made)
+	check("  opening it marks nothing seen", g.previousVersion == seenBefore)
+	w:Hide()
+	check("tour and whatsnew: no Lua errors", #ERRORS == e0, ERRORS[e0 + 1])
+end
+
 ---------------------------------------------------------------- card 8: ~ before the time
 print("[8 estimate mark " .. FLAVOR .. "]")
 do
