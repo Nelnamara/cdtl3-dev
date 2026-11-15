@@ -35,7 +35,7 @@ local function walk(group, path, seen)
 	for k, o in pairs(group.args) do
 		if type(o) == "table" then
 			if o.type == "select" and o.dialogControl == "LSM30_Sound" and k:sub(-8) ~= "Blizzard" then
-				pickers[#pickers + 1] = { path = path .. "." .. k, main = o, blz = group.args[k .. "Blizzard"] }
+				pickers[#pickers + 1] = { path = path .. "." .. k, main = o, blz = group.args[k .. "Blizzard"], args = group.args, key = k }
 			elseif o.type == "group" then
 				walk(o, path .. "." .. k, seen)
 			end
@@ -47,6 +47,7 @@ walk(opts, "root", {})
 print("[blizzard sound menus " .. FLAVOR .. "]")
 local info = {}
 local nB = 0
+local nPlay = 0
 for name in pairs(AceGUIWidgetLSMlists.sound) do if isB(name) then nB = nB + 1 end end
 check("the game's sounds are registered (28)", nB == 28, nB)
 check("sound pickers found in the tree (Ready 1 Normal and Highlight, Simple at least)", #pickers >= 3, #pickers)
@@ -54,7 +55,22 @@ for _, p in ipairs(pickers) do
 	local m, b = p.main, p.blz
 	check(p.path .. ": a Blizzard sound menu next to it", b and text(b.name, info) == "Blizzard sound" and b.dialogControl == "LSM30_Sound" and b.type == "select")
 	if b then
-		check("  placed right after it", b.order > m.order and b.order < m.order + 1, tostring(m.order) .. " -> " .. tostring(b.order))
+		-- rows: break < main menu < Play sound (where there is one) < break < Blizzard menu < break
+		local ra, rb, rc = p.args[p.key .. "RowA"], p.args[p.key .. "RowB"], p.args[p.key .. "RowC"]
+		local play = p.args[p.key .. "Test"]
+		if play then nPlay = nPlay + 1 end
+		local last = play and play.order or m.order
+		check("  row order: break < main" .. (play and " < Play sound" or "") .. " < break < Blizzard < break",
+			ra and rb and rc and ra.order < m.order and (not play or play.order > m.order) and rb.order > last
+			and b.order > rb.order and rc.order > b.order and rc.order < last + 1,
+			table.concat({ ra and ra.order or "?", m.order, play and play.order or "-", rb and rb.order or "?", b.order, rc and rc.order or "?" }, " "))
+		check("  breaks are full width and share the main menu's hidden",
+			ra and rb and rc and ra.type == "description" and ra.width == "full" and rb.width == "full" and rc.width == "full"
+			and ra.hidden == m.hidden and rb.hidden == m.hidden and rc.hidden == m.hidden and b.hidden == m.hidden and b.width == m.width,
+			tostring(m.width) .. " " .. tostring(b.width))
+		if play then
+			check("  Play sound button: named Play sound, hidden like the main menu", play.type == "execute" and text(play.name, info) == "Play sound" and (m.hidden == nil) == (play.hidden == nil))
+		end
 		local ml, bl = list(m, info), list(b, info)
 		local mB, bN = 0, 0
 		for k in pairs(ml) do if isB(k) then mB = mB + 1 end end
@@ -102,5 +118,29 @@ check("Play sound plays a Blizzard pick", #played == 1, #played)
 ready1().nSound = "CDTL3 Click"
 
 check("Ready 1: Play sound buttons are not half width", g.nSoundTest.width ~= "half" and g.hSoundTest.width ~= "half", tostring(g.nSoundTest.width) .. " " .. tostring(g.hSoundTest.width))
+
+-- Filters > Own ready sound: its Play sound button plays the entry's saved sound once, even muted
+do
+	local fa = opts.args.filters.args.spells.args
+	local entry = { ownSound = true, sound = "CDTL3 Tinks" }
+	local realGet = CDTL3.GetSpellSettings
+	CDTL3.GetSpellSettings = function() return entry end
+	CDTL3.currentFilter["spells"] = "Fake Spell"
+	CDTL3.currentFilterHidden["spells"] = false
+	check("Filters: Own ready sound has Play sound beside the Ready Sound menu", fa.soundTest and fa.sound and fa.soundBlizzard
+		and fa.soundTest.order > fa.sound.order and fa.soundTest.order < fa.soundRowB.order, tostring(fa.soundTest and fa.soundTest.order))
+	check("  shown with the Ready Sound menu, hidden without", fa.soundTest.hidden(info) == false and fa.sound.hidden(info) == false)
+	CDTL3.db.profile.global["muteReadySounds"] = true
+	played = {}
+	fa.soundTest.func(info)
+	check("  plays the entry's saved sound once, even while muted", #played == 1, #played)
+	entry.ownSound = false
+	check("  hidden with the Ready Sound menu when Own ready sound is off", fa.soundTest.hidden(info) == true and fa.sound.hidden(info) == true)
+	CDTL3.db.profile.global["muteReadySounds"] = false
+	CDTL3.GetSpellSettings = realGet
+	CDTL3.currentFilter["spells"] = "<< Select >>"
+	CDTL3.currentFilterHidden["spells"] = true
+end
+check("every Play sound button found sits in a split picker (Ready x2, Filters, Start, IconFx at least)", nPlay >= 5, nPlay)
 
 print(string.format("RESULT blizzsound %s: fails=%d lua errors=%d", FLAVOR, fails, #ERRORS - base))

@@ -1266,6 +1266,13 @@ function FX:AddEntryArgs(args, t)
 		end
 	end
 	local function sound(key, name, desc, order, default, shown)
+		-- its Play sound button, key.."Test", sits right after it (SplitBlizzardSound lays the rows out)
+		args[key.."Test"] = {
+			name = L["Play sound"], desc = L["Plays this sound once, so you can hear it"],
+			order = order + 0.1, type = "execute", width = "normal",
+			hidden = function(info) return hidden() or not shown() end,
+			func = function(info) private.PlayTestSound(get(key, default)) end,
+		}
 		return {
 			name = name, desc = desc, order = order, type = "select", width = "double",
 			dialogControl = "LSM30_Sound",

@@ -651,6 +651,8 @@ L["No sound when something is ready: the Ready frames' sounds, the spells' own R
 L["Play sound"] = true
 L["Plays the Normal Sound once, so you can hear it"] = true
 L["Plays the Highlight Sound once, so you can hear it"] = true
+L["Plays the Ready Sound once, so you can hear it"] = true
+L["Plays this sound once, so you can hear it"] = true
 L["Use the global setting"] = true
 L["Only in combat"] = true
 L["Boss fights only"] = true
@@ -815,7 +817,6 @@ L["Ready sound"] = true
 L["Blizzard sound"] = true
 L["Blizzard's own game sounds. Picking one here replaces the sound chosen in the other menu."] = true
 L["The sound that plays when a cooldown is back"] = true
-L["Play"] = true
 L["Lock frames"] = true
 L["Unlock frames"] = true
 L["Frames can be dragged while they are unlocked"] = true

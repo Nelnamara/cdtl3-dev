@@ -1091,9 +1091,9 @@ function private.SimpleTab()
 					CDTL3:PlayPicked(val)
 				end,
 			},
-			playSound = {
-				name = L["Play"],
-				order = 32, type = "execute", width = 0.5,
+			readySoundTest = {
+				name = L["Play sound"],
+				order = 32, type = "execute", width = "normal",
 				func = function()
 						local name = p().ready.ready1["nSound"]
 						if name and name ~= "None" then

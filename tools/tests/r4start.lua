@@ -114,7 +114,7 @@ do
 	a.readySound.set({}, "CDTL3 Tinks")
 	check("  changed", P().ready.ready1.nSound == "CDTL3 Tinks")
 	P().ready.ready1.nSound = "CDTL3 Click"
-	check("  a Play button", a.playSound.type == "execute")
+	check("  a Play button", a.readySoundTest.type == "execute")
 	local was = g.unlockFrames
 	check("Lock frames button reads by state", a.lockFrames.name({}) == (was and "Lock frames" or "Unlock frames"))
 	a.lockFrames.func({})

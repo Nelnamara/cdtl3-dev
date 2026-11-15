@@ -423,7 +423,23 @@ private.SplitBlizzardSound = function(args, key, option)
 
 	blizzard.name = L["Blizzard sound"]
 	blizzard.desc = L["Blizzard's own game sounds. Picking one here replaces the sound chosen in the other menu."]
-	blizzard.order = (option.order or 0) + 0.5
+	-- Rows: the main menu starts its own row (a full-width break before it), its Play sound button
+	-- (args[key.."Test"], where there is one) follows it, then a break, the Blizzard menu (same
+	-- width, so the two line up) and a last break so the next control starts a new row.
+	local main = option.order or 0
+	local play = args[key.."Test"]
+	local last = main
+	if type(play) == "table" and type(play.order) == "number" and play.order > main then
+		last = play.order
+	end
+	local function rowBreak(order)
+		return { name = "", type = "description", width = "full", order = order, hidden = option.hidden }
+	end
+	args[key.."RowA"] = rowBreak(main - 0.3)
+	args[key.."RowB"] = rowBreak(last + 0.2)
+	args[key.."RowC"] = rowBreak(last + 0.4)
+
+	blizzard.order = last + 0.3
 	blizzard.values = listOf(true)
 	blizzard.get = function(info)
 			local value = rawGet(info)
@@ -7580,6 +7596,13 @@ private.ConfirmProfileWipes = function(profile)
 	private.profileArgs = args
 end
 
+-- Plays a picked sound once for a Play sound button (even while Mute ready sounds is on)
+private.PlayTestSound = function(sound)
+	if sound and sound ~= "None" then
+		PlaySoundFile(CDTL3.LSM:Fetch("sound", sound), "SFX")
+	end
+end
+
 -- Per-entry ready alerts (Filters): its own Ready sound, Flash when ready and Say its name when
 -- ready (where the client has text to speech). Off by default: the Ready frame's sounds as before.
 -- Read when the cooldown reaches its Ready frame (private.ReadyAlert, Cooldown.lua).
@@ -7646,6 +7669,20 @@ private.AddEntryReadyArgs = function(args, t)
 			set("sound", val)
 			CDTL3:PlayPicked(val)
 		end,
+	}
+	args["soundTest"] = {
+		name = L["Play sound"],
+		desc = L["Plays the Ready Sound once, so you can hear it"],
+		order = 752.1,
+		type = "execute",
+		width = "normal",
+		hidden = function(info)
+				return hidden() or not get("ownSound")
+			end,
+		func = function(info)
+				local s = entry()
+				private.PlayTestSound(s and s["sound"])
+			end,
 	}
 	args["spacer753"] = {
 		name = "",

@@ -32,7 +32,7 @@
 - **Pull from Cooldown Manager** (Retail and WoW: Forever) — one button in Filters › Buffs sets up every buff in the Cooldown Manager's Tracked Bars
 
 **Ready sounds and showing**
-- **A ready sound per spell** — each entry can have its own sound, flash when ready, and say its name out loud (text to speech, in the voice you picked in the game's text to speech settings, or the first installed voice). The Ready tab gets *Mute ready sounds* and a *Play sound* button
+- **A ready sound per spell** — each entry can have its own sound, flash when ready, and say its name out loud (text to speech, in the voice you picked in the game's text to speech settings, or the first installed voice). The Ready tab gets *Mute ready sounds* and a *Play sound* button (so does a spell's own ready sound in Filters)
 - **Hear a sound as you pick it** — every sound menu plays your choice once, and the menus are twice as wide so long names can be read
 - **Blizzard sounds** — a selection of the game's own alerts and chimes (raid warning, quest complete, level up, alarm clocks, bells…), each one checked to exist on every client. They have their own *Blizzard sound* menu beside every sound menu, so the main menu keeps only the addon and media-pack sounds
 - **Show per lane, bar frame and Ready frame** — *Always*, *Only in combat* or *Boss fights only*, with *Dim instead of hide*. The default follows the Global tab's *Hide out of combat*, as before
