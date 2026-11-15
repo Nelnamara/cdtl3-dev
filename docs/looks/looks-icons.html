@@ -1,0 +1,964 @@
+<title>CDTL3 Looks: Icons and Bars</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600&family=Fira+Sans+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+	--bg: #f3f1ec;
+	--surface: #ffffff;
+	--ink: #1c1d21;
+	--ink-2: #575a61;
+	--line: #e2ded5;
+	--tag-bg: #f2e5e9;
+	--tag-ink: #8a1a37;
+	--mock-ring: rgba(0, 0, 0, 0.08);
+	color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #111317;
+		--surface: #1a1d22;
+		--ink: #ebe8e3;
+		--ink-2: #a6a9af;
+		--line: #2c3038;
+		--tag-bg: #3a1c26;
+		--tag-ink: #ffb1c2;
+		--mock-ring: rgba(255, 255, 255, 0.06);
+		color-scheme: dark;
+	}
+}
+:root[data-theme="dark"] {
+	--bg: #111317;
+	--surface: #1a1d22;
+	--ink: #ebe8e3;
+	--ink-2: #a6a9af;
+	--line: #2c3038;
+	--tag-bg: #3a1c26;
+	--tag-ink: #ffb1c2;
+	--mock-ring: rgba(255, 255, 255, 0.06);
+	color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--ink);
+	font: 15px/1.5 "Fira Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+	-webkit-text-size-adjust: 100%;
+}
+.wrap {
+	max-width: 1160px;
+	margin: 0 auto;
+	padding-top: 32px;
+	padding-bottom: 64px;
+	padding-left: max(16px, env(safe-area-inset-left, 0px));
+	padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.top { margin-bottom: 8px; }
+.top .kicker { margin: 0; font-size: 13px; color: var(--ink-2); }
+.top h1 { margin: 2px 0 4px; font-size: 30px; line-height: 1.15; font-weight: 600; letter-spacing: -0.01em; }
+.top p.lead { margin: 0; color: var(--ink-2); }
+
+section.look {
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	padding: 22px 22px 24px;
+	margin-top: 22px;
+}
+section.look h2 { margin: 0 0 6px; font-size: 21px; line-height: 1.25; font-weight: 600; }
+p.what { margin: 0 0 6px; max-width: 72ch; }
+p.clients { margin: 0 0 18px; max-width: 90ch; font-size: 13.5px; color: var(--ink-2); }
+p.clients .no {
+	display: inline-block;
+	margin-right: 6px;
+	padding: 0 6px;
+	border-radius: 4px;
+	background: var(--tag-bg);
+	color: var(--tag-ink);
+	font-weight: 600;
+	font-size: 12px;
+}
+
+.choices {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr));
+	gap: 20px 18px;
+}
+figure.choice { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+figcaption { font-size: 14px; line-height: 1.45; color: var(--ink-2); }
+figcaption b { display: block; margin-bottom: 1px; color: var(--ink); font-weight: 600; font-size: 15px; }
+
+/* ---------- the game screen (dark in both themes) ---------- */
+.mock {
+	position: relative;
+	min-height: 168px;
+	padding: 34px 16px 20px;
+	border-radius: 10px;
+	overflow: hidden;
+	background:
+		radial-gradient(120% 90% at 15% 0%, rgba(86, 112, 132, 0.35) 0%, rgba(86, 112, 132, 0) 60%),
+		linear-gradient(180deg, #1c252f 0%, #151a21 62%, #17140f 100%);
+	box-shadow: 0 0 0 1px var(--mock-ring);
+	color: #fff;
+	font-family: "Fira Sans Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+	display: flex;
+	align-items: center;
+}
+.mock .note {
+	position: absolute;
+	top: 9px;
+	left: 12px;
+	right: 12px;
+	font: 500 11.5px/1.2 "Fira Sans", system-ui, sans-serif;
+	color: #8fa2b4;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.stage { width: 100%; max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.row { display: flex; align-items: center; gap: 10px; width: 100%; }
+.row > .lane { flex: 1; min-width: 0; }
+.tagline { font: 500 11px/1.2 "Fira Sans", system-ui, sans-serif; color: #8fa2b4; margin-bottom: -6px; }
+
+/* outline text, like the game's OUTLINE font flag */
+.mock { --ol: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 2px 1px 1px rgba(0, 0, 0, 0.5); }
+
+/* lane: a 400 x 44 StatusBar, class-coloured fill on a dark half-alpha background */
+.lane {
+	position: relative;
+	width: 100%;
+	max-width: 400px;
+	height: 44px;
+	background: rgba(38, 38, 38, 0.5);
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 0 7px 3px rgba(0, 0, 0, 0.28);
+}
+.fill { position: absolute; top: 0; bottom: 0; left: 0; width: calc(var(--v, 1) * 100%); background: var(--cc, #c61e48); }
+.fill::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 42%, rgba(0, 0, 0, 0.2)); }
+.fill.seg { left: var(--from); width: var(--w); }
+.lbl {
+	position: absolute;
+	top: 50%;
+	left: calc(var(--x) * 100%);
+	transform: translate(-50%, -50%);
+	font-size: 12px;
+	line-height: 1;
+	white-space: nowrap;
+	color: #fff;
+	text-shadow: 1.5px 1px 0 #000;
+	z-index: 1;
+}
+.lbl.l0 { left: 5px; transform: translateY(-50%); }
+.lbl.l1 { left: auto; right: 5px; transform: translateY(-50%); }
+
+/* spell icon: 40 px square; letters stand in for the art */
+.ic {
+	position: absolute;
+	top: 50%;
+	margin-top: -20px;
+	left: calc((100% - 40px) * var(--p));
+	width: 40px;
+	height: 40px;
+	background: linear-gradient(140deg, var(--a), var(--b));
+	box-shadow: 0 0 3px 2px rgba(0, 0, 0, 0.45);
+	z-index: 3;
+}
+.ic .g, .bi .g, .ri .g, .mi .g {
+	position: absolute;
+	right: 3px;
+	bottom: 1px;
+	font-weight: 700;
+	font-size: 13px;
+	line-height: 1;
+	color: rgba(255, 255, 255, 0.34);
+}
+.ic .t2 {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 500;
+	font-size: 16px;
+	line-height: 1;
+	color: #fff;
+	text-shadow: var(--ol);
+	z-index: 2;
+}
+.ic .t1 { position: absolute; left: 2px; top: 3px; font-size: 11px; line-height: 1; text-shadow: var(--ol); z-index: 2; }
+.ic .t1.cnt { left: 3px; top: 2px; font-size: 15px; font-weight: 700; }
+.ic .t2.gcd { font-size: 12px; font-weight: 600; color: #d9d9d9; }
+.ic .t2.big { font-size: 23px; font-weight: 700; color: #ffa424; }
+.ic.hl { box-shadow: 0 0 0 2px #fff, 0 0 4px 2px rgba(0, 0, 0, 0.55); }
+.ic.glow { box-shadow: 0 0 0 2px #ffd24a, 0 0 12px 4px rgba(255, 210, 74, 0.7); }
+.ic.dim { opacity: 0.42; filter: grayscale(1); }
+.ic.warn { box-shadow: 0 0 0 2px #ff9900, 0 0 4px 2px rgba(0, 0, 0, 0.5); }
+.ic.newbuff { box-shadow: 0 0 0 2px #5fe07a, 0 0 10px 3px rgba(95, 224, 122, 0.6); }
+.ic.refresh { box-shadow: 0 0 0 2px #a6e83a, 0 0 9px 3px rgba(166, 232, 58, 0.55); }
+.ic.refresh::before { content: ""; position: absolute; inset: 0; background: rgba(166, 232, 58, 0.3); z-index: 1; }
+.ic.ghost { filter: grayscale(1) brightness(0.8); overflow: hidden; box-shadow: 0 0 0 2px #ff4b3e, 0 0 3px 2px rgba(0, 0, 0, 0.5); }
+.ic.ghost::after { content: ""; position: absolute; left: -10px; right: -10px; top: 50%; height: 4px; margin-top: -2px; background: #ff4b3e; box-shadow: 0 0 2px #000; transform: rotate(-45deg); z-index: 3; }
+.ic.pulse { box-shadow: 0 0 0 2px #ff9900, 0 0 10px 4px rgba(255, 153, 0, 0.7); animation: cdpulse 1s ease-in-out infinite; }
+@keyframes cdpulse {
+	0%, 100% { box-shadow: 0 0 0 2px #ff9900, 0 0 4px 1px rgba(255, 153, 0, 0.45); transform: scale(1); }
+	50% { box-shadow: 0 0 0 2px #ffb547, 0 0 15px 6px rgba(255, 153, 0, 0.85); transform: scale(1.07); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.ic.pulse { animation: none; transform: none; }
+}
+
+/* charge pips along the icon's bottom edge */
+.pips { position: absolute; left: 4px; right: 4px; bottom: 3px; display: flex; gap: 2px; z-index: 2; }
+.pips i { position: relative; flex: 1; height: 5px; background: rgba(0, 0, 0, 0.65); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.85); }
+.pips i.on { background: #ffd24a; }
+.pips i.part::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: calc(var(--f) * 100%); background: rgba(255, 210, 74, 0.5); }
+
+/* GCD marker: secondary tracking, 5 x 44, white at half alpha */
+.st { position: absolute; top: 0; height: 44px; width: 5px; left: calc((100% - 5px) * var(--p)); background: rgba(255, 255, 255, 0.5); z-index: 2; }
+.st.go { background: #58e06f; box-shadow: 0 0 8px 2px rgba(88, 224, 111, 0.6); }
+
+/* lines and shaded zones on a lane */
+.vline { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; left: var(--lx); background: var(--lc, #ffd24a); box-shadow: 0 0 4px rgba(0, 0, 0, 0.7); z-index: 4; }
+.vtag { position: absolute; bottom: calc(100% + 6px); left: var(--lx); transform: translateX(-50%); font-size: 12px; font-weight: 600; line-height: 1; color: var(--lc, #ffd24a); text-shadow: var(--ol); white-space: nowrap; z-index: 4; }
+.zone {
+	position: absolute;
+	top: -5px;
+	bottom: -5px;
+	left: 0;
+	width: var(--zw);
+	background: repeating-linear-gradient(135deg, rgba(var(--zc), 0.55) 0 6px, rgba(var(--zc), 0.28) 6px 12px), rgba(0, 0, 0, 0.3);
+	box-shadow: inset -2px 0 0 rgb(var(--zc));
+	z-index: 2;
+}
+.mark { position: absolute; top: -4px; bottom: -4px; left: var(--mx); width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 4px rgba(0, 0, 0, 0.8); z-index: 2; }
+.mark.faint { background: rgba(255, 255, 255, 0.6); top: 0; bottom: 0; }
+.mtag { position: absolute; bottom: calc(100% + 6px); left: var(--mx); transform: translateX(-50%); font-size: 12px; font-weight: 600; line-height: 1; text-shadow: var(--ol); z-index: 2; }
+
+/* lane flashes for buff alerts */
+.lane.flash-g { box-shadow: 0 0 0 2px #5fe07a, 0 0 16px 5px rgba(95, 224, 122, 0.5); }
+.lane .redend { position: absolute; top: 0; bottom: 0; left: 0; width: 38%; background: linear-gradient(90deg, rgba(255, 75, 62, 0.85), rgba(255, 75, 62, 0)); z-index: 2; }
+.lane.flash-r { box-shadow: -4px 0 16px 3px rgba(255, 75, 62, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.3); }
+
+/* big screen text */
+.say { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 24px; line-height: 1.1; color: #ff5a4f; text-shadow: var(--ol); }
+.say.old { font-size: 18px; color: #6fe08a; opacity: 0.55; }
+.mi { position: relative; flex: none; width: 24px; height: 24px; background: linear-gradient(140deg, var(--a), var(--b)); box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.6); }
+.mi .g { font-size: 12px; right: 2px; }
+.say.old .mi { width: 18px; height: 18px; }
+
+/* resource bars beside the lane */
+.res { position: relative; width: 100%; max-width: 400px; height: 14px; background: rgba(38, 38, 38, 0.5); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 0 6px 2px rgba(0, 0, 0, 0.25); }
+.res .rl, .res .rr { position: absolute; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 600; line-height: 1; text-shadow: var(--ol); z-index: 1; }
+.res .rl { left: 5px; }
+.res .rr { right: 5px; }
+.gauge-wrap { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.gauge { position: relative; width: 16px; height: 44px; background: rgba(38, 38, 38, 0.5); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 0 6px 2px rgba(0, 0, 0, 0.25); }
+.gauge .gf { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--v) * 100%); background: linear-gradient(90deg, #4f8bff, #2a5fd6 60%, #1f4bb0); }
+.gauge-wrap .gp { font-size: 11px; font-weight: 600; line-height: 1; text-shadow: var(--ol); }
+
+/* bar frame: 180 wide, 25 tall rows, icon on the left */
+.bf { width: 180px; flex: none; display: flex; flex-direction: column; background: rgba(38, 38, 38, 0.5); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 0 7px 3px rgba(0, 0, 0, 0.28); }
+.bar { position: relative; height: 25px; display: flex; }
+.bi { position: relative; flex: none; width: 25px; height: 25px; background: linear-gradient(140deg, var(--a), var(--b)); }
+.bi .g { font-size: 12px; right: 2px; }
+.bi svg { position: absolute; inset: 0; margin: auto; }
+.bb { position: relative; flex: 1; background: rgba(38, 38, 38, 0.5); }
+.bb .nm, .bb .tm { position: absolute; top: 50%; transform: translateY(-50%); font-size: 12px; line-height: 1; white-space: nowrap; text-shadow: 1.5px 1px 0 rgba(0, 0, 0, 0.5); z-index: 2; }
+.bb .nm { left: 5px; }
+.bb .tm { right: 5px; }
+.bb .notch { position: absolute; top: 0; bottom: 0; left: 30%; width: 2px; margin-left: -1px; background: rgba(255, 255, 255, 0.8); box-shadow: 0 0 2px rgba(0, 0, 0, 0.8); z-index: 1; }
+
+/* ready frame: 50 px icons, short name above the middle, READY below */
+.rf { flex: none; display: flex; flex-direction: column; background: rgba(38, 38, 38, 0.5); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 0 7px 3px rgba(0, 0, 0, 0.28); }
+.ri { position: relative; width: 50px; height: 50px; background: linear-gradient(140deg, var(--a), var(--b)); box-shadow: 0 0 3px 2px rgba(0, 0, 0, 0.45); overflow: hidden; }
+.ri .n, .ri .r { position: absolute; left: 0; right: 0; text-align: center; line-height: 1; text-shadow: var(--ol); z-index: 2; white-space: nowrap; }
+.ri .n { top: 9px; font-size: 18px; font-weight: 500; }
+.ri .r { top: 30px; font-size: 12px; font-weight: 500; }
+.ri .r.ended { color: #ff5a4f; font-weight: 700; }
+.ri .r.gained { color: #6fe08a; font-weight: 700; font-size: 11px; }
+.ri .r.gcd { color: #d9d9d9; }
+.ri .cnt { position: absolute; left: 3px; top: 2px; font-size: 14px; font-weight: 700; line-height: 1; text-shadow: var(--ol); z-index: 2; }
+.ri .sw { position: absolute; inset: 0; background: conic-gradient(rgba(0, 0, 0, 0.62) 0 var(--sw), rgba(0, 0, 0, 0) var(--sw) 100%); z-index: 1; }
+.ri.flash-r { box-shadow: 0 0 0 2px #ff5a4f, 0 0 12px 4px rgba(255, 90, 79, 0.6); }
+.ri.flash-g { box-shadow: 0 0 0 2px #6fe08a, 0 0 12px 4px rgba(111, 224, 138, 0.5); }
+
+/* burst list under the lane */
+.blist { width: 100%; max-width: 230px; padding: 6px 8px 7px; background: rgba(38, 38, 38, 0.55); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 0 7px 3px rgba(0, 0, 0, 0.28); font-size: 12.5px; line-height: 1; }
+.blist .hd { font-weight: 600; color: #ffd24a; text-shadow: var(--ol); margin-bottom: 6px; }
+.blist .it { display: grid; grid-template-columns: 18px 1fr 14px 34px; align-items: center; gap: 6px; padding: 2px 0; text-shadow: 1.5px 1px 0 rgba(0, 0, 0, 0.6); }
+.blist .it .mi { width: 18px; height: 18px; }
+.blist .it .mi .g { font-size: 10px; }
+.blist .it .tt { text-align: right; }
+
+/* spell art colours */
+.s-fire { --a: #f7b04a; --b: #a3260f; }
+.s-comb { --a: #ffcf5a; --b: #b8350c; }
+.s-bers { --a: #e2553f; --b: #5a1208; }
+.s-trink { --a: #5fc9b4; --b: #1c4f5c; }
+.s-pot { --a: #b07ae6; --b: #3a1766; }
+.s-inn { --a: #8fe0f0; --b: #2a5b8f; }
+.s-bark { --a: #b89a5a; --b: #45501f; }
+.s-wall { --a: #c3ccd8; --b: #47505e; }
+.s-stand { --a: #e07a5a; --b: #5e2214; }
+.s-ip { --a: #f2c46a; --b: #8a3a12; }
+.s-demo { --a: #9aa6b8; --b: #2e3442; }
+.s-bw { --a: #e8763a; --b: #5c1f0c; }
+.s-cotw { --a: #b6d46a; --b: #3c5a1a; }
+.s-bshed { --a: #d0455a; --b: #4a0d18; }
+.s-cor { --a: #9d6be0; --b: #24103f; }
+.s-coa { --a: #79c36a; --b: #2c1846; }
+.s-imm { --a: #ff9a4a; --b: #7a1d0a; }
+.s-cs { --a: #e8dcb0; --b: #7a6430; }
+.s-jud { --a: #ffe28a; --b: #b07a12; }
+.s-boj { --a: #f0b860; --b: #6b3e12; }
+.s-woa { --a: #ffcf6a; --b: #8f3c10; }
+.s-mana { --a: #6f9dff; --b: #1b3a8a; }
+
+@media (max-width: 560px) {
+	section.look { padding: 16px 14px 18px; border-radius: 12px; }
+	.mock { padding: 32px 12px 18px; }
+	.top h1 { font-size: 25px; }
+}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+	<p class="kicker">CDTL3 look board</p>
+	<h1>Icons, bars and markers</h1>
+	<p class="lead">Pick one look per idea, or none, and add a note.</p>
+</header>
+
+<!-- ================= fp02 ================= -->
+<section class="look" data-item="fp02" id="fp02">
+	<h2>Charge count and recharge on the icon</h2>
+	<p class="what">Shows how many charges a spell has left on its icon while the next charge recharges along the lane, and goes to Ready when one comes back.</p>
+	<p class="clients"><span class="no">fp02</span>Partly on Retail and Forever: the count can be shown in combat but not compared, so nothing can react to a number of charges there, and charges in combat are so far proven only by the test harness. Today: a stacks tag; the spell charge code is commented out.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<span class="note">Fire Mage · Lane 1, Linear (%) · Fire Blast 2 of 3 charges</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#40c7eb">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<div class="ic s-fire" style="--p:.517"><span class="g">FB</span><span class="t2">6.2</span></div>
+						<div class="ic s-comb" style="--p:.667"><span class="g">C</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Today</b>One Fire Blast icon rides the recharge with a bare timer and no count; the top-left stacks slot stays empty for spells.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<span class="note">Fire Mage · Lane 1, Linear (%) · Fire Blast 2 of 3 charges</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#40c7eb">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<div class="ic s-fire" style="--p:.517"><span class="g">FB</span><span class="t1 cnt">2</span><span class="t2">6.2</span></div>
+						<div class="ic s-comb" style="--p:.667"><span class="g">C</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Corner number</b>The charges left sit in the icon's top-left corner, the slot the stacks tag uses; the icon still rides the recharge.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<span class="note">Fire Mage · Lane 1, Linear (%) · Fire Blast 2 of 3 charges</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#40c7eb">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<div class="ic s-fire" style="--p:.517"><span class="g">FB</span><span class="t2" style="padding-bottom:4px">6.2</span><span class="pips"><i class="on"></i><i class="on"></i><i class="part" style="--f:.48"></i></span></div>
+						<div class="ic s-comb" style="--p:.667"><span class="g">C</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Charge pips</b>Three pips along the icon's bottom edge, two lit and the third filling. On Retail and Forever each pip would be a tiny bar fed the hidden count, not yet tried in game.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<span class="note">Fire Mage · Ready 1 and Lane 1 · Fire Blast 2 of 3 charges</span>
+				<div class="stage">
+					<div class="row">
+						<div class="rf">
+							<div class="ri s-fire"><span class="cnt">2</span><span class="n">FB</span><span class="r">READY</span></div>
+						</div>
+						<div class="lane" style="--cc:#40c7eb">
+							<div class="fill"></div>
+							<span class="lbl l0">Ready</span><span class="lbl" style="--x:.5">50%</span><span class="lbl l1">100%</span>
+							<div class="ic s-fire" style="--p:.517"><span class="g">FB</span><span class="t2">6.2</span></div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Charges wait in the ready frame</b>Fire Blast stays in the ready frame with its count while charges are left; only the recharge rides the lane. Retail and Forever: in combat it can't step out at 0 charges, since that needs a comparison.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ================= fp05 ================= -->
+<section class="look" data-item="fp05" id="fp05">
+	<h2>Alerts when a buff lands or drops</h2>
+	<p class="what">Per buff, plays a sound and flashes when the buff is gained (procs, externals) or when it ends (active mitigation).</p>
+	<p class="clients"><span class="no">fp05</span>Full on Classic Era, TBC and MoP; on Retail and Forever, in combat only for buffs in the Cooldown Manager's Tracked Bars. Today: no gained or fell-off alert.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<span class="note">Protection Warrior · Ready 1 and Lane 1</span>
+				<div class="stage">
+					<div class="row">
+						<div class="rf">
+							<div class="ri s-ip flash-r"><span class="n">IP</span><span class="r ended">ENDED</span></div>
+							<div class="ri s-bark flash-g"><span class="n">I</span><span class="r gained">GAINED</span></div>
+						</div>
+						<div class="lane" style="--cc:#c79c6e">
+							<div class="fill"></div>
+							<span class="lbl l0">Ready</span><span class="lbl" style="--x:.5">50%</span><span class="lbl l1">100%</span>
+							<div class="ic s-demo" style="--p:.467"><span class="g">DS</span><span class="t2">21</span></div>
+							<div class="ic s-wall" style="--p:.667"><span class="g">SW</span><span class="t2">1:20</span></div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Ready-frame card</b>The buff pops into the ready frame with GAINED or ENDED where READY goes, a flash round the icon and its own sound.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<span class="note">Protection Warrior · Lane 1</span>
+				<div class="stage">
+					<span class="tagline">Ironbark gained</span>
+					<div class="lane flash-g" style="--cc:#c79c6e">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.5">50%</span><span class="lbl l1">100%</span>
+						<div class="ic s-wall" style="--p:.667"><span class="g">SW</span><span class="t2">1:20</span></div>
+						<div class="ic s-bark newbuff" style="--p:.967"><span class="g">I</span><span class="t2">12</span></div>
+					</div>
+					<span class="tagline">Ignore Pain ended</span>
+					<div class="lane flash-r" style="--cc:#c79c6e">
+						<div class="fill"></div>
+						<span class="redend"></span>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.5">50%</span><span class="lbl l1">100%</span>
+						<div class="ic s-ip ghost" style="--p:0"><span class="g">IP</span></div>
+						<div class="ic s-wall" style="--p:.667"><span class="g">SW</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Lane flash</b>The lane itself flashes: green along its edge when a buff lands, red at the Ready end when one drops, leaving a struck-out ghost of the buff for 2 s.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<span class="note">Protection Warrior · text above Lane 1</span>
+				<div class="stage">
+					<div class="say old"><span class="mi s-bark"><span class="g">I</span></span>Ironbark gained</div>
+					<div class="say"><span class="mi s-ip"><span class="g">IP</span></span>Ignore Pain fell off</div>
+					<div class="lane" style="--cc:#c79c6e">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.5">50%</span><span class="lbl l1">100%</span>
+						<div class="ic s-demo" style="--p:.467"><span class="g">DS</span><span class="t2">21</span></div>
+						<div class="ic s-wall" style="--p:.667"><span class="g">SW</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Screen text</b>A line of large text above the lane names the buff, green for gained and red for fell off, then fades after 2 s; older lines fade first.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ================= fp17 ================= -->
+<section class="look" data-item="fp17" id="fp17">
+	<h2>Mana bar beside the mana cooldowns</h2>
+	<p class="what">Shows a healer's mana, with a percent, next to the lane that holds the mana cooldowns such as Innervate, Mana Tea and Hymn of Hope.</p>
+	<p class="clients"><span class="no">fp17</span>Possible on every client; the percent text only partly on Retail and Forever, where in combat the bar fills but the percent can't be read. Today: lane tracking has Class Power, hard to find.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<span class="note">Restoration Druid · Lane 1 tracking: Class Power · mana 62%</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#ff7d0a">
+						<div class="fill" style="--v:.62"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<div class="ic s-bark" style="--p:.5"><span class="g">I</span><span class="t2">45</span></div>
+						<div class="ic s-inn" style="--p:.667"><span class="g">In</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Today</b>Lane tracking › Class Power fills the whole lane with mana in the class colour, behind the icons; no percent, and nothing calls it Mana.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<span class="note">Restoration Druid · Lane 1 with a mana bar · mana 62%</span>
+				<div class="stage" style="gap:3px">
+					<div class="lane" style="--cc:#ff7d0a">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<div class="ic s-bark" style="--p:.5"><span class="g">I</span><span class="t2">45</span></div>
+						<div class="ic s-inn" style="--p:.667"><span class="g">In</span><span class="t2">1:20</span></div>
+					</div>
+					<div class="res" style="margin-top:5px">
+						<div class="fill" style="--v:.62; --cc:#2f6ee6"></div>
+						<span class="rl">Mana</span><span class="rr">62%</span>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Bar under the lane</b>A taller mana bar of its own just under the lane, with Mana and 62% on it; the lane keeps its usual look.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<span class="note">Restoration Druid · gauge at Lane 1's Ready end · mana 62%</span>
+				<div class="stage">
+					<div class="row" style="gap:6px; align-items:flex-start">
+						<div class="gauge-wrap">
+							<div class="gauge" style="--v:.62"><div class="gf"></div></div>
+							<span class="gp">62%</span>
+						</div>
+						<div class="lane" style="--cc:#ff7d0a">
+							<div class="fill"></div>
+							<span class="lbl l0">Ready</span><span class="lbl" style="--x:.5">50%</span><span class="lbl l1">100%</span>
+							<div class="ic s-bark" style="--p:.5"><span class="g">I</span><span class="t2">45</span></div>
+							<div class="ic s-inn" style="--p:.667"><span class="g">In</span><span class="t2">1:20</span></div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Gauge at the Ready end</b>A short upright gauge just past the lane's Ready end, where the mana cooldowns come back, with the percent under it.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<span class="note">Restoration Druid · Bar Frame 1 · mana 62%</span>
+				<div class="stage">
+					<div class="bf">
+						<div class="bar">
+							<div class="bi s-mana"><svg width="11" height="15" viewBox="0 0 11 15" aria-hidden="true"><path d="M5.5 1C3.4 4.4 1.5 6.9 1.5 9.4a4 4 0 0 0 8 0C9.5 6.9 7.6 4.4 5.5 1z" fill="#cfe0ff" opacity=".85"/></svg></div>
+							<div class="bb"><div class="fill" style="--v:.62; --cc:#2f6ee6"></div><span class="nm">Mana</span><span class="tm">62%</span></div>
+						</div>
+						<div class="bar">
+							<div class="bi s-inn"><span class="g">In</span></div>
+							<div class="bb"><div class="fill" style="--v:.444"></div><span class="nm">Innervate</span><span class="tm">1:20</span></div>
+						</div>
+						<div class="bar">
+							<div class="bi s-bark"><span class="g">I</span></div>
+							<div class="bb"><div class="fill" style="--v:.5"></div><span class="nm">Ironbark</span><span class="tm">45</span></div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>First bar in a bar frame</b>Mana as the top row of a bar frame, the same size as the Innervate and Ironbark bars beneath it.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ================= fp31 ================= -->
+<section class="look" data-item="fp31" id="fp31">
+	<h2>Resource bar with a threshold colour</h2>
+	<p class="what">Tracks a tank's rage, Holy Power or Brewmaster stagger on the lane and changes colour at a number the player sets.</p>
+	<p class="clients"><span class="no">fp31</span>Possible on Classic; on Retail and Forever the hidden value can fill the bar but not be compared, so a colour that depends on the number stays fixed in combat. Today: Health, Class Power and Combo Points tracking.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<span class="note">Protection Warrior · Lane 1 tracking: Class Power · rage 60 of 100</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#c79c6e">
+						<div class="fill" style="--v:.6"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<div class="ic s-stand" style="--p:.2"><span class="g">LS</span><span class="t2">24</span></div>
+						<div class="ic s-wall" style="--p:.667"><span class="g">SW</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Today</b>Class Power fills the lane with rage in the class colour; the colour never changes, whatever the number.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<span class="note">Protection Warrior · Change colour at 40 · rage 60 of 100</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#f2c230">
+						<div class="fill" style="--v:.6"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<div class="ic s-stand" style="--p:.2"><span class="g">LS</span><span class="t2">24</span></div>
+						<div class="ic s-wall" style="--p:.667"><span class="g">SW</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Whole bar changes colour</b>The whole fill turns gold once rage reaches 40. Classic only in combat; on Retail and Forever it stays one colour while rage is hidden.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<span class="note">Protection Warrior · line at 40 · rage 60 of 100</span>
+				<div class="stage" style="padding-top:12px">
+					<div class="lane" style="--cc:#c79c6e">
+						<div class="fill" style="--v:.6"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<span class="mark" style="--mx:40%"></span><span class="mtag" style="--mx:40%">40</span>
+						<div class="ic s-stand" style="--p:.2"><span class="g">LS</span><span class="t2">24</span></div>
+						<div class="ic s-wall" style="--p:.667"><span class="g">SW</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Line at the number</b>A fixed line at 40 rage on the lane while the colour stays put, so it works the same on every client, in combat too.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<span class="note">Protection Warrior · gold past 40 · rage 60 of 100</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#c79c6e">
+						<div class="fill" style="--v:.4"></div>
+						<div class="fill seg" style="--from:40%; --w:20%; --cc:#f2c230"></div>
+						<span class="mark faint" style="--mx:40%"></span>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<div class="ic s-stand" style="--p:.2"><span class="g">LS</span><span class="t2">24</span></div>
+						<div class="ic s-wall" style="--p:.667"><span class="g">SW</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Colour past the line</b>Only the part of the fill past 40 turns gold. Works in combat on every client: two clamped bars share the value, the way Split (Time) lanes do for buffs.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ================= fp22 ================= -->
+<section class="look" data-item="fp22" id="fp22">
+	<h2>Burst window marker</h2>
+	<p class="what">Draws a line on the lane at a chosen "in N s" point and lights up the pinned cooldowns that will be ready before it.</p>
+	<p class="clients"><span class="no">fp22</span>Possible on Classic; partly on Retail and Forever, where the line draws but which icons are ready before it can't be worked out in combat. Drawn on a Linear (Time) lane, where each second sits at one spot. Today: Pinned and Highlight.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<span class="note">Fire Mage · Lane 1, Linear (Time), 2 min</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#40c7eb">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">30s</span><span class="lbl" style="--x:.5">1m</span><span class="lbl" style="--x:.75">1m30s</span><span class="lbl l1">2m</span>
+						<div class="ic s-comb hl" style="--p:.038"><span class="g">C</span><span class="t2">4.6</span></div>
+						<div class="ic s-bers hl" style="--p:.175"><span class="g">B</span><span class="t2">21</span></div>
+						<div class="ic s-trink hl" style="--p:.342"><span class="g">T</span><span class="t2">41</span></div>
+						<div class="ic s-pot hl" style="--p:.667"><span class="g">P</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Today</b>Burst spells carry the Highlight border (once a border is set) and Pinned keeps them in the ready frame; nothing marks when the burst is.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<span class="note">Fire Mage · Lane 1, Linear (Time) · burst in 25 s</span>
+				<div class="stage" style="padding-top:12px">
+					<div class="lane" style="--cc:#40c7eb">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">30s</span><span class="lbl" style="--x:.5">1m</span><span class="lbl" style="--x:.75">1m30s</span><span class="lbl l1">2m</span>
+						<span class="vline" style="--lx:calc((100% - 40px) * .2083 + 40px)"></span><span class="vtag" style="--lx:calc((100% - 40px) * .2083 + 40px)">Burst 25s</span>
+						<div class="ic s-comb glow" style="--p:.038"><span class="g">C</span><span class="t2">4.6</span></div>
+						<div class="ic s-bers glow" style="--p:.175"><span class="g">B</span><span class="t2">21</span></div>
+						<div class="ic s-trink" style="--p:.342"><span class="g">T</span><span class="t2">41</span></div>
+						<div class="ic s-pot" style="--p:.667"><span class="g">P</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Line and glow</b>A line at 25 s; pinned icons that reach Ready before it glow gold. On Retail and Forever only the line draws in combat, with no glow.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<span class="note">Fire Mage · Lane 1, Linear (Time) · burst in 25 s</span>
+				<div class="stage" style="padding-top:12px">
+					<div class="lane" style="--cc:#40c7eb">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">30s</span><span class="lbl" style="--x:.5">1m</span><span class="lbl" style="--x:.75">1m30s</span><span class="lbl l1">2m</span>
+						<span class="zone" style="--zw:calc((100% - 40px) * .2083 + 40px); --zc:255,210,74"></span>
+						<span class="vtag" style="--lx:calc((100% - 40px) * .2083 + 40px)">Burst 25s</span>
+						<div class="ic s-comb" style="--p:.038"><span class="g">C</span><span class="t2">4.6</span></div>
+						<div class="ic s-bers" style="--p:.175"><span class="g">B</span><span class="t2">21</span></div>
+						<div class="ic s-trink" style="--p:.342"><span class="g">T</span><span class="t2">41</span></div>
+						<div class="ic s-pot" style="--p:.667"><span class="g">P</span><span class="t2">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Shaded window</b>The lane from Ready to 25 s is shaded and icons inside it make the burst. Nothing is worked out, so it works in combat on every client.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<span class="note">Fire Mage · Lane 1 with a burst list · burst in 25 s</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#40c7eb">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">30s</span><span class="lbl" style="--x:.5">1m</span><span class="lbl" style="--x:.75">1m30s</span><span class="lbl l1">2m</span>
+						<div class="ic s-comb" style="--p:.038"><span class="g">C</span><span class="t2">4.6</span></div>
+						<div class="ic s-bers" style="--p:.175"><span class="g">B</span><span class="t2">21</span></div>
+						<div class="ic s-trink" style="--p:.342"><span class="g">T</span><span class="t2">41</span></div>
+						<div class="ic s-pot" style="--p:.667"><span class="g">P</span><span class="t2">1:20</span></div>
+					</div>
+					<div class="blist">
+						<div class="hd">Burst in 25 s</div>
+						<div class="it"><span class="mi s-comb"><span class="g">C</span></span><span>Combustion</span><svg width="12" height="12" viewBox="0 0 12 12" aria-label="ready in time"><path d="M2 6.5l2.6 2.5L10 3" fill="none" stroke="#6fe08a" stroke-width="2"/></svg><span class="tt">4.6</span></div>
+						<div class="it"><span class="mi s-bers"><span class="g">B</span></span><span>Berserking</span><svg width="12" height="12" viewBox="0 0 12 12" aria-label="ready in time"><path d="M2 6.5l2.6 2.5L10 3" fill="none" stroke="#6fe08a" stroke-width="2"/></svg><span class="tt">21</span></div>
+						<div class="it"><span class="mi s-trink"><span class="g">T</span></span><span>Trinket</span><svg width="12" height="12" viewBox="0 0 12 12" aria-label="not ready in time"><path d="M3 3l6 6M9 3l-6 6" fill="none" stroke="#ff6b5e" stroke-width="2"/></svg><span class="tt">41</span></div>
+						<div class="it"><span class="mi s-pot"><span class="g">P</span></span><span>Potion</span><svg width="12" height="12" viewBox="0 0 12 12" aria-label="not ready in time"><path d="M3 3l6 6M9 3l-6 6" fill="none" stroke="#ff6b5e" stroke-width="2"/></svg><span class="tt">1:20</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Ready-by list</b>A small list under the lane ticks each pinned spell that's back before 25 s. The ticks are Classic only; on Retail and Forever the list shows just the timers in combat.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ================= fp25 ================= -->
+<section class="look" data-item="fp25" id="fp25">
+	<h2>Ready-soon warning</h2>
+	<p class="what">Warns a set number of seconds before a chosen cooldown is ready, with an icon cue and an optional sound.</p>
+	<p class="clients"><span class="no">fp25</span>Possible on Classic; partly on Retail and Forever, where while the time is hidden the cue can only come from an estimate. Today: Dynamic Color recolours bars only.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<span class="note">Beast Mastery Hunter · Lane 1, Split (Time) · Bar Frame 1, Dynamic Color on</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#abd473">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">10s</span><span class="lbl" style="--x:.5">30s</span><span class="lbl" style="--x:.75">1m</span><span class="lbl l1">2m</span>
+						<div class="ic s-bw" style="--p:.105"><span class="g">BW</span><span class="t2">4.2</span></div>
+						<div class="ic s-bshed" style="--p:.517"><span class="g">Bs</span><span class="t2">32</span></div>
+						<div class="ic s-cotw" style="--p:.917"><span class="g">CW</span><span class="t2">1:40</span></div>
+					</div>
+					<div class="bf">
+						<div class="bar"><div class="bi s-bw"><span class="g">BW</span></div><div class="bb"><div class="fill" style="--v:.14; --cc:rgb(222,165,8)"></div><span class="nm" style="left:5px">Bestial Wrath</span><span class="tm">4.2</span></div></div>
+						<div class="bar"><div class="bi s-bshed"><span class="g">Bs</span></div><div class="bb"><div class="fill" style="--v:.533"></div><span class="nm">Bloodshed</span><span class="tm">32</span></div></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Today</b>With Dynamic Color on, a bar blends from orange to green over its last 5 s; the lane icon gets no cue and there's no sound.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<span class="note">Beast Mastery Hunter · Lane 1, Split (Time) · warn 5 s before ready</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#abd473">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">10s</span><span class="lbl" style="--x:.5">30s</span><span class="lbl" style="--x:.75">1m</span><span class="lbl l1">2m</span>
+						<div class="ic s-bw pulse" style="--p:.105"><span class="g">BW</span><span class="t2">4.2</span></div>
+						<div class="ic s-bshed" style="--p:.517"><span class="g">Bs</span><span class="t2">32</span></div>
+						<div class="ic s-cotw" style="--p:.917"><span class="g">CW</span><span class="t2">1:40</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Icon pulse</b>In its last 5 s the icon pulses with an orange border, once a second, with an optional sound. Retail and Forever: timed from an estimate while the time is hidden.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<span class="note">Beast Mastery Hunter · Lane 1, Split (Time) · last 5 s zone</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#abd473">
+						<div class="fill"></div>
+						<span class="lbl l0" style="z-index:3">Ready</span><span class="lbl" style="--x:.25">10s</span><span class="lbl" style="--x:.5">30s</span><span class="lbl" style="--x:.75">1m</span><span class="lbl l1">2m</span>
+						<span class="zone" style="--zw:calc((100% - 40px) * .125 + 40px); --zc:255,153,0"></span>
+						<div class="ic s-bw" style="--p:.105"><span class="g">BW</span><span class="t2">4.2</span></div>
+						<div class="ic s-bshed" style="--p:.517"><span class="g">Bs</span><span class="t2">32</span></div>
+						<div class="ic s-cotw" style="--p:.917"><span class="g">CW</span><span class="t2">1:40</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Warning zone</b>The lane's last 5 s are tinted orange and an icon inside is nearly back. One zone per lane, not per spell; icons ride into it, so it works in combat on every client.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<span class="note">Beast Mastery Hunter · Lane 1, Split (Time) · warn 5 s before ready</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#abd473">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">10s</span><span class="lbl" style="--x:.5">30s</span><span class="lbl" style="--x:.75">1m</span><span class="lbl l1">2m</span>
+						<div class="ic s-bw warn" style="--p:.105"><span class="g">BW</span><span class="t2 big">4.2</span></div>
+						<div class="ic s-bshed" style="--p:.517"><span class="g">Bs</span><span class="t2">32</span></div>
+						<div class="ic s-cotw" style="--p:.917"><span class="g">CW</span><span class="t2">1:40</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Countdown takes over</b>In the last 5 s the time grows and turns orange inside an orange border, with no motion. Retail and Forever: from an estimate while the time is hidden.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ================= fp23 ================= -->
+<section class="look" data-item="fp23" id="fp23">
+	<h2>Pandemic refresh window on DoTs</h2>
+	<p class="what">Per debuff, sets a refresh window as a percent of its length and recolours the icon or bar inside it, with one cue.</p>
+	<p class="clients"><span class="no">fp23</span>Classic Era, TBC and MoP only; blocked on Retail and Forever, where addons can't see debuffs on enemies. Today: Dynamic Color does a time-based warning, on bars only.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<span class="note">Warlock, Classic Era · Bar Frame 1, Dynamic Color on (5 s)</span>
+				<div class="stage">
+					<div class="bf">
+						<div class="bar"><div class="bi s-cor"><span class="g">Co</span></div><div class="bb"><div class="fill" style="--v:.267; --cc:rgb(247,156,2)"></div><span class="nm">Corruption</span><span class="tm">4.8</span></div></div>
+						<div class="bar"><div class="bi s-coa"><span class="g">CA</span></div><div class="bb"><div class="fill" style="--v:.542"></div><span class="nm">Curse of Agony</span><span class="tm">13</span></div></div>
+						<div class="bar"><div class="bi s-imm"><span class="g">Im</span></div><div class="bb"><div class="fill" style="--v:.8"></div><span class="nm">Immolate</span><span class="tm">12</span></div></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Today</b>A bar turns from orange to green over a fixed 5 s, the same for every debuff whatever its length; lane icons don't change.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<span class="note">Warlock, Classic Era · Lane 1, Linear (%) · refresh at 30%</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#8787ed">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<div class="ic s-cor refresh" style="--p:.267"><span class="g">Co</span><span class="t2">4.8</span></div>
+						<div class="ic s-coa" style="--p:.542"><span class="g">CA</span><span class="t2">13</span></div>
+						<div class="ic s-imm" style="--p:.8"><span class="g">Im</span><span class="t2">12</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Icon turns at 30%</b>In a debuff's last 30% (5.4 s of Corruption's 18 s) its icon gets a green border and tint, with one flash and sound as it enters.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<span class="note">Warlock, Classic Era · Lane 1, Linear (%) · refresh zone 30%</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#8787ed">
+						<div class="fill"></div>
+						<span class="lbl l0" style="z-index:3">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<span class="zone" style="--zw:calc((100% - 40px) * .3 + 40px); --zc:166,232,58"></span>
+						<div class="ic s-cor" style="--p:.267"><span class="g">Co</span><span class="t2">4.8</span></div>
+						<div class="ic s-coa" style="--p:.542"><span class="g">CA</span><span class="t2">13</span></div>
+						<div class="ic s-imm" style="--p:.8"><span class="g">Im</span><span class="t2">12</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Refresh zone on the lane</b>On a Linear (%) lane each DoT crosses the lane over its own length, so one shaded zone marks the last 30% for all of them; one percent per lane.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<span class="note">Warlock, Classic Era · Bar Frame 1 · refresh at 30%</span>
+				<div class="stage">
+					<div class="bf">
+						<div class="bar"><div class="bi s-cor"><span class="g">Co</span></div><div class="bb"><div class="fill" style="--v:.267; --cc:#8fd12e"></div><span class="notch"></span><span class="nm">Corruption</span><span class="tm">4.8</span></div></div>
+						<div class="bar"><div class="bi s-coa"><span class="g">CA</span></div><div class="bb"><div class="fill" style="--v:.542"></div><span class="notch"></span><span class="nm">Curse of Agony</span><span class="tm">13</span></div></div>
+						<div class="bar"><div class="bi s-imm"><span class="g">Im</span></div><div class="bb"><div class="fill" style="--v:.8"></div><span class="notch"></span><span class="nm">Immolate</span><span class="tm">12</span></div></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Notch on the bar</b>Each bar carries a notch at its 30% point; once the fill drains past it the bar turns green.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ================= fp26 ================= -->
+<section class="look" data-item="fp26" id="fp26">
+	<h2>GCD-aware icons</h2>
+	<p class="what">Dims icons whose only wait is the global cooldown, and tints the GCD marker when the next ready icon lands inside it.</p>
+	<p class="clients"><span class="no">fp26</span>Partly on Retail and Forever: the game always says when a spell is waiting only on the GCD, but whether a cooldown lands inside the GCD can't be worked out in combat. Today: a GCD lane tracking option.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<span class="note">Retribution Paladin · Lane 1, GCD tracking · GCD 1.2 s left</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#f58cba">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<span class="st" style="--p:.8"></span>
+						<div class="ic s-jud" style="--p:.05"><span class="g">J</span><span class="t2">0.6</span></div>
+						<div class="ic s-cs" style="--p:.2"><span class="g">CS</span><span class="t2">1.2</span></div>
+						<div class="ic s-boj" style="--p:.375"><span class="g">BJ</span><span class="t2">4.5</span></div>
+						<div class="ic s-woa" style="--p:.933"><span class="g">WA</span><span class="t2">28</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Today</b>The GCD marker sweeps the lane each global cooldown; Crusader Strike's 1.2 s wait is only the GCD but looks like a real cooldown.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="a">
+			<div class="mock">
+				<span class="note">Retribution Paladin · Lane 1, GCD tracking · GCD 1.2 s left</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#f58cba">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<span class="st go" style="--p:.8"></span>
+						<div class="ic s-jud" style="--p:.05"><span class="g">J</span><span class="t2">0.6</span></div>
+						<div class="ic s-cs dim" style="--p:.2"><span class="g">CS</span></div>
+						<div class="ic s-boj" style="--p:.375"><span class="g">BJ</span><span class="t2">4.5</span></div>
+						<div class="ic s-woa" style="--p:.933"><span class="g">WA</span><span class="t2">28</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Dim in place</b>GCD-only icons dim where they sit; the GCD marker turns green when a real cooldown (Judgment, 0.6 s) comes back inside it. The green is Classic only in combat.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="b">
+			<div class="mock">
+				<span class="note">Retribution Paladin · Ready 1 and Lane 1 · GCD 1.2 s left</span>
+				<div class="stage">
+					<div class="row">
+						<div class="rf">
+							<div class="ri s-cs"><span class="sw" style="--sw:80%"></span><span class="n">CS</span><span class="r gcd">GCD</span></div>
+						</div>
+						<div class="lane" style="--cc:#f58cba">
+							<div class="fill"></div>
+							<span class="lbl l0">Ready</span><span class="lbl" style="--x:.5">50%</span><span class="lbl l1">100%</span>
+							<span class="st" style="--p:.8"></span>
+							<div class="ic s-jud" style="--p:.05"><span class="g">J</span><span class="t2">0.6</span></div>
+							<div class="ic s-boj" style="--p:.375"><span class="g">BJ</span><span class="t2">4.5</span></div>
+							<div class="ic s-woa" style="--p:.933"><span class="g">WA</span><span class="t2">28</span></div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>Wait in the ready frame</b>A GCD-only icon goes straight to the ready frame under a GCD sweep, with no ready sound, instead of riding the lane. Works on every client.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="c">
+			<div class="mock">
+				<span class="note">Retribution Paladin · Lane 1, GCD tracking · GCD 1.2 s left</span>
+				<div class="stage">
+					<div class="lane" style="--cc:#f58cba">
+						<div class="fill"></div>
+						<span class="lbl l0">Ready</span><span class="lbl" style="--x:.25">25%</span><span class="lbl" style="--x:.5">50%</span><span class="lbl" style="--x:.75">75%</span><span class="lbl l1">100%</span>
+						<span class="st" style="--p:.8"></span>
+						<div class="ic s-jud" style="--p:.05"><span class="g">J</span><span class="t2">0.6</span></div>
+						<div class="ic s-cs" style="--p:.2"><span class="g">CS</span><span class="t2 gcd">GCD</span></div>
+						<div class="ic s-boj" style="--p:.375"><span class="g">BJ</span><span class="t2">4.5</span></div>
+						<div class="ic s-woa" style="--p:.933"><span class="g">WA</span><span class="t2">28</span></div>
+					</div>
+				</div>
+			</div>
+			<figcaption><b>GCD label</b>A GCD-only icon keeps its place and brightness but reads GCD instead of a number. Works on every client.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+</div>

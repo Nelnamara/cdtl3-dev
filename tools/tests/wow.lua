@@ -633,7 +633,8 @@ if RETAILAPI then
 			if s then return { name = s[1], iconID = s[2] or 136000, originalIconID = s[2] or 136000, spellID = id } end
 			if type(id) == "number" then return { name = "Spell " .. id, iconID = 136000, originalIconID = 136000, spellID = id } end
 		end,
-		GetSpellCooldown = function(id) return cdOf(id) end,
+		-- the game returns nil for a spell it doesn't have: WoW: Forever has no GCD spell (61304)
+		GetSpellCooldown = function(id) if FLAVOR == "forever" and id == 61304 then return nil end return cdOf(id) end,
 		GetSpellCharges = function(id) return nil end,
 		GetSpellLink = function(id) return "|cff71d5ff|Hspell:" .. tostring(id) .. "|h[x]|h|r" end,
 		IsSpellUsable = function() return true, false end,
@@ -677,10 +678,17 @@ else
 	function GetNumSpellTabs() return 1 end
 	function GetSpellTabInfo(i) return "General", 136000, 0, #SPELLBOOK end
 	function GetSpellBookItemName(j) local s = SPELLBOOK[j]; if s then return s.name, "", s.id end end
-	function UnitAura() return nil end
+	-- the old names and the current ones both exist on the Classic clients (the old ones are deprecated
+	-- aliases); a harness drops one set before LoadTOC to prove the other works alone
+	function UnitAura(u, i, f)
+		local l = AURAS and AURAS[f or "HELPFUL"]
+		local a = l and l[i]
+		if a then return a.name, a.icon, a.applications, "", a.duration, a.expirationTime, nil, nil, nil, a.spellId end
+	end
 	function UnitBuff() return nil end
 	function UnitDebuff() return nil end
 	function CombatLogGetCurrentEventInfo() return table.unpack(CLEU_ARGS or {}) end
+	C_CombatLog = { GetCurrentEventInfo = function() return table.unpack(CLEU_ARGS or {}) end }
 	function GetItemSpell(id) return C_Item.GetItemSpell(id) end
 	function GetItemInfoInstant(id) return C_Item.GetItemInfoInstant(id) end
 	function GetItemCooldown(id) return C_Container.GetItemCooldown(id) end

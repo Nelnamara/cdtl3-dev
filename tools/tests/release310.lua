@@ -1,6 +1,7 @@
--- 3.1.0 release checks: the version compare behind the welcome window, the window opening once
--- after an update where combat timers run (and not on Classic clients), its combat timers notice,
--- and the combat timers defaults (on, Blizzard's Tracked Bars not hidden).
+-- 3.1.0 / 3.2.0 release checks: the version compare behind the welcome window, the window opening
+-- once after an update on every client, its "New in 3.2.0" block, its combat timers notice (only
+-- where combat timers run and only for a player who last saw something older than 3.1), the Take
+-- the tour button, and the combat timers defaults (on, Blizzard's Tracked Bars not hidden).
 dofile(HARNESS_DIR .. "/wow.lua")
 PLAYER.class = "DRUID"
 
@@ -45,8 +46,8 @@ local CT = CDTL3.CombatTimers
 local available = CT and CT:Available()
 
 print("[version " .. FLAVOR .. "]")
-check("version is 3.1.1", CDTL3.version == "3.1.1")
-check("notice version stays 3.1 (3.1.1 opens no new window for 3.1.0 players)", CDTL3.noticeVersion == "3.1")
+check("version is 3.2.0", CDTL3.version == "3.2.0")
+check("notice version is 3.2 (3.2.0 opens the welcome window once, on every client)", CDTL3.noticeVersion == "3.2")
 local function newer(prev)
 	g.previousVersion = prev
 	local ok, v = pcall(CDTL3.IsNewerVersion, CDTL3)
@@ -54,7 +55,7 @@ local function newer(prev)
 end
 local cases = {
 	{ 0, true }, { "0", true }, { "2.6", true }, { "3.0.9", true }, { "3.0.13", true },
-	{ "3.1.0", false }, { "3.1", false }, { "3.1.4", false }, { "3.2.0", false }, { "4.0", false },
+	{ "3.1.0", true }, { "3.1", true }, { "3.1.4", true }, { "3.2.0", false }, { "4.0", false },
 	{ "3.0.13-test", true }, { "junk", true }, { "", true },
 }
 for _, c in ipairs(cases) do
@@ -64,21 +65,48 @@ end
 g.previousVersion = "3.0.13"
 
 print("[welcome window " .. FLAVOR .. "]")
+check("opens once after the update, on every client", opened == 1, opened)
+local msg = CDTL3:GetSpecialMessage()
+check("3.2.0 block shows on every client", msg:find("New in 3.2.0", 1, true) == 1 or msg:find("New in 3.2.0", 1, true) ~= nil)
+check("  it names the Simple tab, Quick Style > Setup, Filters, Effects, Pinned, CooldownCollaborator and /cdtl3 help",
+	msg:find("Simple tab", 1, true) and msg:find("Quick Style > Setup", 1, true) and msg:find("Filters says why", 1, true)
+	and msg:find("Effects", 1, true) and msg:find("Pinned", 1, true) and msg:find("CooldownCollaborator", 1, true)
+	and msg:find("/cdtl3 help", 1, true))
+check("  it comes before the combat timers block", not available or msg:find("New in 3.2.0", 1, true) < msg:find("New in 3.1.0", 1, true))
 if available then
-	check("opens once after the update where combat timers run", opened == 1, opened)
-	local msg = CDTL3:GetSpecialMessage()
-	check("notice names combat timers and says they are on", msg:find("combat timers (experimental), on for everyone", 1, true) ~= nil)
-	check("notice says how to turn them off", msg:find("/cdtl3 combattimers off", 1, true) ~= nil and msg:find("Global tab", 1, true) ~= nil)
-	check("notice asks for reports", msg:find("report it at the link above", 1, true) ~= nil)
-	local log = CDTL3:GetChangeLog()
-	local at311, at310, at3013 = log:find("Changelog 3.1.1", 1, true), log:find("Changelog 3.1.0", 1, true),
-		log:find("Changelog 3.0.13", 1, true)
-	check("changelog has 3.1.1 first, then 3.1.0", at311 and at310 and at3013 and at311 < at310 and at310 < at3013)
+	check("combat timers block shows for a player coming from 3.0.13 where they run", msg:find("combat timers (experimental), on for everyone", 1, true) ~= nil)
+	check("  it says how to turn them off", msg:find("/cdtl3 combattimers off", 1, true) ~= nil and msg:find("Global tab", 1, true) ~= nil)
+	check("  it asks for reports", msg:find("report it at the link above", 1, true) ~= nil)
 else
-	check("Classic client: no window after the update", opened == 0, opened)
-	check("Classic client: no combat timers notice", CDTL3:GetSpecialMessage() == "")
+	check("Classic client: no combat timers block", msg:find("New in 3.1.0", 1, true) == nil)
 end
+g.previousVersion = "3.1.1"
+check("a player coming from 3.1.1 is not told about combat timers again", CDTL3:GetSpecialMessage():find("New in 3.1.0", 1, true) == nil)
+check("  but still sees New in 3.2.0", CDTL3:GetSpecialMessage():find("New in 3.2.0", 1, true) ~= nil)
+check("LastSeenOlderThan: 3.1.1 vs 3.1 false, vs 3.2 true", CDTL3:LastSeenOlderThan("3.1") == false and CDTL3:LastSeenOlderThan("3.2") == true)
+g.previousVersion = "3.0.13"
+local log = CDTL3:GetChangeLog()
+local at320, at311, at310, at3013 = log:find("Changelog 3.2.0", 1, true), log:find("Changelog 3.1.1", 1, true),
+	log:find("Changelog 3.1.0", 1, true), log:find("Changelog 3.0.13", 1, true)
+check("changelog has 3.2.0 first, then 3.1.1, then 3.1.0", at320 and at311 and at310 and at3013 and at320 < at311 and at311 < at310 and at310 < at3013)
+check("changelog says every cooldown you pin, not only defensives", log:find("every cooldown you pin", 1, true) ~= nil and log:find("pinned defensive", 1, true) == nil)
 
+print("[take the tour " .. FLAVOR .. "]")
+local win = _G["CDTL3_Firstrun"]
+local tourBtn = _G["CDTL3_Firstrun_Tour"]
+check("the window has a Take the tour button", win and tourBtn and tourBtn:GetText() == "Take the tour")
+check("  no tour is up and none is pending before the click", _G["CDTL3_Tour"] == nil and CDTL3.db.global.tourPending == nil)
+if win and tourBtn then
+	g.firstRun = true
+	xpcall(tourBtn.__scripts.OnClick, ERRH, tourBtn)
+	check("  it closes the window", not win:IsShown())
+	check("  it marks the window seen", g.firstRun == false and g.previousVersion == CDTL3.version)
+	local tour = _G["CDTL3_Tour"]
+	check("  it starts the three-step tour", tour and tour:IsShown() and tour.head:GetText() == "1 of 3, Lane", tour and tour.head:GetText())
+	check("  the update does not open the window again", CDTL3:IsNewerVersion() == false)
+	xpcall(_G["CDTL3_Tour_Skip"].__scripts.OnClick, ERRH, _G["CDTL3_Tour_Skip"])
+	check("  closing the tour ends it for good", not tour:IsShown() and CDTL3.db.global.tourPending == nil and CDTL3.Start:StartTour() == false)
+end
 print("[defaults " .. FLAVOR .. "]")
 check("combat timers on by default", g.combatTimers.enabled == true)
 check("Blizzard's Tracked Bars not hidden by default", g.combatTimers.hideBlizzardBars == false)

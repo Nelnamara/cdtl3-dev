@@ -1,0 +1,32 @@
+<script>
+// Stand-in for the artifact runtime's db: in-memory documents, snapshots after every write.
+(function () {
+	var colls = {};
+	var subs = {};
+	function coll(name) { return colls[name] || (colls[name] = {}); }
+	function snap(name) {
+		var c = coll(name);
+		return { docs: Object.keys(c).map(function (id) { return { id: id, exists: true, data: function () { return JSON.parse(JSON.stringify(c[id])); } }; }), metadata: { fromCache: false } };
+	}
+	function fire(name) { (subs[name] || []).forEach(function (fn) { fn(snap(name)); }); }
+	var db = {
+		collection: function (name) {
+			return {
+				onSnapshot: function (fn) { (subs[name] = subs[name] || []).push(fn); setTimeout(function () { fn(snap(name)); }, 30); return function () {}; },
+				doc: function (id) {
+					function later(apply) {
+						return new Promise(function (r) { setTimeout(function () { apply(); window.__writes = (window.__writes || 0) + 1; r(); setTimeout(function () { fire(name); }, 120); }, 150); });
+					}
+					return {
+						update: function (p) { return later(function () { Object.assign(coll(name)[id] = coll(name)[id] || {}, p); }); },
+						set: function (p) { return later(function () { coll(name)[id] = JSON.parse(JSON.stringify(p)); }); }
+					};
+				}
+			};
+		}
+	};
+	window.__seed = function (name, docs) { Object.keys(docs).forEach(function (id) { coll(name)[id] = docs[id]; }); fire(name); };
+	window.__get = function (name, id) { return coll(name)[id]; };
+	window.claude = { use: function (n) { return Promise.resolve(n === "db" ? db : null); } };
+})();
+</script>

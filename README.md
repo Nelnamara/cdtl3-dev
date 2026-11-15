@@ -14,7 +14,10 @@ CooldownTimeline tracks your ability cooldowns as moving icons along a timeline 
 - **Buff and debuff tracking** — your own buffs/debuffs counting down on a lane or bar
 - **Combat timers (Retail, WoW: Forever)** — in combat, spell cooldowns follow the game's own timer at their real length, and buffs in the Cooldown Manager's Tracked Bars get an exact timer (experimental, on by default)
 - **Flight timers** — a countdown to landing on every flight path, exact once you've flown the route (on by default; Global tab)
-- **Ready alerts** — sound, flash and highlight when something comes off cooldown
+- **Works with CooldownCollaborator** — group cooldowns from the separate addon CooldownCollaborator show on your lanes, with each caster's name under their icon (see [below](#works-with-cooldowncollaborator))
+- **Group play tools** — a Caster lane for other players' cooldowns, a Ready frame that shows every cooldown you pin, a Fight Timeline, a Burst pack for lust, Sated, trinkets and a potion, and a strip on your cooldown showing who you gave an external to
+- **Easy start** — a short tour on first install, a Simple tab, and Starter, Healer, Tank and DPS setups you can preview and keep or undo
+- **Ready alerts** — sound, flash and highlight when something comes off cooldown; each spell can have its own sound, or say its name out loud
 - **Internal cooldown (ICD) and custom cooldowns** — add anything not auto-detected, including aura-triggered custom timers
 - **Shared cooldown handling** — optionally tracks abilities that lock each other out
 - **Lane tracking** — GCD, health, class power, combo points, mana/energy ticks, swing timers drawn on the lane bar
@@ -34,22 +37,23 @@ CooldownTimeline tracks your ability cooldowns as moving icons along a timeline 
 
 - Any supported client (see [Client support](#client-support)) — all libraries are embedded, no dependencies
 - [Masque](https://www.curseforge.com/wow/addons/masque) *(optional)* — skins cooldown icons
+- CooldownCollaborator *(optional)* — shows group cooldowns on CDTL3's lanes (see [Works with CooldownCollaborator](#works-with-cooldowncollaborator))
 
 ---
 
 ## Installation
 
-Install via the CurseForge or Wago app, or extract the release zip into your client's AddOns folder as a folder named exactly **`CooldownTimeline3`** (it should contain `CDTL3.lua`, the `.toc` files and the `Libs`/`Media` folders):
+Install via the CurseForge or Wago app, or extract the release zip into your client's AddOns folder as a folder named exactly **`CooldownTimeline3`** (it should contain `CDTL3.lua`, the `.toc` files and the `Libs`/`Media` folders). One download works on all five clients:
 
 | Client | AddOns folder |
 |---|---|
 | Retail (Midnight) | `World of Warcraft\_retail_\Interface\AddOns\` |
-| Classic Era | `World of Warcraft\_classic_era_\Interface\AddOns\` |
-| TBC Anniversary | `World of Warcraft\_anniversary_\Interface\AddOns\` |
 | MoP Classic | `World of Warcraft\_classic_\Interface\AddOns\` |
+| TBC Anniversary | `World of Warcraft\_anniversary_\Interface\AddOns\` |
+| Classic Era | `World of Warcraft\_classic_era_\Interface\AddOns\` |
 | World of Warcraft: Forever | `World of Warcraft\_forever_\Interface\AddOns\` |
 
-A GitHub source zip unpacks as `cdtl3-dev-<branch>` and won't show up in the AddOns list until the folder is renamed to `CooldownTimeline3`. New addons are only picked up on a full client restart, not `/reload`. On first run the frames appear unlocked in the center — drag them into place, then `/cdtl3 lock`.
+A GitHub source zip unpacks as `cdtl3-dev-<branch>` and won't show up in the AddOns list until the folder is renamed to `CooldownTimeline3`. New addons are only picked up on a full client restart, not `/reload`. On first install a short tour shows what the lane, the bars and the Ready frame are, then lets you lock the frames in place. If you skip it, the frames appear unlocked in the center — drag them into place, then `/cdtl3 lock`.
 
 ---
 
@@ -61,26 +65,48 @@ Type `/cdtl3` to open the settings window. Cooldowns appear as you use abilities
 
 Primary command is `/cdtl3` (or `/cooldowntimeline3`). The old `/cdtl2` / `/cooldowntimeline2` remain as legacy aliases.
 
+- **`/cdtl3 help`** — List every subcommand with a line each
 - **`/cdtl3`** — Open the settings window (movable; every panel is a tab)
 - **`/cdtl3 lanes`** / **`ready`** / **`bars`** / **`filters`** / **`profiles`** — Jump straight to that tab
-- **`/cdtl3 lock`** / **`/cdtl3 unlock`** — Toggle frame lock (enable/disable dragging)
+- **`/cdtl3 lock`** / **`/cdtl3 unlock`** — Lock the frames in place, or unlock them so you can drag them
 - **`/cdtl3 test`** — Toggle test mode (fills the frames with sample icons)
 - **`/cdtl3 minimap`** — Show/hide the minimap button (account-wide; also in the Global tab)
 - **`/cdtl3 debug`** — Toggle debug mode (debug frame + chat diagnostics)
 - **`/cdtl3 auras`** — Print every buff/debuff on you as CDTL3 sees it: readable or hidden by the game, saved or not, ignored, which lane, and whether it's assigned to your character. Use this first if a buff won't show up
 - **`/cdtl3 oaf`** — Print the built-in spell list size, every saved "cooldown starts when used" spell (Nature's Swiftness, Presence of Mind, Stealth…) and the live state of those cooldowns. Use this if one of them goes straight to ready
 - **`/cdtl3 combattimers`** — Print the combat timers status: on or off, how many spells and buffs are following the game's timer, the buffs in your Tracked Bars, and any errors. `/cdtl3 combattimers off` / `on` switch them (Retail and Forever)
+- **`/cdtl3 report`** — Open a box with a ready-to-copy bug report (version, client, settings that differ from the defaults, recent errors). Paste it into your issue
+- **`/cdtl3 log`** — Open a box with the errors CDTL3 caught quietly
+- **`/cdtl3 perf`** — Print the update rate, CPU, memory and frame counts
+- **`/cdtl3 help`** — List every command in chat. The **Help** tab in the settings window (also Alt-click on the minimap button) lists them with a Run button each
+
+### Works with CooldownCollaborator
+
+CooldownCollaborator is a separate addon that shares major group cooldowns between players who run it. CDTL3 and CooldownCollaborator work together: with both installed, CooldownCollaborator sends your group's cooldowns to CDTL3, and they show on CDTL3's lanes next to your own.
+
+- **Whose cooldowns:** yours, and those of group members who also run CooldownCollaborator, wherever CooldownCollaborator is installed
+- **Where they show:** Lane 1 by default. Choose another lane, bar frame and Ready frame, or switch them off, under **Filters › Defaults** (pick *Group cooldowns* in the list: *Enabled*, *Default Lane*, *Default Bar*, *Default Ready*)
+- **Who cast it:** tick **Lanes › (a lane) › General › Caster lane** and each caster's name shows under their icon, in their class colour
+- **On the other side:** in CooldownCollaborator's own settings, the checkbox *Show group cooldowns on CDTL3's lanes* sends its timers to CDTL3. It is on by default when CDTL3 is loaded
+- **Without it:** on MoP Classic, TBC Anniversary and Classic Era, CDTL3 can read other players' raid cooldowns from the combat log by itself (**Filters › Defaults › Track raid cooldowns**). On Retail and WoW: Forever the game hides other players' casts, so their cooldowns need CooldownCollaborator on both players
+
+### For addon authors
+
+CDTL3 sends messages when a timer starts, becomes ready and ends, has a read-only API of what it tracks, and lets other addons add their own timers to the lanes (CooldownCollaborator does). See [Extending CDTL3](docs/EXTENDING.md).
 
 ### Settings Window
 
-- **Quick Style** — apply a ready-made look to every lane, bar frame and ready frame at once
+- **Simple** — the few settings most people change: what to track, timeline width, icon size, ready sound, lock button
+- **Quick Style** — apply a ready-made look to every lane, bar frame and ready frame at once, or pick a Starter, Healer, Tank or DPS setup (Setup) and Keep or Undo it
 - **Global / Colors** — when CDTL3 is active (always / in group / in instance), class and spell-school colors
 - **Lanes** — size, position, direction, icon style, lane tracking (GCD, health, power, swing…)
 - **Ready** — sound, flash and duration for ready alerts
 - **Bar Frames** — bar texture, size, text and Dynamic Color
 - **Filters** — every detected spell, item, buff and debuff, with per-entry settings (lane, bar, ready frame, highlight, custom cooldown, its own bar color); **Custom** for your own cooldowns and aura triggers
 - **Profiles** — per-character or shared profiles, optionally one per specialization
+- **Fight Timeline** — a strip from the pull to a set time, with a bar for each pinned cooldown
 - **Import/Export** — share a profile as a string
+- **Help** — every command, with a Run button each
 
 ---
 
@@ -102,7 +128,7 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 
 **Secret values.** On Midnight and Forever the game hides ("makes secret") many numbers from addons — cooldown timings, health and power, and aura details during combat, encounters, Mythic+ and PvP. CDTL3 never does math on a hidden value: cooldowns fall back to tracked cast times, health/power go straight into the lane bar (which can display hidden values), and a buff that becomes unreadable keeps counting down from its last known time instead of disappearing. Buffs gained or recast while hidden are picked up when combat ends.
 
-**World of Warcraft: Forever** runs the modern retail engine but reports a vanilla-era interface number (`16001`). CDTL3 detects it by that number, uses the retail code paths there, and uses the vanilla-era spell data. It loads its own `CooldownTimeline3_Camelot.toc`, with a plain `CooldownTimeline3.toc` as a fallback in case Blizzard renames the Forever suffix before launch.
+**World of Warcraft: Forever** runs the modern retail engine but reports a vanilla-era interface number (`16001`). CDTL3 detects it by that number, uses the retail code paths there, and uses the vanilla-era spell data. It loads its own `CooldownTimeline3_Camelot.toc`, with a plain `CooldownTimeline3.toc` as a fallback in case Blizzard renames the Forever suffix.
 
 ---
 
@@ -113,7 +139,7 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 - **Midnight / Forever:** the game hides buff details from addons in combat. Buffs you add to **Tracked Bars** in Blizzard's Cooldown Manager (`/cdm`) get an exact timer through combat timers; any other buff gained in combat, or refreshed by someone else, appears (or updates) only after combat ends, and your own recast restarts it from its last known length (an estimate, shown in dimmed text). Item cooldowns, the GCD tracker and spells with a **Custom CD Time** are also estimated while timings are hidden
 - **Midnight / Forever, combat timers:** Grouped stacking leaves moving icons out in combat, so they can overlap until combat ends; Blizzard's Tracked Bars must stay switched on to feed CDTL3 (use *Hide Blizzard's Tracked Bars* on the Global tab to make them invisible), and stay invisible in Edit Mode while hidden
 - **Midnight, with combat timers off:** the game reports a spell's *base* cooldown, not the talent-reduced one — use **Custom CD Time** on the spell (Filters) to enter the real value
-- **Forever beta:** the debug frame's *Reload* button may be blocked by the client — type `/reload` instead
+- **WoW: Forever:** the debug frame's *Reload* button may be blocked by the client — type `/reload` instead
 - Some proc ICDs aren't in the built-in data — add them as custom cooldowns
 - The frames may briefly appear at 0,0 on a first-ever login before their position saves — drag them into place and `/reload` once
 
@@ -121,6 +147,29 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 
 ## Changelog
 
+### v3.2.0
+
+**Getting started**
+- **A three-step tour** on a first install, a **Simple tab** that comes first, and **setups by role** (Quick Style — Setup: Starter, Healer, Tank, DPS) tried on your real frames, then *Keep* or *Undo*. Alt-click the minimap button for a Help tab with every command
+- **Update notice** — players who already use CDTL3 see what's new once, with a *Take the tour* button
+
+**Lanes, icons and boards**
+- **Charge pips**, buff alerts, a burst window, a pulse before a cooldown is back, a mana gauge, and GCD waits that sit in the Ready frame
+- **A Ready frame that shows every cooldown you pin** (*Stay until used*) and a **Fight Timeline** showing where each pinned cooldown will be
+- **A Caster lane** for other players' cooldowns, with each caster's name: from the combat log on MoP, TBC and Classic Era, and from CooldownCollaborator on every client (on Retail and WoW: Forever the other player needs it too). **Group cooldowns from CooldownCollaborator** show on your lanes
+
+**Filters, sounds and profiles**
+- **Filters say why a spell or buff isn't showing**, list your spellbook's cooldowns, and can pull buffs from the Cooldown Manager
+- **A ready sound per spell**, names said out loud, and Blizzard sounds in their own menu beside every sound menu
+- **Anchor to** the player frame or any frame, **profiles by zone** and for new characters, and **share strings that show what's in them** before you import
+- /cdtl3 report, log, perf and help; other addons can add and read timers: see [Extending CDTL3](https://github.com/Nelnamara/cdtl3-dev/blob/main/docs/EXTENDING.md)
+
+**Fixes**
+- Importing a *Settings only* string no longer empties your Filters lists, and Reset Profile, Copy From and clearing a spell's settings ask first when other characters use them
+- Cooldowns on a switched-off lane keep their bar; early resets show the Ready icon with the sound
+- Ready Highlight Duration and Pinned Hide Time now do what they say; Edit Mode sliders match the options window
+- In combat on Retail and WoW: Forever the GCD marker shows and a Tracked Bars buff no longer jumps to Ready; TBC Anniversary flights that don't start from the flight map no longer count down under internal names
+- WoW: Forever: Haunt leaves the built-in Warlock list, as Blizzard removed it
 ### v3.1.1
 
 **Flight timers (every client, on by default)**
