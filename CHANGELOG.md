@@ -34,7 +34,7 @@
 **Ready sounds and showing**
 - **A ready sound per spell** — each entry can have its own sound, flash when ready, and say its name out loud (text to speech, in the voice you picked in the game's text to speech settings, or the first installed voice). The Ready tab gets *Mute ready sounds* and a *Play sound* button
 - **Hear a sound as you pick it** — every sound menu plays your choice once, and the menus are twice as wide so long names can be read
-- **Blizzard sounds** — a selection of the game's own alerts and chimes (raid warning, quest complete, level up, alarm clocks, bells…) joins every sound menu, each one checked to exist on every client
+- **Blizzard sounds** — a selection of the game's own alerts and chimes (raid warning, quest complete, level up, alarm clocks, bells…), each one checked to exist on every client. They have their own *Blizzard sound* menu beside every sound menu, so the main menu keeps only the addon and media-pack sounds
 - **Show per lane, bar frame and Ready frame** — *Always*, *Only in combat* or *Boss fights only*, with *Dim instead of hide*. The default follows the Global tab's *Hide out of combat*, as before
 - **Preview with sample icons** — a button at the top of the Global tab (or Shift-click the minimap button) shows sample icons, then *Stop preview*
 - **Placing frames** — the "Frames unlocked" box says to drag the frames and then click Lock (and that Edit Mode can place them too) until your first lock. Your first flight says the countdown is CDTL3's and where to turn it off

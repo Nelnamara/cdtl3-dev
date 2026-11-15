@@ -326,13 +326,13 @@ end
 private.MEDIA_CONTROLS = { LSM30_Font = "font", LSM30_Statusbar = "statusbar", LSM30_Sound = "sound" }
 private.mediaNoted = setmetatable({}, { __mode = "k" })
 
-private.AddMediaNote = function(option, kind)
+private.AddMediaNote = function(option, kind, rawGet, applies)
 	if private.mediaNoted[option] or type(option.get) ~= "function" then
 		return
 	end
 	private.mediaNoted[option] = true
 
-	local name, desc, get = option.name, option.desc, option.get
+	local name, desc, get = option.name, option.desc, rawGet or option.get
 	local function text(v, info)
 		if type(v) == "function" then
 			return v(info)
@@ -341,7 +341,7 @@ private.AddMediaNote = function(option, kind)
 	end
 	local function missing(info)
 		local ok, value = pcall(get, info)
-		if not ok then
+		if not ok or (applies and not applies(value)) then
 			return false
 		end
 		local gone, using = CDTL3:MediaMissing(kind, value)
@@ -369,6 +369,73 @@ private.AddMediaNote = function(option, kind)
 		end
 end
 
+-- SOUND DROPDOWNS: Blizzard's own sounds ("Blizzard: ...", Media.lua) get their own menu, "Blizzard
+-- sound", right after the main one. Both read and write the same saved setting; the menu that
+-- doesn't hold the saved sound shows no selection (a blank box). Lists are made when a menu is
+-- opened, since other addons register sounds after this one loads.
+private.BLIZZARD_SOUND_PREFIX = "Blizzard: "
+private.soundSplit = setmetatable({}, { __mode = "k" })
+
+private.IsBlizzardSound = function(value)
+	return type(value) == "string" and value:sub(1, #private.BLIZZARD_SOUND_PREFIX) == private.BLIZZARD_SOUND_PREFIX
+end
+
+private.SplitBlizzardSound = function(args, key, option)
+	if private.soundSplit[option] or type(option.get) ~= "function" then
+		return
+	end
+	private.soundSplit[option] = true
+
+	local rawGet, rawValues = option.get, option.values
+	local function source(info)
+		local list = rawValues
+		if type(list) == "function" then
+			list = list(info)
+		end
+		return list or (AceGUIWidgetLSMlists and AceGUIWidgetLSMlists.sound) or {}
+	end
+	local function listOf(blizzard)
+		return function(info)
+				local out = {}
+				for name, v in pairs(source(info)) do
+					if private.IsBlizzardSound(name) == blizzard then
+						out[name] = v
+					end
+				end
+				return out
+			end
+	end
+
+	local blizzard = {}
+	for k, v in pairs(option) do
+		blizzard[k] = v
+	end
+	private.soundSplit[blizzard] = true
+
+	option.values = listOf(false)
+	option.get = function(info)
+			local value = rawGet(info)
+			if private.IsBlizzardSound(value) then
+				return nil
+			end
+			return value
+		end
+
+	blizzard.name = L["Blizzard sound"]
+	blizzard.desc = L["Blizzard's own game sounds. Picking one here replaces the sound chosen in the other menu."]
+	blizzard.order = (option.order or 0) + 0.5
+	blizzard.values = listOf(true)
+	blizzard.get = function(info)
+			local value = rawGet(info)
+			if private.IsBlizzardSound(value) then
+				return value
+			end
+			return nil
+		end
+	private.AddMediaNote(blizzard, "sound", rawGet, private.IsBlizzardSound)
+	args[key.."Blizzard"] = blizzard
+end
+
 private.AddMediaNotes = function(group, seen)
 	seen = seen or {}
 	if type(group) ~= "table" or type(group.args) ~= "table" or seen[group] then
@@ -376,15 +443,22 @@ private.AddMediaNotes = function(group, seen)
 	end
 	seen[group] = true
 
+	local found = {}
 	for key, option in pairs(group.args) do
 		if type(option) == "table" then
 			local kind = option.type == "select" and private.MEDIA_CONTROLS[option.dialogControl]
 			if kind then
 				private.AddMediaNote(option, kind)
+				if kind == "sound" and not private.soundSplit[option] then
+					found[#found + 1] = key
+				end
 			elseif option.type == "group" and key ~= "profiles" then
 				private.AddMediaNotes(option, seen)
 			end
 		end
+	end
+	for _, key in ipairs(found) do
+		private.SplitBlizzardSound(group.args, key, group.args[key])
 	end
 end
 
@@ -525,7 +599,7 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."  - Filters say why a spell or buff isn't showing, list your spellbook's\n"
 	changeLog = changeLog.."    cooldowns, and can pull buffs from the Cooldown Manager\n"
 	changeLog = changeLog.."  - A ready sound per spell, names said out loud, and Blizzard sounds in\n"
-	changeLog = changeLog.."    every sound menu\n"
+	changeLog = changeLog.."    their own menu next to every sound menu\n"
 	changeLog = changeLog.."  - Frames can follow the player frame or any frame; profiles by zone and\n"
 	changeLog = changeLog.."    for new characters; share strings show what's in them first\n"
 	changeLog = changeLog.."  - /cdtl3 report, log, perf and help. The full list of fixes is on the\n"
@@ -7647,7 +7721,7 @@ private.AddReadyTestArgs = function(args, ready)
 		desc = L["Plays the Normal Sound once, so you can hear it"],
 		order = 303,
 		type = "execute",
-		width = "half",
+		width = "normal",
 		func = function(info) play("nSound") end,
 	}
 	args["hSoundTest"] = {
@@ -7655,7 +7729,7 @@ private.AddReadyTestArgs = function(args, ready)
 		desc = L["Plays the Highlight Sound once, so you can hear it"],
 		order = 403,
 		type = "execute",
-		width = "half",
+		width = "normal",
 		func = function(info) play("hSound") end,
 	}
 end
