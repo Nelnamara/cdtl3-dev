@@ -99,6 +99,7 @@ Found a bug or want something added? Open an issue on GitHub: https://github.com
 ### 3.2.0
 
 **Getting started**
+- A What's new window pops up once after you update to 3.2.0, on every client, with a Take the tour button
 - A three-step tour the first time you install it. It shows you the lane, the bars and the Ready frame with sample icons, then lets you lock everything in place or open the settings
 - The Simple tab comes first: what to track, timeline width, icon size, the ready sound and a lock button
 - Setups by role (Quick Style › Setup). Starter, Healer, Tank or DPS shows up on your own frames with sample icons first. Keep saves it, Undo puts your lanes back, and a setup you never kept gets undone the next time you log in
