@@ -12,7 +12,7 @@ Already using CDTL3? A lot is new, and a What's new window opens once after you 
 
 - **Set up in a minute**: a short tour, a Simple tab with the settings most people change, and Healer, Tank and DPS setups you try on your real frames before you keep them
 - **Filters that explain themselves**: pick spells straight from your spellbook, and see why anything isn't showing, with a *Show anyway* button
-- **Group play**: a Caster lane with each player's name under their icon, group cooldowns from CooldownCollaborator, a Burst pack for trinkets, potions and lust (where your client has it), and a Ready board for the cooldowns you pin
+- **Group play**: a Caster lane with each player's name under their icon, your group's cooldowns from the new companion addon CooldownCollaborator (try it in your groups, see below), a Burst pack for trinkets, potions and lust (where your client has it), and a Ready board for the cooldowns you pin
 - **Your sounds**: a ready sound for each spell, its name said out loud, and a menu of Blizzard's own alerts and chimes beside every sound menu
 - **Plan the fight**: a burst window on the lane, a Fight Timeline, charge pips, a mana gauge and a pulse just before a cooldown is back
 - **Profiles that follow you**: profiles by zone, a starting profile for new characters, lists shared across characters, and share strings that show what's inside before you import
@@ -60,6 +60,8 @@ Already using CDTL3? A lot is new, and a What's new window opens once after you 
 ## Works with CooldownCollaborator
 
 CooldownCollaborator is a separate addon that shares major group cooldowns between players who run it. CDTL3 and CooldownCollaborator work together. With both installed, your group's cooldowns show on CDTL3's lanes next to your own: yours, and those of group members who also run CooldownCollaborator.
+
+**Try it in your groups.** Testing in all kinds of groups (dungeons, raids, battlegrounds, with friends who run it too) is encouraged and appreciated. Tell us what you see, good or bad, at https://github.com/Nelnamara/CooldownCollaborator/issues.
 
 - They show on Lane 1 by default. To choose another lane, bar frame or Ready frame, or to switch them off, open **Filters › Defaults** and pick *Group cooldowns*.
 - To see who cast each one, tick **Lanes › (a lane) › General › Caster lane**. Each caster's name shows under their icon, in their class colour.
