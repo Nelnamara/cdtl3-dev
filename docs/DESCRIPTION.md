@@ -97,6 +97,10 @@ Found a bug or want something added? Open an issue on GitHub: https://github.com
 
 ## Changelog
 
+### 3.2.1
+
+- You can take the tour again any time with `/cdtl3 tour`, and `/cdtl3 whatsnew` opens the What's new window with the changelog. Both are on the Help tab with a Run button
+
 ### 3.2.0
 
 **Getting started**
