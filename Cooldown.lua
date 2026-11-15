@@ -1129,22 +1129,32 @@ private.CalcSplitPosition = function(current, total, s)
 	local value = (current / total) * 100
 	
 	local ss = nil
+	local abs = s["mode"]["type"] == "SPLIT_ABS"
 	if s["mode"]["type"] == "SPLIT" then
 		ss = s["mode"]["split"]
 		if total > ss["max"] then
 			total = ss["max"]
 		end
-	elseif s["mode"]["type"] == "SPLIT_ABS" then
+	elseif abs then
 		ss = s["mode"]["splitAbs"]
 		max = ss["max"]
 		value = current
 		total = ss["max"]
 	end
 	
-	local splits = CDTL3:SplitCount(ss)
+	-- Split (Time): only the marks inside Max Time split the lane (a 10m mark on a 3:00 lane does not)
+	local splits = nil
+	if abs then
+		splits = CDTL3:SplitAbsCount(ss)
+	else
+		splits = CDTL3:SplitCount(ss)
+	end
 	
 	if current < total then
-		if splits == 1 then
+		if abs and splits == 0 then
+			-- Split (Time) with no mark inside Max Time: a straight line to it
+			p = current / total
+		elseif splits == 1 then
 			local s1v = ss["s1v"]
 			local s1p = ss["s1p"]
 			
@@ -1836,6 +1846,11 @@ private.IconUpdate = function(f, elapsed)
 				CDTL3:FireTimer("CDTL3_TimerReady", f)
 				CDTL3:SendToReady(f)
 				CDTL3:FireTimerIfHeld(f)
+				-- a setup preview's sample (Start.lua) with no Ready frame to wait in starts again at once
+				if d["sampleLoop"] and ic:GetParent():GetName() == "CDTL3_Active_Icon_Holding" then
+					CDTL3:SendToLane(f)
+					CDTL3:SendToBarFrame(f)
+				end
 			end
 		end
 	elseif p == "CDTL3_Ready_1_MF" or p == "CDTL3_Ready_2_MF" or p == "CDTL3_Ready_3_MF" then
@@ -1866,7 +1881,8 @@ private.IconUpdate = function(f, elapsed)
 		else
 			CDTL3:FireTimer("CDTL3_TimerEnded", f)
 			if d["type"] == "testing" then
-				if CDTL3.db.profile.global["testingLoop"] then
+				-- Test Panel's Loop, or a setup preview's sample (Start.lua): starts again
+				if CDTL3.db.profile.global["testingLoop"] or d["sampleLoop"] then
 					CDTL3:SendToLane(f)
 					CDTL3:SendToBarFrame(f)
 				else

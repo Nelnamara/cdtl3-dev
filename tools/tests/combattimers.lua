@@ -341,7 +341,7 @@ do
 	check("positions not increasing: no segments", P.SplitKnots(s) == nil)
 	s = laneCopy("SPLIT_ABS", 3)
 	s.mode.splitAbs.s3v = 120
-	check("a split point at the max: no segments", P.SplitKnots(s) == nil)
+	check("a split point at the max is left out: the two inside it split the lane", P.SplitKnots(s) ~= nil and #P.SplitKnots(s) == 4)
 	s = laneCopy("SPLIT_ABS", 0)
 	check("no split points: no segments", P.SplitKnots(s) == nil)
 	s = laneCopy("SPLIT_ABS", 1)

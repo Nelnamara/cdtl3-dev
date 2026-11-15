@@ -1262,8 +1262,13 @@ private.SetModeText = function(f, s)
 		st["text4"]["pos"] = s["mode"]["splitAbs"]["s3p"]
 		st["text5"]["text"] = CDTL3:ConvertTime(max, tFormat)
 		
-		local count = CDTL3:SplitCount(s["mode"]["splitAbs"])
-		if count == 1 then
+		-- a mark at or past Max Time isn't drawn (a 3:00 lane doesn't show a 10m mark inside it)
+		local count = CDTL3:SplitAbsCount(s["mode"]["splitAbs"])
+		if count == 0 then
+			st["text2"]["used"] = false
+			st["text3"]["used"] = false
+			st["text4"]["used"] = false
+		elseif count == 1 then
 			st["text2"]["used"] = true
 			st["text3"]["used"] = false
 			st["text4"]["used"] = false

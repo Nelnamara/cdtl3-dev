@@ -639,10 +639,11 @@ end
 -- previous one's fill edge. The icon sits on the last fill edge, so the fills add up to the split
 -- position with no arithmetic on the value.
 
--- (0, 0), each active split point, (max, 1); nil unless values and positions strictly increase
+-- (0, 0), each active split point, (max, 1); nil unless values and positions strictly increase.
+-- Active = the marks inside Max Time (CDTL3:SplitAbsCount), as CalcSplitPosition splits the lane.
 private.SplitKnots = function(s)
 	local ss = s["mode"]["splitAbs"]
-	local count, max = CDTL3:SplitCount(ss), tonumber(ss["max"])
+	local count, max = CDTL3:SplitAbsCount(ss), tonumber(ss["max"])
 	if not (count and max) or count < 1 or count > 3 or count ~= math.floor(count) then
 		return nil
 	end

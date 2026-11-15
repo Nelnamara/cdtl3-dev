@@ -669,6 +669,29 @@ function CDTL3:SplitCount(ss)
 	return n and math.floor(n + 0.5)
 end
 
+-- The Split (Time) marks a lane draws and splits at (ss = mode.splitAbs): its Split Count's marks
+-- that come before its Max Time. A mark at or past Max Time (a 3:00 lane still holding a 10m mark)
+-- is left out, with any mark after it, so the lane splits as if only the marks inside it were set.
+-- The saved values stay as they are: the sliders show every value the setting holds. nil when the
+-- count isn't a number.
+private.MARK_VALUES = { "s1v", "s2v", "s3v" }
+function CDTL3:SplitAbsCount(ss)
+	local n = CDTL3:SplitCount(ss)
+	if not n then
+		return nil
+	end
+	local max = tonumber(ss["max"])
+	local used = 0
+	for i = 1, math.min(n, 3) do
+		local v = tonumber(ss[private.MARK_VALUES[i]])
+		if not v or (max and v >= max) then
+			break
+		end
+		used = i
+	end
+	return used
+end
+
 function CDTL3:ConvertTime(raw, style)
 	local t = ""
 	
@@ -727,33 +750,47 @@ function CDTL3:GenerateTestCooldowns()
     local timeRange = testingMaxTime - testingMinTime
     local increment = timeRange / (testingNumber - 1)
 
-    -- test cooldowns parked in holding (by Clear, or finished) are reused, so each Create
-    -- doesn't add another set of frames that lives until a /reload
-    local parked = {}
-    for _, cd in ipairs(CDTL3.cooldowns) do
-        if cd.data["type"] == "testing" and cd.icon:GetParent():GetName() == "CDTL3_Active_Icon_Holding"
-            and cd.bar:GetParent():GetName() == "CDTL3_Bar_Holding" then
-            table.insert(parked, cd)
-        end
-    end
-
+    local list = {}
     local timeCurrent = testingMinTime
     for i = 1, testingNumber do
         if CDTL3.db.profile.global["debugMode"] then
             CDTL3:Print("TESTING: "..i.." of "..testingNumber.." ("..timeCurrent.."s)")
         end
 
-        local data = CDTL3:GetTestTableData(testingType, timeCurrent, i)
-        local cd = table.remove(parked, 1)
-        if cd then
-            private.ReuseTestCooldown(cd, data)
-        else
-            -- CreateCooldown adds it to CDTL3.cooldowns
-            CDTL3:CreateCooldown(CDTL3:GetUID(), "testing", data)
-        end
+        list[i] = CDTL3:GetTestTableData(testingType, timeCurrent, i)
 
         timeCurrent = timeCurrent + increment
     end
+    CDTL3:MakeTestCooldowns(list)
+end
+
+-- One test cooldown per entry of list (each from GetTestTableData). Test cooldowns parked in holding
+-- (by Clear, or finished) are reused, so each Create doesn't add another set of frames that lives
+-- until a /reload. sampleLoop marks a setup preview's samples (Start.lua), which start again at Ready
+-- whatever the Test Panel's Loop says; any other test cooldown loses it. Returns the cooldowns.
+function CDTL3:MakeTestCooldowns(list)
+	local parked = {}
+	for _, cd in ipairs(CDTL3.cooldowns) do
+		if cd.data["type"] == "testing" and cd.icon:GetParent():GetName() == "CDTL3_Active_Icon_Holding"
+			and cd.bar:GetParent():GetName() == "CDTL3_Bar_Holding" then
+			table.insert(parked, cd)
+		end
+	end
+
+	local made = {}
+	for _, data in ipairs(list) do
+		local cd = table.remove(parked, 1)
+		if cd then
+			cd.data["sampleLoop"] = data["sampleLoop"] or nil
+			private.ReuseTestCooldown(cd, data)
+		else
+			-- CreateCooldown adds it to CDTL3.cooldowns
+			cd = CDTL3:CreateCooldown(CDTL3:GetUID(), "testing", data)
+			cd.data["sampleLoop"] = data["sampleLoop"] or nil
+		end
+		made[#made + 1] = cd
+	end
+	return made
 end
 
 -- Restart a parked test cooldown as the new one: the fields CreateCooldown takes from the

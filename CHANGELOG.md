@@ -67,6 +67,9 @@
 - **Grouped stacking** does far less work and looks the same; a lone icon in a short stack stays in the lane
 - **TBC Anniversary**: flights that don't start from the flight map no longer count down under internal names
 - **Undo on a setup preview** puts a buff you gained, or a spell you cast, during the preview back on its own lane, instead of leaving it on the preview's lane until a reload
+- **Setup previews always show sample icons sized to the setup** (Quick Style › Setup): two on the short lane, three on the long one and two on the buffs lane, each inside its lane's Max Time, starting again each time they reach Ready until you *Keep* or *Undo*. Picking a second setup, or one while sample icons were already on or had run out, used to show few or none. Your Test Panel settings are left as they are
+- **A setup gives each lane split marks that fit its Max Time** (a 3:00 lane shows 30s, 1m, 2m instead of a 10m mark inside it); *Undo*, and a setup never kept, put your own marks back
+- **A lane no longer draws a split mark past its Max Time**: on a Split (Time) lane, a mark at or past the lane's end is left out and the lane splits only at the marks inside it. Your saved marks stay as they are
 - **Bar frames**: the transition indicator line stays inside its bar, and shows only on a bar that will hand off to its lane; it used to sit far out to the right, over other frames, when the lane held more time than the whole cooldown
 - **Test mode** no longer lists test cooldowns twice
 - **Classic clients** read buffs and the combat log through Blizzard's current names, ahead of the old ones being removed

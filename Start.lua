@@ -158,6 +158,36 @@ end
 private.TYPES = { "spells", "petspells", "items", "buffs", "debuffs" }
 private.MODE_TABLES = { "linear", "linearAbs", "split", "splitAbs" }
 
+-- A setup's Split (Time) marks, inside each Max Time it uses and in rising order (the Healer look:
+-- Ready, 30s, 1m, 2m, 5m), at a quarter, half and three quarters of the lane
+private.MARKS = {
+	[30] = { 5, 10, 20 },
+	[60] = { 10, 20, 30 },
+	[120] = { 15, 30, 60 },
+	[180] = { 30, 60, 120 },
+	[300] = { 30, 60, 120 },
+}
+private.MARK_POS = { 0.25, 0.5, 0.75 }
+-- what a setup changes in mode.splitAbs besides max, so Undo can put the player's own marks back
+private.MARK_KEYS = { "count", "s1v", "s1p", "s2v", "s2p", "s3v", "s3p" }
+
+function S.MarksFor(max)
+	local marks = private.MARKS[max]
+	if marks then
+		return marks
+	end
+	-- any other Max Time: a tenth, a fifth and two fifths of it
+	return { max * 0.1, max * 0.2, max * 0.4 }
+end
+
+local function CopyMarks(sa)
+	local marks = {}
+	for _, k in ipairs(private.MARK_KEYS) do
+		marks[k] = sa[k]
+	end
+	return marks
+end
+
 local function MyLists()
 	local out = {}
 	for _, t in ipairs(private.TYPES) do
@@ -183,7 +213,8 @@ function private.Snapshot()
 		for _, k in ipairs(private.MODE_TABLES) do
 			max[k] = lane.mode[k].max
 		end
-		snap.lanes[n] = { enabled = lane.enabled, size = lane.icons.size, max = max, gauge = lane.gauge and lane.gauge.enabled or false }
+		snap.lanes[n] = { enabled = lane.enabled, size = lane.icons.size, max = max, gauge = lane.gauge and lane.gauge.enabled or false,
+			marks = CopyMarks(lane.mode.splitAbs) }
 	end
 	for _, t in ipairs(private.TYPES) do
 		local g = p.global[t]
@@ -195,8 +226,11 @@ function private.Snapshot()
 		snap.entries[item.entry] = item.entry["lane"]
 		snap.saved[#snap.saved + 1] = { t = item.type, k = item.key, lane = item.entry["lane"] }
 	end
+	-- sample icons aren't moved back: every preview makes its own and Keep or Undo clears them
 	for _, cd in ipairs(CDTL3.cooldowns) do
-		snap.cooldowns[cd] = cd.data["lane"]
+		if cd.data["type"] ~= "testing" then
+			snap.cooldowns[cd] = cd.data["lane"]
+		end
 	end
 	return snap
 end
@@ -212,7 +246,7 @@ function private.Persist(snap, p)
 		for k, v in pairs(was.max) do
 			max[k] = v
 		end
-		saved.lanes[n] = { enabled = was.enabled, size = was.size, max = max, gauge = was.gauge }
+		saved.lanes[n] = { enabled = was.enabled, size = was.size, max = max, gauge = was.gauge, marks = was.marks and CopyMarks(was.marks) }
 	end
 	for t, v in pairs(snap.defaults) do
 		saved.defaults[t] = v
@@ -253,6 +287,13 @@ function private.RestoreValues(snap, p)
 		end
 		if lane.gauge and was.gauge ~= nil then
 			lane.gauge.enabled = was.gauge
+		end
+		-- the player's own Split (Time) marks (a copy saved before this build has none)
+		if type(was.marks) == "table" then
+			local sa = lane.mode.splitAbs
+			for _, k in ipairs(private.MARK_KEYS) do
+				sa[k] = was.marks[k]
+			end
 		end
 	end
 	for _, t in ipairs(private.TYPES) do
@@ -338,6 +379,11 @@ function private.Apply(setup)
 			for _, k in ipairs(private.MODE_TABLES) do
 				lane.mode[k].max = want.max
 			end
+			-- Split (Time) marks that fit the new Max Time (a 3:00 lane used to keep a 10m mark)
+			local sa, marks = lane.mode.splitAbs, S.MarksFor(want.max)
+			sa.count = 3
+			sa.s1v, sa.s2v, sa.s3v = marks[1], marks[2], marks[3]
+			sa.s1p, sa.s2p, sa.s3p = private.MARK_POS[1], private.MARK_POS[2], private.MARK_POS[3]
 		end
 		if want.size then
 			lane.icons.size = want.size
@@ -370,22 +416,62 @@ function private.Apply(setup)
 	CDTL3:RefreshConfig()
 end
 
--- sample icons spread over the setup's lanes: short ones on the short lane, every fourth one as a buff
-function private.SpreadSamples(setup)
-	local i = 0
+-- SAMPLE ICONS
+-- Each lane of a setup gets its own samples, timed as fractions of its Max Time (the Healer look:
+-- two on the 30 s lane, three on the 5:00 one at 48 s, 1:20 and 2:40). They start again each time
+-- they reach Ready (sampleLoop, Cooldown.lua) until Keep or Undo; the Test Panel's own settings
+-- (number, times, Loop) are neither used nor changed.
+private.SAMPLES = {
+	long = { 0.16, 4 / 15, 8 / 15 },	-- 48, 80 and 160 s on a 5:00 lane
+	short = { 0.1, 0.2 },	-- 3 and 6 s on a 30 s lane
+	buffs = { 0.25, 0.5 },	-- 15 and 30 s on a 1:00 lane
+}
+
+-- what a lane of a setup holds: its big cooldowns, its short ones or its buffs (nil: none of them)
+function private.LaneRole(setup, n)
+	if n == setup.long then
+		return "long"
+	elseif n == setup.short then
+		return "short"
+	elseif n == setup.buffs then
+		return "buffs"
+	end
+	return nil
+end
+
+-- every sample icon off the frames (all = the player's own Test Panel ones too); a sample loses its loop
+function private.ClearSamples(all)
 	for _, cd in ipairs(CDTL3.cooldowns) do
 		local d = cd.data
-		if d["type"] == "testing" and cd.icon:GetParent():GetName() ~= "CDTL3_Active_Icon_Holding" then
-			i = i + 1
-			local lane
-			if i % 4 == 0 then
-				lane = setup.buffs
-			else
-				lane = S.LaneFor(setup, "spells", d["baseCD"])
+		if d["type"] == "testing" and (all or d["sampleLoop"]) then
+			d["sampleLoop"] = nil
+			if cd.icon:GetParent():GetName() ~= "CDTL3_Active_Icon_Holding" then
+				CDTL3:SendToHolding(cd)
 			end
-			MoveCooldown(cd, lane)
+			if cd.bar:GetParent():GetName() ~= "CDTL3_Bar_Holding" then
+				CDTL3:SendToBarHolding(cd)
+			end
 		end
 	end
+end
+
+-- a fresh set of samples fitted to the setup's lanes, each on its lane
+function private.MakeSamples(setup)
+	local list = {}
+	for n = 1, 3 do
+		local want = setup.lanes[n]
+		local role = want.on and want.max and private.LaneRole(setup, n)
+		local fractions = role and private.SAMPLES[role]
+		if fractions then
+			for _, fraction in ipairs(fractions) do
+				local data = CDTL3:GetTestTableData(role == "buffs" and "buffs" or "spells", math.floor(want.max * fraction + 0.5), #list + 1)
+				data["lane"] = n
+				data["sampleLoop"] = true
+				list[#list + 1] = data
+			end
+		end
+	end
+	return CDTL3:MakeTestCooldowns(list)
 end
 
 -- the lane labels and the Previewing banner (what the player sees while a setup is tried)
@@ -482,7 +568,7 @@ function private.HideBanner()
 end
 
 -- Show a setup on the real frames with sample icons. Choosing another one starts again from the
--- player's own lanes.
+-- player's own lanes, with a fresh set of samples for its lanes (sample mode on or not).
 function S.PreviewSetup(key)
 	local setup = S.GetSetup(key)
 	if not setup then
@@ -501,13 +587,13 @@ function S.PreviewSetup(key)
 	S.pending.key = key
 
 	private.Apply(setup)
-	if S.pending.startedPreview and not CDTL3.testing then
-		CDTL3:StartPreview()
-	elseif not CDTL3.testing then
-		CDTL3:StartPreview()
+	if not CDTL3.testing then
+		CDTL3:EnableTesting()	-- sample mode, ended again by Keep or Undo
 		S.pending.startedPreview = true
 	end
-	private.SpreadSamples(setup)
+	private.ClearSamples(true)
+	private.MakeSamples(setup)
+	CDTL3:ApplyCombatVisibility()
 	private.ShowBanner(setup)
 	return true
 end
@@ -520,6 +606,7 @@ function S.KeepSetup()
 	S.pending = nil
 	private.ClearPersisted(pending.profile)
 	private.HideBanner()
+	private.ClearSamples()
 	if pending.startedPreview and CDTL3.testing then
 		CDTL3:StopPreview()
 	end
@@ -537,6 +624,7 @@ function S.UndoSetup()
 	private.ClearPersisted(pending.profile)
 	private.HideBanner()
 	private.Restore(pending.snapshot, pending.profile)
+	private.ClearSamples()
 	if pending.startedPreview and CDTL3.testing then
 		CDTL3:StopPreview()
 	end
