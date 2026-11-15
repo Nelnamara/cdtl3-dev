@@ -139,7 +139,7 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 - **Midnight / Forever:** the game hides buff details from addons in combat. Buffs you add to **Tracked Bars** in Blizzard's Cooldown Manager (`/cdm`) get an exact timer through combat timers; any other buff gained in combat, or refreshed by someone else, appears (or updates) only after combat ends, and your own recast restarts it from its last known length (an estimate, shown in dimmed text). Item cooldowns, the GCD tracker and spells with a **Custom CD Time** are also estimated while timings are hidden
 - **Midnight / Forever, combat timers:** Grouped stacking leaves moving icons out in combat, so they can overlap until combat ends; Blizzard's Tracked Bars must stay switched on to feed CDTL3 (use *Hide Blizzard's Tracked Bars* on the Global tab to make them invisible), and stay invisible in Edit Mode while hidden
 - **Midnight, with combat timers off:** the game reports a spell's *base* cooldown, not the talent-reduced one — use **Custom CD Time** on the spell (Filters) to enter the real value
-- **Forever beta:** the debug frame's *Reload* button may be blocked by the client — type `/reload` instead
+- **WoW: Forever:** the debug frame's *Reload* button may be blocked by the client — type `/reload` instead
 - Some proc ICDs aren't in the built-in data — add them as custom cooldowns
 - The frames may briefly appear at 0,0 on a first-ever login before their position saves — drag them into place and `/reload` once
 
