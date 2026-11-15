@@ -88,6 +88,7 @@ Please try it out! Testing in all kinds of groups (dungeons, raids, battleground
 - `/cdtl3 combattimers` tells you if combat timers are running, and `on` or `off` switches them (Retail and WoW: Forever)
 - `/cdtl3 auras` shows your buffs and debuffs the way CDTL3 sees them. Handy if a buff won't show up
 - `/cdtl3 report` makes a bug report you can copy, `/cdtl3 log` shows errors that happened quietly, and `/cdtl3 perf` shows CPU and memory
+- `/cdtl3 tour` takes the three-step tour again, and `/cdtl3 whatsnew` opens the What's new window with the changelog
 - `/cdtl3 help` lists every command in chat
 
 ## Bugs and requests

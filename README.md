@@ -78,6 +78,8 @@ Primary command is `/cdtl3` (or `/cooldowntimeline3`). The old `/cdtl2` / `/cool
 - **`/cdtl3 report`** — Open a box with a ready-to-copy bug report (version, client, settings that differ from the defaults, recent errors). Paste it into your issue
 - **`/cdtl3 log`** — Open a box with the errors CDTL3 caught quietly
 - **`/cdtl3 perf`** — Print the update rate, CPU, memory and frame counts
+- **`/cdtl3 tour`** — Take the three-step tour again
+- **`/cdtl3 whatsnew`** — Open the What's new window with the changelog
 - **`/cdtl3 help`** — List every command in chat. The **Help** tab in the settings window (also Alt-click on the minimap button) lists them with a Run button each
 
 ### Works with CooldownCollaborator
