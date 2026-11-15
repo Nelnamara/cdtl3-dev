@@ -824,6 +824,7 @@ L["or move them in Edit Mode (not on Classic Era)"] = true
 L["Run"] = true
 L["Help"] = true
 L["Setup"] = true
+L["Take the tour"] = true
 L["Pick a role to see its lanes on your real frames with sample icons. Keep saves it, Undo puts your old lanes back. Your Filters entries move to the lane for their length; frame positions stay."] = true
 L["Mark estimated times with ~"] = true
 L["Puts a ~ in front of a time CDTL3 counts itself (an estimate), on icons and bars, and says so in the icon's tooltip. Times that follow the game's own timer stay plain. Retail and Forever, in combat."] = true

@@ -15,7 +15,7 @@ CooldownTimeline tracks your ability cooldowns as moving icons along a timeline 
 - **Combat timers (Retail, WoW: Forever)** — in combat, spell cooldowns follow the game's own timer at their real length, and buffs in the Cooldown Manager's Tracked Bars get an exact timer (experimental, on by default)
 - **Flight timers** — a countdown to landing on every flight path, exact once you've flown the route (on by default; Global tab)
 - **Works with CooldownCollaborator** — group cooldowns from the separate addon CooldownCollaborator show on your lanes, with each caster's name under their icon (see [below](#works-with-cooldowncollaborator))
-- **Group play tools** — a Caster lane for other players' cooldowns, a Ready frame that shows every pinned defensive, a Fight Timeline, a Burst pack for lust, Sated, trinkets and a potion, and a strip on your cooldown showing who you gave an external to
+- **Group play tools** — a Caster lane for other players' cooldowns, a Ready frame that shows every cooldown you pin, a Fight Timeline, a Burst pack for lust, Sated, trinkets and a potion, and a strip on your cooldown showing who you gave an external to
 - **Easy start** — a short tour on first install, a Simple tab, and Starter, Healer, Tank and DPS setups you can preview and keep or undo
 - **Ready alerts** — sound, flash and highlight when something comes off cooldown; each spell can have its own sound, or say its name out loud
 - **Internal cooldown (ICD) and custom cooldowns** — add anything not auto-detected, including aura-triggered custom timers
@@ -147,6 +147,29 @@ One package covers every client; they all share the same saved settings (`CDTL3D
 
 ## Changelog
 
+### v3.2.0
+
+**Getting started**
+- **A three-step tour** on a first install, a **Simple tab** that comes first, and **setups by role** (Quick Style — Setup: Starter, Healer, Tank, DPS) tried on your real frames, then *Keep* or *Undo*. Alt-click the minimap button for a Help tab with every command
+- **Update notice** — players who already use CDTL3 see what's new once, with a *Take the tour* button
+
+**Lanes, icons and boards**
+- **Charge pips**, buff alerts, a burst window, a pulse before a cooldown is back, a mana gauge, and GCD waits that sit in the Ready frame
+- **A Ready frame that shows every cooldown you pin** (*Stay until used*) and a **Fight Timeline** showing where each pinned cooldown will be
+- **A Caster lane** for other players' cooldowns, with each caster's name: from the combat log on MoP, TBC and Classic Era, and from CooldownCollaborator on every client (on Retail and WoW: Forever the other player needs it too). **Group cooldowns from CooldownCollaborator** show on your lanes
+
+**Filters, sounds and profiles**
+- **Filters say why a spell or buff isn't showing**, list your spellbook's cooldowns, and can pull buffs from the Cooldown Manager
+- **A ready sound per spell**, names said out loud, and Blizzard sounds in their own menu beside every sound menu
+- **Anchor to** the player frame or any frame, **profiles by zone** and for new characters, and **share strings that show what's in them** before you import
+- /cdtl3 report, log, perf and help; other addons can add and read timers: see [Extending CDTL3](https://github.com/Nelnamara/cdtl3-dev/blob/main/docs/EXTENDING.md)
+
+**Fixes**
+- Importing a *Settings only* string no longer empties your Filters lists, and Reset Profile, Copy From and clearing a spell's settings ask first when other characters use them
+- Cooldowns on a switched-off lane keep their bar; early resets show the Ready icon with the sound
+- Ready Highlight Duration and Pinned Hide Time now do what they say; Edit Mode sliders match the options window
+- In combat on Retail and WoW: Forever the GCD marker shows and a Tracked Bars buff no longer jumps to Ready; TBC Anniversary flights that don't start from the flight map no longer count down under internal names
+- WoW: Forever: Haunt leaves the built-in Warlock list, as Blizzard removed it
 ### v3.1.1
 
 **Flight timers (every client, on by default)**

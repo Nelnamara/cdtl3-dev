@@ -609,7 +609,7 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."    Undo, and a Help tab (Alt-click the minimap button)\n"
 	changeLog = changeLog.."  - Lanes and icons: charge pips, buff alerts, a burst window, a pulse before\n"
 	changeLog = changeLog.."    a cooldown is back, a mana gauge, and GCD waits in the Ready frame\n"
-	changeLog = changeLog.."  - Boards and groups: a Ready frame that shows every pinned defensive, a\n"
+	changeLog = changeLog.."  - Boards and groups: a Ready frame that shows every cooldown you pin, a\n"
 	changeLog = changeLog.."    fight timeline, a Caster lane with each caster's name, and group\n"
 	changeLog = changeLog.."    cooldowns from the addon CooldownCollaborator on your lanes\n"
 	changeLog = changeLog.."  - Filters say why a spell or buff isn't showing, list your spellbook's\n"
@@ -761,9 +761,33 @@ end
 function CDTL3:GetSpecialMessage()
 	local message = ""
 
-	-- 3.1.0: combat timers are on for everyone; say so once, with how to turn them off
+	-- 3.2.0: the big update, for every client
+	message = message.."|cFFffd100New in 3.2.0|r\n\n"
+	message = message.."  - Simple tab: the few settings most players want, first in the window\n"
+	message = message.."  - Quick Style > Setup: Healer, Tank or DPS, tried on your frames first,\n"
+	message = message.."    then Keep or Undo\n"
+	message = message.."  - Filters says why a spell or buff isn't showing, and lists your\n"
+	message = message.."    spellbook's cooldowns\n"
+	message = message.."  - A ready sound per spell, its name said out loud, and Blizzard sounds in\n"
+	message = message.."    their own menu\n"
+	message = message.."  - Lanes > (a lane) > Effects: charge pips, a burst window, a pulse before\n"
+	message = message.."    a cooldown is ready\n"
+	message = message.."  - Pin cooldowns (Filters > a spell > Pinned): Ready > Mode > Stay until\n"
+	message = message.."    used, and the Fight Timeline tab\n"
+	message = message.."  - The Caster lane and group cooldowns, from the addon CooldownCollaborator\n"
+	message = message.."  - Profiles by zone\n"
+	message = message.."  - Alt-click the minimap button or type /cdtl3 help for every command\n\n"
+	message = message.."CooldownCollaborator: CDTL3 now works with this separate addon. It shares group\n"
+	message = message.."cooldowns (yours and those of group members who run it) onto CDTL3's lanes, on\n"
+	message = message.."every client. Trying it in all kinds of groups (dungeons, raids, battlegrounds,\n"
+	message = message.."with friends who run it too) is encouraged and appreciated. Report what you see at\n"
+	message = message.."https://github.com/Nelnamara/CooldownCollaborator/issues\n\n"
+	message = message.."Click Take the tour below for a quick look around.\n\n"
+
+	-- 3.1.0: combat timers are on for everyone; say so once, with how to turn them off.
+	-- Only where they run, and only for a player who hasn't seen 3.1 yet (or is new).
 	local CT = CDTL3.CombatTimers
-	if CT and CT:Available() then
+	if CT and CT:Available() and (CDTL3.db.profile.global["firstRun"] or CDTL3:LastSeenOlderThan("3.1")) then
 		message = message.."|cFFffd100New in 3.1.0: combat timers (experimental), on for everyone|r\n\n"
 		message = message.."In combat the game hides cooldown and buff timings from addons. CDTL3 now\n"
 		message = message.."uses the game's own timer instead:\n\n"

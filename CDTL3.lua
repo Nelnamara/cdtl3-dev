@@ -76,7 +76,7 @@ CDTL3.Compat = {
 
 CDTL3.version = "3.2.0"
 -- the welcome window (GetSpecialMessage + changelog) opens once for anyone whose last seen version is older
-CDTL3.noticeVersion = "3.1"
+CDTL3.noticeVersion = "3.2"
 CDTL3.cdUID = 999
 -- where to report issues / make suggestions (first-run window, Changelog tab)
 CDTL3.supportlink = "https://github.com/Nelnamara/cdtl3-dev/issues"
@@ -1285,10 +1285,10 @@ function CDTL3:OnEnable()
 		CDTL3:RefreshLane(3)
 	end)
 	
-	-- The 3.1 notice is about combat timers, so after an update it opens only where they run
-	-- (Retail, Forever); a first run opens it everywhere, as before.
-	local CT = CDTL3.CombatTimers
-	local notice = CDTL3:IsNewerVersion() and CT and CT:Available()
+	-- After an update from anything older than noticeVersion the welcome window opens once, on
+	-- every client (its text says what's new; the 3.1 combat timers block adds itself only where
+	-- they run); a first run opens it everywhere, as before.
+	local notice = CDTL3:IsNewerVersion()
 	if CDTL3.Start and CDTL3.Start:TourDue() then
 		-- a first install gets the three-step tour (Start.lua); what's new is for existing players
 		C_Timer.After(10, function()
@@ -1646,6 +1646,20 @@ private.CreateFirstRunFrame = function()
 		CDTL3.db.profile.global["firstRun"] = false
 		CDTL3.db.profile.global["previousVersion"] = CDTL3.version
 		f:Hide()
+	end)
+
+	-- Take the tour: closes the window the way No does (seen), then runs the three-step tour
+	local b3 = CreateFrame("Button", name.."_Tour", f, "UIPanelButtonTemplate", BackdropTemplateMixin and "BackdropTemplate" or nil)
+	b3:SetSize(110 ,25)
+	b3:SetText(L["Take the tour"])
+	b3:SetPoint("BOTTOM", 150, 8)
+	b3:SetScript("OnClick", function()
+		CDTL3.db.profile.global["firstRun"] = false
+		CDTL3.db.profile.global["previousVersion"] = CDTL3.version
+		f:Hide()
+		if CDTL3.Start then
+			CDTL3.Start:StartTour(true)
+		end
 	end)
 
 	f:SetFrameStrata("DIALOG")
@@ -3152,10 +3166,10 @@ function CDTL3:TurnOff()
 	end
 end
 
--- true when the version this profile last saw is older than noticeVersion. Compared part by part
+-- true when the version this profile last saw is older than `version`. Compared part by part
 -- (major.minor.patch), so 3.0.13 is older than 3.1 and 3.0.9 older than 3.0.13; a missing or
 -- non-numeric part counts as 0 rather than erroring at login.
-function CDTL3:IsNewerVersion()
+function CDTL3:LastSeenOlderThan(version)
 	local function parts(v)
 		local out = {}
 		for piece in (tostring(v or "") .. "."):gmatch("([^%.]*)%.") do
@@ -3164,7 +3178,7 @@ function CDTL3:IsNewerVersion()
 		return out
 	end
 
-	local nv = parts(CDTL3.noticeVersion)
+	local nv = parts(version)
 	local pv = parts(CDTL3.db.profile.global["previousVersion"])
 	for i = 1, math.max(#nv, #pv) do
 		local n, p = nv[i] or 0, pv[i] or 0
@@ -3174,4 +3188,9 @@ function CDTL3:IsNewerVersion()
 	end
 
 	return false
+end
+
+-- true when the version this profile last saw is older than noticeVersion (the welcome window's rule)
+function CDTL3:IsNewerVersion()
+	return CDTL3:LastSeenOlderThan(CDTL3.noticeVersion)
 end

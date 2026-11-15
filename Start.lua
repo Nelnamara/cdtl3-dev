@@ -731,9 +731,13 @@ function S:TourStep(i)
 	f:Show()
 end
 
-function S:StartTour()
-	if private.tourStep or not self:TourDue() then
+-- force: start it on demand (the welcome window's Take the tour), not only on a first install
+function S:StartTour(force)
+	if private.tourStep or not (force or self:TourDue()) then
 		return false
+	end
+	if force and CDTL3.db and CDTL3.db.global then
+		CDTL3.db.global.tourPending = true	-- EndTour clears it, as after a first install's tour
 	end
 	private.tourStarted = not CDTL3.testing
 	if not CDTL3.testing then
