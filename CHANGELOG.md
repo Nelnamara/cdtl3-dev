@@ -1,5 +1,9 @@
 # CooldownTimeline 3
 
+## Unreleased
+
+- Icon borders no longer throw "secret number value" errors in combat on Retail and WoW: Forever. Since 3.1.0 an icon with a border (set by hand, or by the Minimal or Blizzard Modern look) spammed errors while it moved along the lane in combat and again when its cooldown finished. Thanks to TeZwo for posting the full error
+
 ## v3.2.1
 
 - You can take the tour again any time with `/cdtl3 tour`, and `/cdtl3 whatsnew` opens the What's new window with the changelog. Both are on the Help tab with a Run button
