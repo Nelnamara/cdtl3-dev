@@ -46,7 +46,7 @@ local CT = CDTL3.CombatTimers
 local available = CT and CT:Available()
 
 print("[version " .. FLAVOR .. "]")
-check("version is 3.2.1", CDTL3.version == "3.2.1")
+check("version is 3.2.2", CDTL3.version == "3.2.2")
 check("notice version is 3.2 (3.2.0 opens the welcome window once, on every client)", CDTL3.noticeVersion == "3.2")
 local function newer(prev)
 	g.previousVersion = prev
@@ -86,10 +86,11 @@ check("  but still sees New in 3.2.0", CDTL3:GetSpecialMessage():find("New in 3.
 check("LastSeenOlderThan: 3.1.1 vs 3.1 false, vs 3.2 true", CDTL3:LastSeenOlderThan("3.1") == false and CDTL3:LastSeenOlderThan("3.2") == true)
 g.previousVersion = "3.0.13"
 local log = CDTL3:GetChangeLog()
-local at321, at320, at311, at310, at3013 = log:find("Changelog 3.2.1", 1, true), log:find("Changelog 3.2.0", 1, true),
+local at322, at321, at320, at311, at310, at3013 = log:find("Changelog 3.2.2", 1, true), log:find("Changelog 3.2.1", 1, true), log:find("Changelog 3.2.0", 1, true),
 	log:find("Changelog 3.1.1", 1, true), log:find("Changelog 3.1.0", 1, true), log:find("Changelog 3.0.13", 1, true)
-check("changelog has 3.2.1 first, then 3.2.0, 3.1.1, 3.1.0", at321 and at320 and at311 and at310 and at3013
-	and at321 < at320 and at320 < at311 and at311 < at310 and at310 < at3013)
+check("changelog has 3.2.2 first, then 3.2.1, 3.2.0, 3.1.1, 3.1.0", at322 and at321 and at320 and at311 and at310 and at3013
+	and at322 < at321 and at321 < at320 and at320 < at311 and at311 < at310 and at310 < at3013)
+check("  3.2.2 names the border errors and the cut-off labels", log:find("secret number value", 1, true) ~= nil and log:find("no longer cut off", 1, true) ~= nil)
 check("  3.2.1 names /cdtl3 tour and /cdtl3 whatsnew", log:find("/cdtl3 tour", 1, true) ~= nil and log:find("/cdtl3 whatsnew", 1, true) ~= nil)
 check("changelog says every cooldown you pin, not only defensives", log:find("every cooldown you pin", 1, true) ~= nil and log:find("pinned defensive", 1, true) == nil)
 
