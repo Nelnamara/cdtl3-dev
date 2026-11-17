@@ -74,6 +74,38 @@ CDTL3.Compat = {
 	end,
 }
 
+-- Lane, bar frame and ready frame 1 to 3 by number. Only the numbers 1, 2 and 3 have a slot:
+-- anything else (0, 4, nil, "1") gives nil. Settings are read from the live profile on every
+-- call, because profiles switch.
+local SLOT_KEYS = {
+	lanes = { "lane1", "lane2", "lane3" },
+	barFrames = { "frame1", "frame2", "frame3" },
+	ready = { "ready1", "ready2", "ready3" },
+}
+local SLOT_FRAMES = {
+	lanes = { "CDTL3_Lane_1", "CDTL3_Lane_2", "CDTL3_Lane_3" },
+	barFrames = { "CDTL3_BarFrame_1", "CDTL3_BarFrame_2", "CDTL3_BarFrame_3" },
+	ready = { "CDTL3_Ready_1", "CDTL3_Ready_2", "CDTL3_Ready_3" },
+}
+
+-- the saved settings of slot n: CDTL3.db.profile[group]["lane1"] and so on
+---@param group "lanes"|"barFrames"|"ready"
+---@param n integer?
+---@return table
+function CDTL3:SlotSettings(group, n)
+	local key = SLOT_KEYS[group][n]
+	return key and CDTL3.db.profile[group][key]
+end
+
+-- the frame of slot n: CDTL3_Lane_n, CDTL3_BarFrame_n or CDTL3_Ready_n (nil until it is made)
+---@param group "lanes"|"barFrames"|"ready"
+---@param n integer?
+---@return table
+function CDTL3:SlotFrame(group, n)
+	local name = SLOT_FRAMES[group][n]
+	return name and _G[name]
+end
+
 CDTL3.version = "3.2.2"
 -- the welcome window (GetSpecialMessage + changelog) opens once for anyone whose last seen version is older
 CDTL3.noticeVersion = "3.2"
@@ -1485,7 +1517,7 @@ private.CreateDebugFrame = function()
 	f.t3:SetText("Text 3")
 	f.t3:SetPoint("TOP", 0, -90)
 	
-	local b = CreateFrame("Button", frameName.."_B_Reload", f, "UIPanelButtonTemplate", BackdropTemplateMixin and "BackdropTemplate" or nil)
+	local b = CreateFrame("Button", frameName.."_B_Reload", f, "UIPanelButtonTemplate")
 	b:SetSize(80 ,25) -- width, height
 	b:SetText("Reload")
 	b:SetPoint("TOPLEFT", 5, -25)
@@ -1493,7 +1525,7 @@ private.CreateDebugFrame = function()
 		ReloadUI()
 	end)
 	
-	local b = CreateFrame("Button", frameName.."_B_Options", f, "UIPanelButtonTemplate", BackdropTemplateMixin and "BackdropTemplate" or nil)
+	local b = CreateFrame("Button", frameName.."_B_Options", f, "UIPanelButtonTemplate")
 	b:SetSize(80 ,25) -- width, height
 	b:SetText("Options")
 	b:SetPoint("TOPLEFT", 5, -50)
@@ -1502,7 +1534,7 @@ private.CreateDebugFrame = function()
 		LibStub("AceConfigDialog-3.0"):Open("CDTL3")
 	end)
 	
-	local b = CreateFrame("Button", frameName.."_B_UnLock", f, "UIPanelButtonTemplate", BackdropTemplateMixin and "BackdropTemplate" or nil)
+	local b = CreateFrame("Button", frameName.."_B_UnLock", f, "UIPanelButtonTemplate")
 	b:SetSize(80 ,25) -- width, height
 	b:SetText("(Un)Lock")
 	b:SetPoint("TOPLEFT", 5, -75)
@@ -1510,7 +1542,7 @@ private.CreateDebugFrame = function()
 		CDTL3:ToggleFrameLock()
 	end)
 	
-	local b = CreateFrame("Button", frameName.."_B_TestCode1", f, "UIPanelButtonTemplate", BackdropTemplateMixin and "BackdropTemplate" or nil)
+	local b = CreateFrame("Button", frameName.."_B_TestCode1", f, "UIPanelButtonTemplate")
 	b:SetSize(80 ,25) -- width, height
 	b:SetText("TestCode1")
 	b:SetPoint("TOPLEFT", 5, -100)
@@ -1518,7 +1550,7 @@ private.CreateDebugFrame = function()
 		-- TEST CODE 1
 	end)
 		
-	local b = CreateFrame("Button", frameName.."_B_TestCode2", f, "UIPanelButtonTemplate", BackdropTemplateMixin and "BackdropTemplate" or nil)
+	local b = CreateFrame("Button", frameName.."_B_TestCode2", f, "UIPanelButtonTemplate")
 	b:SetSize(80 ,25) -- width, height
 	b:SetText("TestCode2")
 	b:SetPoint("TOPLEFT", 5, -125)
@@ -1652,7 +1684,7 @@ private.CreateFirstRunFrame = function()
 	f.text1:SetText("Show this message next login/reload?")
 	f.text1:SetPoint("BOTTOM", 0, 40)
 
-	local b1 = CreateFrame("Button", name.."_Yes", f, "UIPanelButtonTemplate", BackdropTemplateMixin and "BackdropTemplate" or nil)
+	local b1 = CreateFrame("Button", name.."_Yes", f, "UIPanelButtonTemplate")
 	b1:SetSize(80 ,25)
 	b1:SetText("Yes")
 	b1:SetPoint("BOTTOM", -45, 8)
@@ -1660,7 +1692,7 @@ private.CreateFirstRunFrame = function()
 		f:Hide()
 	end)
 	
-	local b2 = CreateFrame("Button", name.."_No", f, "UIPanelButtonTemplate", BackdropTemplateMixin and "BackdropTemplate" or nil)
+	local b2 = CreateFrame("Button", name.."_No", f, "UIPanelButtonTemplate")
 	b2:SetSize(80 ,25)
 	b2:SetText("No")
 	b2:SetPoint("BOTTOM", 45, 8)
@@ -1671,7 +1703,7 @@ private.CreateFirstRunFrame = function()
 	end)
 
 	-- Take the tour: closes the window the way No does (seen), then runs the three-step tour
-	local b3 = CreateFrame("Button", name.."_Tour", f, "UIPanelButtonTemplate", BackdropTemplateMixin and "BackdropTemplate" or nil)
+	local b3 = CreateFrame("Button", name.."_Tour", f, "UIPanelButtonTemplate")
 	b3:SetSize(110 ,25)
 	b3:SetText(L["Take the tour"])
 	b3:SetPoint("BOTTOM", 150, 8)
@@ -1745,7 +1777,7 @@ private.CreateUnlockFrame = function()
 	private.UnlockBoxText(f)
 	f:SetScript("OnShow", private.UnlockBoxText)
 
-	local b = CreateFrame("Button", "CDTL3_Unlock_Frame_Button", f, "UIPanelButtonTemplate", BackdropTemplateMixin and "BackdropTemplate" or nil)
+	local b = CreateFrame("Button", "CDTL3_Unlock_Frame_Button", f, "UIPanelButtonTemplate")
 	b:SetSize(80 ,25) -- width, height
 	b:SetText("Lock")
 	b:SetPoint("BOTTOM", 0, 4)

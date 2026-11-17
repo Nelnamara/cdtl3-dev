@@ -1522,7 +1522,7 @@ function CDTL3:ResetStaleFilters()
 		if t ~= "default" and CDTL3.db.profile.tables[t] then
 			local list
 			if t == "detected" then
-				list = CDTL3:LoadDetectedList(t)
+				list = CDTL3:LoadDetectedList()
 			else
 				list = CDTL3:LoadFilterList(t, t == "items")
 			end

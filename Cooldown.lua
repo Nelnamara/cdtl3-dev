@@ -204,19 +204,15 @@ end
 
 function CDTL3:RefreshBar(cd)
 	local f = cd.bar
-	local s = nil
+	local s
 	local p = f:GetParent():GetName()
 	
 	if p == "CDTL3_BarFrame_1_MF" or p == "CDTL3_BarFrame_2_MF" or p == "CDTL3_BarFrame_3_MF" then
-		if cd.data["barFrame"] == 0 or cd.data["barFrame"] == 1 then
-			s = CDTL3.db.profile.barFrames["frame1"]
-		elseif cd.data["barFrame"] == 2 then
-			s = CDTL3.db.profile.barFrames["frame2"]
-		elseif cd.data["barFrame"] == 3 then
-			s = CDTL3.db.profile.barFrames["frame3"]
-		end
+		-- bar frame 0 shows as frame 1
+		local n = cd.data["barFrame"]
+		s = CDTL3:SlotSettings("barFrames", n == 0 and 1 or n)
 	else
-		s = CDTL3.db.profile.barFrames["frame1"]
+		s = CDTL3:SlotSettings("barFrames", 1)
 	end
 		
 	f:ClearAllPoints()
@@ -1032,14 +1028,7 @@ private.BarUpdate = function(f, elapsed)
 	local p = ba:GetParent():GetName()
 	if p == "CDTL3_BarFrame_1_MF" or p == "CDTL3_BarFrame_2_MF" or p == "CDTL3_BarFrame_3_MF" then
 		if d["currentCD"] > 0 then
-			local s = nil
-			if d["barFrame"] == 1 then
-				s = CDTL3.db.profile.barFrames["frame1"]
-			elseif d["barFrame"] == 2 then
-				s = CDTL3.db.profile.barFrames["frame2"]
-			elseif d["barFrame"] == 3 then
-				s = CDTL3.db.profile.barFrames["frame3"]
-			end
+			local s = CDTL3:SlotSettings("barFrames", d["barFrame"])
 			
 			local pBase = d["baseCD"]
 			local pCurrent = d["currentCD"]
@@ -1238,14 +1227,7 @@ end
 CDTL3.CalcSplitPosition = private.CalcSplitPosition
 
 private.CalcTransitionIndicator = function(f, s)
-	local ls = nil
-	if f.data["lane"] == 1 then
-		ls = CDTL3.db.profile.lanes["lane1"]
-	elseif f.data["lane"] == 2 then
-		ls = CDTL3.db.profile.lanes["lane2"]
-	elseif f.data["lane"] == 3 then
-		ls = CDTL3.db.profile.lanes["lane3"]
-	end
+	local ls = CDTL3:SlotSettings("lanes", f.data["lane"])
 	
 	if ls then
 		local mode = ls["mode"]["type"]
@@ -1698,14 +1680,7 @@ private.IconUpdate = function(f, elapsed)
 	local p = ic:GetParent():GetName()
 	if p == "CDTL3_Lane_1" or p == "CDTL3_Lane_2" or p == "CDTL3_Lane_3" then
 		if d["currentCD"] > 0 then
-			local s = nil
-			if d["lane"] == 1 then
-				s = CDTL3.db.profile.lanes["lane1"]
-			elseif d["lane"] == 2 then
-				s = CDTL3.db.profile.lanes["lane2"]
-			elseif d["lane"] == 3 then
-				s = CDTL3.db.profile.lanes["lane3"]
-			end
+			local s = CDTL3:SlotSettings("lanes", d["lane"])
 			
 			local iconPercent = 1
 			local mode = s["mode"]["type"]

@@ -2183,9 +2183,6 @@ private.BuildFilterOptions = function()
 								return CDTL3.currentFilterHidden["default"]
 							end,
 						type = "select",
-						hidden = function(info)
-								return CDTL3.currentFilterHidden["default"]
-							end,
 						width = "half",
 						values = { [0] = L["Hide"], [1] = "1", [2] = "2", [3] = "3" },
 						get = function(info)
@@ -2293,15 +2290,7 @@ function CDTL3:GetBarFrameOptions()
 end
 
 private.GetBarFrameSet = function(i)
-	local frame = nil
-	
-	if i == 1 then
-		frame = CDTL3.db.profile.barFrames["frame1"]
-	elseif i == 2 then
-		frame = CDTL3.db.profile.barFrames["frame2"]
-	elseif i == 3 then
-		frame = CDTL3.db.profile.barFrames["frame3"]
-	end
+	local frame = CDTL3:SlotSettings("barFrames", i)
 	
 	local options = {
 		name = function(info)
@@ -2853,7 +2842,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, val)
 								frame["bar"]["bgTexture"] = val
-								CDTL3:RefreshAllBars(i)
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					bgTextureColor = {
@@ -2885,7 +2874,7 @@ private.GetBarFrameSet = function(i)
 							end,
 						set = function(info, red, green, blue, alpha)
 								frame["bar"]["bgTextureColor"] = { r = red, g = green, b = blue, a = alpha }
-								CDTL3:RefreshAllBars(i)
+								CDTL3:RefreshAllBars()
 							end,
 					},
 					bgClassColor = {
@@ -3699,8 +3688,6 @@ private.GetFilterSet = function(t, o)
 								end
 							end
 						end
-
-						return false
 					end,
 				get = function(info)
 						if t ~= "customs" then
@@ -4712,7 +4699,7 @@ private.GetCustomSet = function(t, o)
 						values = function(info)
 								local list = {}
 
-								list = CDTL3:LoadDetectedList("detected")
+								list = CDTL3:LoadDetectedList()
 
 								return list
 							end,
@@ -4720,7 +4707,7 @@ private.GetCustomSet = function(t, o)
 								return CDTL3.currentFilter["detected"]
 							end,
 						set = function(info, val)
-								local list = CDTL3:LoadDetectedList("detected")
+								local list = CDTL3:LoadDetectedList()
 		
 								CDTL3.currentFilter["detected"] = list[val]
 								CDTL3.currentFilterHidden["detected"] = false
@@ -4838,15 +4825,7 @@ end
 
 private.GetLaneSet = function(i)
 	local frame = nil
-	local lane = nil
-	
-	if i == 1 then
-		lane = CDTL3.db.profile.lanes["lane1"]
-	elseif i == 2 then
-		lane = CDTL3.db.profile.lanes["lane2"]
-	elseif i == 3 then
-		lane = CDTL3.db.profile.lanes["lane3"]
-	end
+	local lane = CDTL3:SlotSettings("lanes", i)
 	
 	local options = {
 		name = function(info)
@@ -6607,15 +6586,7 @@ private.GetLaneSet = function(i)
 end
 
 private.GetReadySet = function(i)
-	local ready = nil
-	
-	if i == 1 then
-		ready = CDTL3.db.profile.ready["ready1"]
-	elseif i == 2 then
-		ready = CDTL3.db.profile.ready["ready2"]
-	elseif i == 3 then
-		ready = CDTL3.db.profile.ready["ready3"]
-	end
+	local ready = CDTL3:SlotSettings("ready", i)
 	
 	local options = {
 		name = function(info)
@@ -7104,7 +7075,7 @@ private.GetReadySet = function(i)
 							end,
 						set = function(info, val)
 								ready["icons"]["highlight"]["style"] = val
-								CDTL3:RefreshAllIcons(i)
+								CDTL3:RefreshAllIcons()
 							end,
 					},
 				}

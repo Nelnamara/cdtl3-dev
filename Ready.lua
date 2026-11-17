@@ -87,14 +87,7 @@ private.OnlyPinned = function(f)
 end
 
 private.ReadyUpdate = function(f, elapsed)
-	local s = nil
-	if f.number == 1 then
-		s = CDTL3.db.profile.ready["ready1"]
-	elseif f.number == 2 then
-		s = CDTL3.db.profile.ready["ready2"]
-	elseif f.number == 3 then
-		s = CDTL3.db.profile.ready["ready3"]
-	end
+	local s = CDTL3:SlotSettings("ready", f.number)
 	
 	-- Pinned Hide Time (with Auto-hide Frames): out of combat, a frame holding only pinned icons hides
 	-- pTime after combat ends or its last icon arrives; an icon with Normal or Highlight Duration left
@@ -260,18 +253,8 @@ private.ReadyUpdate = function(f, elapsed)
 end
 
 function CDTL3:RefreshReady(i)
-	local f = nil
-	local s = nil
-	if i == 1 then
-		f = CDTL3_Ready_1
-		s = CDTL3.db.profile.ready["ready1"]
-	elseif i == 2 then
-		f = CDTL3_Ready_2
-		s = CDTL3.db.profile.ready["ready2"]
-	elseif i == 3 then
-		f = CDTL3_Ready_3
-		s = CDTL3.db.profile.ready["ready3"]
-	end
+	local f = CDTL3:SlotFrame("ready", i)
+	local s = CDTL3:SlotSettings("ready", i)
 	
 	if not f then
 		return

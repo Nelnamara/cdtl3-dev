@@ -39,18 +39,8 @@ function CDTL3:CreateLanes()
 end
 
 function CDTL3:RefreshLane(i)
-	local f = nil
-	local s = nil
-	if i == 1 then
-		f = CDTL3_Lane_1
-		s = CDTL3.db.profile.lanes["lane1"]
-	elseif i == 2 then
-		f = CDTL3_Lane_2
-		s = CDTL3.db.profile.lanes["lane2"]
-	elseif i == 3 then
-		f = CDTL3_Lane_3
-		s = CDTL3.db.profile.lanes["lane3"]
-	end
+	local f = CDTL3:SlotFrame("lanes", i)
+	local s = CDTL3:SlotSettings("lanes", i)
 	
 	if not f then
 		return
@@ -233,7 +223,9 @@ end
 private.RefreshText = function(f, s)
 	-- MODE TEXT
 	for i = 1, 10, 1 do
+		---@type table
 		local tSettings = nil
+		---@type table
 		local tObject = nil
 	   
 		local anchor = ""
@@ -1040,14 +1032,7 @@ private.CreateLane = function(laneNumber)
 end
 
 private.LaneUpdate = function(f, elapsed)
-	local s = nil
-	if f.number == 1 then
-		s = CDTL3.db.profile.lanes["lane1"]
-	elseif f.number == 2 then
-		s = CDTL3.db.profile.lanes["lane2"]
-	elseif f.number == 3 then
-		s = CDTL3.db.profile.lanes["lane3"]
-	end
+	local s = CDTL3:SlotSettings("lanes", f.number)
 	
 	f.forceShow = false
 

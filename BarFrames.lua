@@ -36,18 +36,8 @@ function CDTL3:CreateBarFrames()
 end
 
 function CDTL3:RefreshBarFrame(i)
-	local f = nil
-	local s = nil
-	if i == 1 then
-		f = CDTL3_BarFrame_1
-		s = CDTL3.db.profile.barFrames["frame1"]
-	elseif i == 2 then
-		f = CDTL3_BarFrame_2
-		s = CDTL3.db.profile.barFrames["frame2"]
-	elseif i == 3 then
-		f = CDTL3_BarFrame_3
-		s = CDTL3.db.profile.barFrames["frame3"]
-	end
+	local f = CDTL3:SlotFrame("barFrames", i)
+	local s = CDTL3:SlotSettings("barFrames", i)
 	
 	if not f then
 		return
@@ -198,14 +188,7 @@ private.CreateBarFrame = function(frameNumber)
 end
 
 private.BarFrameUpdate = function(f, elapsed)
-	local s = nil
-	if f.number == 1 then
-		s = CDTL3.db.profile.barFrames["frame1"]
-	elseif f.number == 2 then
-		s = CDTL3.db.profile.barFrames["frame2"]
-	elseif f.number == 3 then
-		s = CDTL3.db.profile.barFrames["frame3"]
-	end
+	local s = CDTL3:SlotSettings("barFrames", f.number)
 
 	f.forceShow = false
 	
