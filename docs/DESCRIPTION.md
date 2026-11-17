@@ -97,6 +97,11 @@ Found a bug or want something added? Open an issue on GitHub: https://github.com
 
 ## Changelog
 
+### 3.2.2
+
+- Icon borders no longer throw "secret number value" errors in combat on Retail and WoW: Forever. Since 3.1.0 an icon with a border (set by hand, or by the Minimal or Blizzard Modern look) spammed errors while it moved along the lane in combat and again when its cooldown finished. Thanks to TeZwo for posting the full error
+- Two settings labels are no longer cut off: Border Texture (on every lane, Ready frame and bar frame) and Warn before ready (seconds) in Filters
+
 ### 3.2.1
 
 - You can take the tour again any time with `/cdtl3 tour`, and `/cdtl3 whatsnew` opens the What's new window with the changelog. Both are on the Help tab with a Run button

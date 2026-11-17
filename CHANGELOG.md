@@ -1,6 +1,6 @@
 # CooldownTimeline 3
 
-## Unreleased
+## v3.2.2
 
 - Icon borders no longer throw "secret number value" errors in combat on Retail and WoW: Forever. Since 3.1.0 an icon with a border (set by hand, or by the Minimal or Blizzard Modern look) spammed errors while it moved along the lane in combat and again when its cooldown finished. Thanks to TeZwo for posting the full error
 - Two settings labels are no longer cut off: Border Texture (on every lane, Ready frame and bar frame) and Warn before ready (seconds) in Filters
