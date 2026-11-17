@@ -12,7 +12,7 @@ function CDTL3:CreateLanes()
 	local lane1Enabled = CDTL3.db.profile.lanes["lane1"]["enabled"]
 	local lane2Enabled = CDTL3.db.profile.lanes["lane2"]["enabled"]
 	local lane3Enabled = CDTL3.db.profile.lanes["lane3"]["enabled"]
-	
+
 	if lane1Enabled then
 		if CDTL3_Lane_1 then
 			CDTL3:RefreshLane(1)
@@ -20,7 +20,7 @@ function CDTL3:CreateLanes()
 			private.CreateLane(1)
 		end
 	end
-	
+
 	if lane2Enabled then
 		if CDTL3_Lane_2 then
 			CDTL3:RefreshLane(2)
@@ -28,7 +28,7 @@ function CDTL3:CreateLanes()
 			private.CreateLane(2)
 		end
 	end
-	
+
 	if lane3Enabled then
 		if CDTL3_Lane_3 then
 			CDTL3:RefreshLane(3)
@@ -41,16 +41,16 @@ end
 function CDTL3:RefreshLane(i)
 	local f = CDTL3:SlotFrame("lanes", i)
 	local s = CDTL3:SlotSettings("lanes", i)
-	
+
 	if not f then
 		return
 	end
-	
+
 	f.name = s["name"]
-	
+
 	-- the screen position, or on the frame it is anchored to (Anchors.lua)
 	CDTL3:PlaceFrame(f, s, "lanes")
-	
+
 	-- FOREGROUND
 	f:SetMinMaxValues(0, 1)
 	f:SetValue(1)
@@ -58,7 +58,7 @@ function CDTL3:RefreshLane(i)
 	CDTL3:SetBarTexture(f, s["fgTexture"])
 	f:GetStatusBarTexture():SetHorizTile(false)
 	f:GetStatusBarTexture():SetVertTile(false)
-	
+
 	local fgColor = s["fgTextureColor"] or { r=0.77647, g=0.11765, b=0.28235, a=1 }
 	if CDTL3.player["class"] then
 		if s["fgClassColor"] then
@@ -72,7 +72,7 @@ function CDTL3:RefreshLane(i)
 		fgColor["b"],
 		fgColor["a"]
 	)
-	
+
 	if s["vertical"] then
 		f:SetOrientation("VERTICAL")
 		f:SetSize(s["height"], s["width"])
@@ -82,7 +82,7 @@ function CDTL3:RefreshLane(i)
 		f:SetSize(s["width"], s["height"])
 		f.db:SetSize(s["width"], s["height"])
 	end
-	
+
 	-- BACKGROUND
 	CDTL3:SetBarTexture(f.bg, s["bgTexture"])
 	f.bg:SetAllPoints(true)
@@ -92,21 +92,21 @@ function CDTL3:RefreshLane(i)
 		s["bgTextureColor"]["b"],
 		s["bgTextureColor"]["a"]
 	)]]--
-	
+
 	local bgColor = s["bgTextureColor"]
 	if CDTL3.player["class"] then
 		if s["bgClassColor"] then
 			bgColor = CDTL3.db.profile.global["classColors"][CDTL3.player["class"]]
 		end
 	end
-	
+
 	f.bg:SetVertexColor(
 		bgColor["r"],
 		bgColor["g"],
 		bgColor["b"],
 		bgColor["a"]
 	)
-	
+
 	-- SECONDARY TRACKING
 	-- One marker per lane; LaneUpdate shows/hides it, so it must always exist.
 	if not f.st then
@@ -134,14 +134,14 @@ function CDTL3:RefreshLane(i)
 	else
 		f.st:Hide()
 	end
-	
+
 	-- BORDER
 	if s["border"]["style"] ~= "None" then
 		if not f.bd then
 			f.bd = CreateFrame("Frame", f:GetName().."_BD", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 			f.bd:SetParent(f)
 		end
-	
+
 		CDTL3:SetBorder(f.bd, s["border"])
 		f.bd:Show()
 		f.bd:SetFrameLevel(f:GetFrameLevel() + 1)
@@ -150,12 +150,12 @@ function CDTL3:RefreshLane(i)
 			f.bd:Hide()
 		end
 	end
-	
+
 	-- TEXT
 	private.SetModeText(f, s)
 	private.RefreshText(f, s)
 	private.UpdateText(f, s)
-	
+
 	-- ANIMATION
 	-- Fade animations are created once per frame; only their alpha targets change on
 	-- refresh (recreating them on every refresh leaked a pair of groups each time).
@@ -167,7 +167,7 @@ function CDTL3:RefreshLane(i)
 		f.animateIn.fade:SetDuration(0.3)
 		f.animateIn.fade:SetSmoothing("OUT")
 		f.animateIn.fade:SetOrder(1)
-		
+
 		f.animateOut = f:CreateAnimationGroup()
 		f.animateOut:SetLooping("NONE")
 		f.animateOut:SetToFinalAlpha(true)
@@ -176,12 +176,12 @@ function CDTL3:RefreshLane(i)
 		f.animateOut.fade:SetSmoothing("OUT")
 		f.animateOut.fade:SetOrder(1)
 	end
-	
+
 	f.animateIn.fade:SetFromAlpha(0)
 	f.animateIn.fade:SetToAlpha(s["alpha"])
 	f.animateOut.fade:SetFromAlpha(s["alpha"])
 	f.animateOut.fade:SetToAlpha(0)
-	
+
 	-- EFFECTS: burst window, refresh zone, Ready-by list (IconFx.lua)
 	CDTL3.IconFx:RefreshLane(f, s)
 
@@ -193,26 +193,26 @@ function CDTL3:RefreshLane(i)
 	f.db.text:SetPoint("CENTER", 0, 0)
 	f.db.text:SetText(f.name)
 	f.db.bg:SetAllPoints(true)
-	f.db.bg:SetColorTexture( 
+	f.db.bg:SetColorTexture(
 		CDTL3.colors["db"]["r"],
 		CDTL3.colors["db"]["g"],
 		CDTL3.colors["db"]["b"],
 		CDTL3.colors["db"]["a"]
 	)
-	
+
 	if s["enabled"] then
 		f:Show()
 		CDTL3:Autohide(f, s)
 	else
 		f:Hide()
 	end
-	
+
 	if CDTL3.db.profile.global["unlockFrames"] then
 		CDTL3:FrameUnlock(f)
 	else
 		CDTL3:FrameLock(f)
 	end
-	
+
 	if CDTL3.db.profile.global["debugMode"] then
 		CDTL3:DebugOn(f)
 	else
@@ -227,16 +227,16 @@ private.RefreshText = function(f, s)
 		local tSettings = nil
 		---@type table
 		local tObject = nil
-	   
+
 		local anchor = ""
 		local align = ""
 		local position = ""
 		local xOffset = 0
-	   
+
 		if i == 1 then
 			tSettings = s["modeText"]["text1"]
 			tObject = f.t1
-			
+
 			if s["vertical"] then
 				anchor = "BOTTOM"
 				align = "CENTER"
@@ -262,13 +262,13 @@ private.RefreshText = function(f, s)
 		elseif i == 2 then
 			tSettings = s["modeText"]["text2"]
 			tObject = f.t2
-			
+
 			if s["vertical"] then
 				anchor = "BOTTOM"
 				align = tSettings["align"]
 				position = tSettings["pos"]
 				xOffset = tSettings["offX"]
-				
+
 				if s["reversed"] then
 					anchor = "TOP"
 					position = -position
@@ -278,7 +278,7 @@ private.RefreshText = function(f, s)
 				align = tSettings["align"]
 				position = tSettings["pos"]
 				xOffset = tSettings["offX"]
-				
+
 				if s["reversed"] then
 					anchor = "RIGHT"
 					position = -position
@@ -287,13 +287,13 @@ private.RefreshText = function(f, s)
 		elseif i == 3 then
 			tSettings = s["modeText"]["text3"]
 			tObject = f.t3
-			
+
 			if s["vertical"] then
 				anchor = "BOTTOM"
 				align = tSettings["align"]
 				position = tSettings["pos"]
 				xOffset = tSettings["offX"]
-				
+
 				if s["reversed"] then
 					anchor = "TOP"
 					position = -position
@@ -303,7 +303,7 @@ private.RefreshText = function(f, s)
 				align = tSettings["align"]
 				position = tSettings["pos"]
 				xOffset = tSettings["offX"]
-				
+
 				if s["reversed"] then
 					anchor = "RIGHT"
 					position = -position
@@ -312,13 +312,13 @@ private.RefreshText = function(f, s)
 		elseif i == 4 then
 			tSettings = s["modeText"]["text4"]
 			tObject = f.t4
-			
+
 			if s["vertical"] then
 				anchor = "BOTTOM"
 				align = tSettings["align"]
 				position = tSettings["pos"]
 				xOffset = tSettings["offX"]
-				
+
 				if s["reversed"] then
 					anchor = "TOP"
 					position = -position
@@ -328,7 +328,7 @@ private.RefreshText = function(f, s)
 				align = tSettings["align"]
 				position = tSettings["pos"]
 				xOffset = tSettings["offX"]
-				
+
 				if s["reversed"] then
 					anchor = "RIGHT"
 					position = -position
@@ -337,7 +337,7 @@ private.RefreshText = function(f, s)
 		elseif i == 5 then
 			tSettings = s["modeText"]["text5"]
 			tObject = f.t5
-			
+
 			if s["vertical"] then
 				anchor = "BOTTOM"
 				align = "CENTER"
@@ -363,7 +363,7 @@ private.RefreshText = function(f, s)
 		elseif i == 6 then
 			tSettings = s["customText"]["text1"]
 			tObject = f.c1
-			
+
 			anchor = tSettings["anchor"]
 			align = tSettings["align"]
 			position = tSettings["pos"]
@@ -371,7 +371,7 @@ private.RefreshText = function(f, s)
 		elseif i == 7 then
 			tSettings = s["customText"]["text2"]
 			tObject = f.c2
-			
+
 			anchor = tSettings["anchor"]
 			align = tSettings["align"]
 			position = tSettings["pos"]
@@ -379,7 +379,7 @@ private.RefreshText = function(f, s)
 		elseif i == 8 then
 			tSettings = s["customText"]["text3"]
 			tObject = f.c3
-			
+
 			anchor = tSettings["anchor"]
 			align = tSettings["align"]
 			position = tSettings["pos"]
@@ -387,7 +387,7 @@ private.RefreshText = function(f, s)
 		elseif i == 9 then
 			tSettings = s["customText"]["text4"]
 			tObject = f.c4
-			
+
 			anchor = tSettings["anchor"]
 			align = tSettings["align"]
 			position = tSettings["pos"]
@@ -395,15 +395,15 @@ private.RefreshText = function(f, s)
 		elseif i == 10 then
 			tSettings = s["customText"]["text5"]
 			tObject = f.c5
-			
+
 			anchor = tSettings["anchor"]
 			align = tSettings["align"]
 			position = tSettings["pos"]
 			xOffset = tSettings["offX"]
 		end
-		
+
 		tObject:ClearAllPoints()
-		
+
 		if s["vertical"] then
 			tObject:SetPoint(
 					align,
@@ -421,7 +421,7 @@ private.RefreshText = function(f, s)
 					tSettings["offY"]
 				)
 		end
-		
+
 		local _outline = tSettings["outline"]
 		if type(_outline) ~= "string" or _outline == "NONE" or _outline == "" then _outline = nil end
 		local _fnt, _sz = CDTL3.LSM:Fetch("font", tSettings["font"]), tonumber(tSettings["size"]) or 0
@@ -440,9 +440,9 @@ private.RefreshText = function(f, s)
 			)
 		tObject:SetShadowOffset(tSettings["shadX"], tSettings["shadY"])
 		tObject:SetNonSpaceWrap(false)
-		
+
 		tObject:SetText(CDTL3:ConvertAllTextTags(tSettings["text"], f))
-		
+
 		if tSettings["enabled"] == true and tSettings["used"] == true then
 			tObject:SetAlpha(1)
 		else
@@ -457,7 +457,7 @@ private.CalcStacking = function(f, s, count)
 
 	if count >= 2 and s["stacking"]["enabled"] then
 		local style = s["stacking"]["style"]
-		
+
 		if style == "GROUPED" then
 			local height = s["stacking"]["height"]
 			local grow = s["stacking"]["grow"]
@@ -477,42 +477,42 @@ private.CalcStacking = function(f, s, count)
 			table.sort(kids, function(a, b)
 				local aX, aY = a:GetCenter()
 				local bX, bY = b:GetCenter()
-				
+
 				if s["vertical"] then
 					if aY == bY then
 						return a.uid < b.uid
 					end
-					
+
 					return aY < bY
 				else
 					if aX == bX then
 						return a.uid < b.uid
 					end
-				
+
 					return aX < bX
 				end
 			end)
-			
+
 			local indicies = {}
 			local currentIndex = 1
-			
+
 			for k, iconA in pairs(kids) do
 				if k == 1 then
 					table.insert(indicies, currentIndex)
 				end
-				
+
 				if k + 1 <= n then
 					local iconB = kids[k + 1]
 					local aX, aY = iconA:GetCenter()
 					local bX, bY = iconB:GetCenter()
-					
+
 					local distance = 0
 					if s["vertical"] then
 						distance = math.abs(aY - bY)
 					else
 						distance = math.abs(aX - bX)
 					end
-					
+
 					if distance <= iconSize then
 						table.insert(indicies, currentIndex)
 					else
@@ -534,15 +534,15 @@ private.CalcStacking = function(f, s, count)
 						table.insert(currentStack, kids[k])
 					end
 				end
-				
+
 				table.sort(currentStack, function(a, b)
 						if a.currentCD == b.currentCD then
 							return a.uid < b.uid
 						end
-				
+
 						return a.currentCD > b.currentCD
 					end)
-				
+
 				-- Then set the correct data for the i'nth stack
 				for k, icon in pairs(currentStack) do
 					icon.stack = i
@@ -552,13 +552,13 @@ private.CalcStacking = function(f, s, count)
 					if stackCount > 1 and iconSize * stackCount > height then
 						local maxHeight = height - iconSize
 						iconOffset = (maxHeight / (stackCount - 1)) * (k - 1)
-						
+
 						stackOffset = maxHeight / 2
 					else
 						iconOffset = iconSize * (k - 1)
 						stackOffset = (iconSize * (stackCount - 1)) / 2
 					end
-					
+
 					if grow == "DOWN" then
 						iconOffset = -iconOffset
 					elseif grow == "CENTER" then
@@ -568,12 +568,12 @@ private.CalcStacking = function(f, s, count)
 							iconOffset = iconOffset - stackOffset
 						end
 					end
-					
+
 					icon.sOffset = iconOffset
-					
+
 					local levelMultiplier = 5
 					local baseLevel = k * levelMultiplier
-					
+
 					icon:SetFrameLevel(baseLevel)
 					if icon.bd then
 						icon.bd:SetFrameLevel(baseLevel + 1)
@@ -588,25 +588,25 @@ private.CalcStacking = function(f, s, count)
 				if a.currentCD == b.currentCD then
 					return a.uid < b.uid
 				end
-				
+
 				return a.currentCD > b.currentCD
 			end)
-			
+
 			local offset = s["stacking"]["height"] / (count - 1)
 			local height = s["stacking"]["height"]
 			local grow = s["stacking"]["grow"]
-			
+
 			for k, child in ipairs(f.validChildren) do
 				local o = (offset * k) - offset
-				
+
 				if grow == "DOWN" then
 					o = -o
 				elseif grow == "CENTER" then
 					o = o - (height / 2)
 				end
-				
+
 				child.sOffset = o
-				
+
 				child:SetFrameLevel(baseLevel * k)
 				if child.bd then
 					child.bd:SetFrameLevel(baseLevel * k + 1)
@@ -615,9 +615,9 @@ private.CalcStacking = function(f, s, count)
 					child.hl:SetFrameLevel(baseLevel * k + 2)
 				end
 			end
-			
+
 		elseif style == "STAGGERED" then
-			
+
 		else
 			table.sort(f.validChildren, function(a, b)
 				if a.currentCD == b.currentCD then
@@ -625,7 +625,7 @@ private.CalcStacking = function(f, s, count)
 				end
 				return a.currentCD > b.currentCD
 			end)
-		
+
 			for k, child in ipairs(f.validChildren) do
 				child:SetFrameLevel(baseLevel * k)
 				if child.bd then
@@ -641,7 +641,7 @@ private.CalcStacking = function(f, s, count)
 			child.stack = 1
 			child.sOffset = 0
 			child:SetFrameLevel(baseLevel * k)
-			
+
 			if child.bd then
 				child.bd:SetFrameLevel(baseLevel * k + 1)
 			end
@@ -814,13 +814,13 @@ private.RideMarker = function(f, s, value, max)
 	f.st:Show()
 end
 
-private.CalcTracking = function(f, s, t, elapsed)	
+private.CalcTracking = function(f, s, t, elapsed)
 	local position = 0
 
 	if t == "GCD" then
 		local start, duration, enabled = CDTL3:GetSpellCooldown(private.GCD_READ_SPELL)
 		local cooldownMS, gcdMS = GetSpellBaseCooldown(private.GCD_READ_SPELL)
-		
+
 		local timeLeft = (start + duration) - GetTime()
 		position = ( timeLeft / (gcdMS / 1000))
 
@@ -837,9 +837,9 @@ private.CalcTracking = function(f, s, t, elapsed)
 	elseif t == "HEALTH" then
 		local hpMax = UnitHealthMax("player")
 		local hpCurrent = UnitHealth("player")
-		
+
 		position = private.Fraction(hpCurrent, hpMax)
-		
+
 		if s["tracking"]["overrideAutohide"] then
 			if not f.forceShow then
 				private.SetAutohideOverride(f, private.BarValueDiffers(f, 1))
@@ -849,22 +849,22 @@ private.CalcTracking = function(f, s, t, elapsed)
 		if not position then
 			return 0, hpCurrent, hpMax
 		end
-		
+
 	elseif t == "CLASS_POWER" then
 		if CDTL3.player["class"] ~= nil then
 			if CDTL3.player["class"] == "DRUID" then
 				CDTL3.player["classPower"] = CDTL3:GetPlayerPower("DRUID")
 			end
 		end
-		
+
 		local pType = CDTL3.player["classPower"]
 		local pMax = UnitPowerMax("player", pType)
 		local pCurrent = UnitPower("player", pType)
-		
+
 		if pType then
 			position = private.Fraction(pCurrent, pMax)
 		end
-		
+
 		if s["tracking"]["overrideAutohide"] then
 			if not f.forceShow then
 				if pType == Enum.PowerType.Rage then
@@ -878,7 +878,7 @@ private.CalcTracking = function(f, s, t, elapsed)
 		if not position then
 			return 0, pCurrent, pMax
 		end
-	
+
 	elseif t == "STAGGER" then
 		-- a Brewmaster's stagger against their max health. Where the client has no UnitStagger there is
 		-- nothing to show. The values can be hidden: the bar is fed them, never a comparison (like health).
@@ -900,33 +900,33 @@ private.CalcTracking = function(f, s, t, elapsed)
 	elseif t == "COMBO_POINTS" then
 		local cpMax = UnitPowerMax("player", Enum.PowerType.ComboPoints)
 		local cpCurrent = UnitPower("player", Enum.PowerType.ComboPoints)
-		
+
 		position = private.Fraction(cpCurrent, cpMax)
 
 		if not position then
 			return 0, cpCurrent, cpMax
 		end
-	
+
 	elseif t == "MANA_TICK" then
 		local interval = 2
 		if CDTL3.tracking["fsr"] then
 			interval = 5
 		end
-		
+
 		local tickTime = GetTime() - CDTL3.tracking["manaTime"]
 		local percent = tickTime / interval
 		position = percent
-	
+
 	elseif t == "ENERGY_TICK" then
 		CDTL3.tracking["energyTimeCount"] = CDTL3.tracking["energyTimeCount"] + private.FrameElapsed("energy", elapsed)
-		
+
 		if CDTL3.tracking["energyTimeCount"] >= 2 then
 			CDTL3.tracking["energyTimeCount"] = 0 + (CDTL3.tracking["energyTimeCount"] - 2)
 		end
-		
+
 		local percent = CDTL3.tracking["energyTimeCount"] / 2
 		position = percent
-		
+
 		if s["tracking"]["overrideAutohide"] then
 			if not f.forceShow then
 				if CDTL3:AuraExists("player", "Stealth") then
@@ -937,48 +937,48 @@ private.CalcTracking = function(f, s, t, elapsed)
 				end
 			end
 		end
-		
+
 	elseif t == "MH_SWING" then
 		local mhSpeed, _ = UnitAttackSpeed("player")
-			
+
 		if CDTL3.tracking["mhSwingTime"] < 0 then
 			position = 1
 		else
 			CDTL3.tracking["mhSwingTime"] = CDTL3.tracking["mhSwingTime"] - private.FrameElapsed("mhSwing", elapsed)
-			
+
 			position = private.Fraction(CDTL3.tracking["mhSwingTime"], mhSpeed) or 1
 		end
-		
+
 	elseif t == "OH_SWING" then
 		local _, ohSpeed = UnitAttackSpeed("player")
-			
+
 		if CDTL3.tracking["ohSwingTime"] < 0 then
 			position = 1
 		else
 			CDTL3.tracking["ohSwingTime"] = CDTL3.tracking["ohSwingTime"] - private.FrameElapsed("ohSwing", elapsed)
-			
+
 			position = private.Fraction(CDTL3.tracking["ohSwingTime"], ohSpeed) or 1
 		end
-		
+
 	elseif t == "RANGE_SWING" then
 		local rSwingTime, _, _, _, _, _ = UnitRangedDamage("player");
-			
+
 		if CDTL3.tracking["rSwingTime"] < 0 then
 			position = 1
 		else
 			CDTL3.tracking["rSwingTime"] = CDTL3.tracking["rSwingTime"] - private.FrameElapsed("rSwing", elapsed)
-			
+
 			position = private.Fraction(CDTL3.tracking["rSwingTime"], rSwingTime) or 1
 		end
 	end
-	
+
 	return position
 end
 
-private.CreateLane = function(laneNumber)	
+private.CreateLane = function(laneNumber)
 	local frameName = "CDTL3_Lane_"..laneNumber
 	local f = CreateFrame("StatusBar", frameName, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	
+
 	f.number = laneNumber
 	f.updateCount = 0
 	f.childCount = 0
@@ -994,51 +994,51 @@ private.CreateLane = function(laneNumber)
 	--f.st = CreateFrame("Frame", frameName.."_ST", f, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	--f.st:SetParent(f)
 	--f.st.bg = f.st:CreateTexture(nil, "BACKGROUND")
-	
-	
+
+
 	--f.bd = CreateFrame("Frame", frameName.."_BD", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	--f.bd:SetParent(f)
-	
+
 	f.db = CreateFrame("Frame", frameName.."_DB", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	f.db:SetParent(f)
 	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
 	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
-	
+
 	-- MODE TEXT
 	f.t1 = f:CreateFontString(nil,"ARTWORK")
 	f.t2 = f:CreateFontString(nil,"ARTWORK")
 	f.t3 = f:CreateFontString(nil,"ARTWORK")
 	f.t4 = f:CreateFontString(nil,"ARTWORK")
 	f.t5 = f:CreateFontString(nil,"ARTWORK")
-	
+
 	f.c1 = f:CreateFontString(nil,"ARTWORK")
 	f.c2 = f:CreateFontString(nil,"ARTWORK")
 	f.c3 = f:CreateFontString(nil,"ARTWORK")
 	f.c4 = f:CreateFontString(nil,"ARTWORK")
 	f.c5 = f:CreateFontString(nil,"ARTWORK")
-	
+
 	-- ON UPDATE
 	f:HookScript("OnUpdate", function(self, elapsed)
 		private.LaneUpdate(self, elapsed)
 	end)
-	
+
 	-- DRAG AND DROP MOVEMENT
 	f:RegisterForDrag("LeftButton")
 	f:SetScript("OnDragStart", f.StartMoving)
 	f:SetScript("OnDragStop", function(self) CDTL3:FrameDragStop(self, "lanes") end)
-	
+
 	CDTL3:RefreshLane(laneNumber)
 	table.insert(CDTL3.lanes, f)
 end
 
 private.LaneUpdate = function(f, elapsed)
 	local s = CDTL3:SlotSettings("lanes", f.number)
-	
+
 	f.forceShow = false
 
 	-- lane flash, ghost and the Ready-by list (IconFx.lua)
 	CDTL3.IconFx:LaneUpdate(f, s)
-	
+
 	-- UPDATE
 	if f.triggerUpdate then
 		local children = { f:GetChildren() }
@@ -1050,21 +1050,21 @@ private.LaneUpdate = function(f, elapsed)
 				table.insert(f.validChildren, child)
 			end
 		end
-		
+
 		f.childCount = count
-		
+
 		if s["enabled"] then
 			CDTL3:Autohide(f, s)
 		else
 			f:SetAlpha(0)
 		end
-		
+
 		-- TEXT UPDATE
 		private.UpdateText(f, s)
-		
+
 		f.triggerUpdate = false
 	end
-	
+
 	-- Override Autohide: a faded-out lane keeps tracking what brings it back (health, power, stealth)
 	local watching = s["enabled"] and s["tracking"]["overrideAutohide"]
 
@@ -1076,7 +1076,7 @@ private.LaneUpdate = function(f, elapsed)
 		if f.updateCount % private.stackingPollRate == 0 then
 			private.CalcStacking(f, s, f.childCount)
 		end
-	
+
 		-- PRIMARY TRACKING
 		if s["tracking"]["primaryTracking"] ~= "NONE" then
 			local tValue, secretCurrent, secretMax, rides = private.CalcTracking(f, s, s["tracking"]["primaryTracking"], elapsed)
@@ -1099,7 +1099,7 @@ private.LaneUpdate = function(f, elapsed)
 			end
 			f:SetValue(1)
 		end
-		
+
 		-- SECONDARY TRACKING
 		if s["tracking"]["secondaryTracking"] ~= "NONE" then
 			local tValue, secretCurrent, secretMax, rides = private.CalcTracking(f, s, s["tracking"]["secondaryTracking"], elapsed)
@@ -1131,11 +1131,11 @@ private.LaneUpdate = function(f, elapsed)
 		else
 			f.st:Hide()
 		end
-		
+
 		-- FRAME (UN)LOCKING (a lane on another frame keeps its screen position; a drag sets its offset)
 		if CDTL3.db.profile.global["unlockFrames"] and not f.cdtl3AnchoredTo then
 			local _, _, relativeTo, xOfs, yOfs = f:GetPoint()
-			
+
 			s["relativeTo"] = relativeTo
 			s["posX"] = xOfs
 			s["posY"] = yOfs
@@ -1161,52 +1161,52 @@ private.SetModeText = function(f, s)
 	local st = s["modeText"]
 	local mode = s["mode"]["type"]
 	local tFormat = ""
-	
+
 	if mode == "LINEAR" then
 		st["text1"]["text"] = "Ready"
 		st["text1"]["pos"] = 0
 		st["text1"]["used"] = true
 		st["text1"]["align"] = "LEFT"
 		st["text1"]["offX"] = 5
-		
+
 		st["text2"]["text"] = "25%"
 		st["text2"]["pos"] = 0.25
 		st["text2"]["used"] = true
-		
+
 		st["text3"]["text"] = "50%"
 		st["text3"]["pos"] = 0.5
 		st["text3"]["used"] = true
-		
+
 		st["text4"]["text"] = "75%"
 		st["text4"]["pos"] = 0.75
 		st["text4"]["used"] = true
-		
+
 		st["text5"]["text"] = "100%"
 		st["text5"]["pos"] = 1
 		st["text5"]["used"] = true
 		st["text5"]["align"] = "RIGHT"
 		st["text5"]["offX"] = -5
-		
+
 	elseif mode == "LINEAR_ABS" then
 		local max = s["mode"]["linearAbs"]["max"]
 		tFormat = s["mode"]["linearAbs"]["timeFormat"]
-		
+
 		st["text1"]["text"] = "Ready"
 		st["text1"]["pos"] = 0
 		st["text1"]["used"] = true
-		
+
 		st["text2"]["text"] = CDTL3:ConvertTime(max * 0.25, tFormat)
 		st["text2"]["pos"] = 0.25
 		st["text2"]["used"] = true
-		
+
 		st["text3"]["text"] = CDTL3:ConvertTime(max * 0.5, tFormat)
 		st["text3"]["pos"] = 0.5
 		st["text3"]["used"] = true
-		
+
 		st["text4"]["text"] = CDTL3:ConvertTime(max * 0.75, tFormat)
 		st["text4"]["pos"] = 0.75
 		st["text4"]["used"] = true
-		
+
 		st["text5"]["text"] = CDTL3:ConvertTime(max, tFormat)
 		st["text5"]["pos"] = 1
 		st["text5"]["used"] = true
@@ -1219,7 +1219,7 @@ private.SetModeText = function(f, s)
 		st["text4"]["text"] = s["mode"]["split"]["s3v"].."%"
 		st["text4"]["pos"] = s["mode"]["split"]["s3p"]
 		st["text5"]["text"] = "100%"
-		
+
 		local count = CDTL3:SplitCount(s["mode"]["split"])
 		if count == 1 then
 			st["text2"]["used"] = true
@@ -1237,7 +1237,7 @@ private.SetModeText = function(f, s)
 	elseif mode == "SPLIT_ABS" then
 		local max = s["mode"]["splitAbs"]["max"]
 		tFormat = s["mode"]["splitAbs"]["timeFormat"]
-		
+
 		st["text1"]["text"] = "Ready"
 		st["text2"]["text"] = CDTL3:ConvertTime(s["mode"]["splitAbs"]["s1v"], tFormat)
 		st["text2"]["pos"] = s["mode"]["splitAbs"]["s1p"]
@@ -1246,7 +1246,7 @@ private.SetModeText = function(f, s)
 		st["text4"]["text"] = CDTL3:ConvertTime(s["mode"]["splitAbs"]["s3v"], tFormat)
 		st["text4"]["pos"] = s["mode"]["splitAbs"]["s3p"]
 		st["text5"]["text"] = CDTL3:ConvertTime(max, tFormat)
-		
+
 		-- a mark at or past Max Time isn't drawn (a 3:00 lane doesn't show a 10m mark inside it)
 		local count = CDTL3:SplitAbsCount(s["mode"]["splitAbs"])
 		if count == 0 then
@@ -1273,7 +1273,7 @@ private.UpdateText = function(f, s)
 	for i = 1, 5, 1 do
 		local tSettings = nil
 		local tObject = nil
-		
+
 		if i == 1 then
 			tSettings = s["customText"]["text1"]
 			tObject = f.c1
@@ -1290,7 +1290,7 @@ private.UpdateText = function(f, s)
 			tSettings = s["customText"]["text5"]
 			tObject = f.c5
 		end
-		
+
 		if tSettings["enabled"] then
 			-- whenever a tag family is due, convert the whole text in one pass
 			if (tSettings["dtags"] and f.updateCount % private.dynamicTextPollRate == 0)

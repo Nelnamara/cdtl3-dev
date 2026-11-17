@@ -1,7 +1,7 @@
 --[[
 	Cooldown Timeline, Vreenak (US-Remulos)
 	https://www.curseforge.com/wow/addons/cooldown-timeline
-	
+
 	Update notes:
 		- Almost complete re-write, see changelog in game for details
 ]]--
@@ -450,7 +450,7 @@ local laneDefaults = {
 			shadY = -1,
 		},
 	},
-	customText = {				
+	customText = {
 		text1 = {
 			enabled = false,
 			used = true,
@@ -603,7 +603,7 @@ local barFrameDefaults = {
 		yPadding = 0,
 
 		fgTexture = "CDTL3 Smooth",
-		fgTextureColor = { r = 0.77647, g = 0.11765, b = 0.28235, a = 1 },	
+		fgTextureColor = { r = 0.77647, g = 0.11765, b = 0.28235, a = 1 },
 		fgClassColor = false,
 		fgSchoolColor = false,
 		bgTexture = "CDTL3 Smooth",
@@ -827,14 +827,14 @@ local defaults = {
 			zoom = 1,
 			-- Ready tab: silences every ready sound (the frames', the spells' own, spoken names)
 			muteReadySounds = false,
-			
+
 			detectSharedCD = false,
 			hideIgnored = true,
-			
+
 			notUsableTint = false,
 			notUsableDesaturate = false,
 			notUsableColor = { r = 0.75, g = 0.1, b = 0.1, a = 1 },
-			
+
 			enabledAlways = true,
 			enabledGroup = false,
 			enabledInstance = false,
@@ -885,7 +885,7 @@ local defaults = {
 				WARLOCK = 		{ r = 0.53, g = 0.53, b = 0.93, a = 1 }, 	-- Purple
 				WARRIOR = 		{ r = 0.78, g = 0.61, b = 0.43, a = 1 }, 	-- Tan
 			},
-			
+
 			schoolColors = {
 				Physical = { r = 1, g = 1, b = 0, a = 1 },
 				Holy = { r = 1, g = 0.90196, b = 0.5, a = 1 },
@@ -896,7 +896,7 @@ local defaults = {
 				Arcane = { r = 1, g = 0.5, b = 1, a = 1 },
 				Other = { r = 0.8, g = 0.8, b = 0.8, a = 1 },
 			},
-			
+
 			spells = {
 				enabled = true,
 				showByDefault = true,
@@ -906,7 +906,7 @@ local defaults = {
 				defaultBar = 1,
 				hideUnknown = false,	-- Filters > Spells > Hide spells I don't know
 			},
-			
+
 			items = {
 				enabled = true,
 				showByDefault = true,
@@ -916,7 +916,7 @@ local defaults = {
 				defaultBar = 1,
 				useItemIcon = true,
 			},
-			
+
 			buffs = {
 				enabled = true,
 				showByDefault = true,
@@ -926,7 +926,7 @@ local defaults = {
 				defaultBar = 2,
 				onlyPlayer = true,
 			},
-			
+
 			debuffs = {
 				enabled = true,
 				showByDefault = true,
@@ -936,7 +936,7 @@ local defaults = {
 				defaultBar = 3,
 				onlyPlayer = true,
 			},
-			
+
 			offensives = {
 				enabled = true,
 				showByDefault = true,
@@ -945,7 +945,7 @@ local defaults = {
 				defaultReady = 0,
 				defaultBar = 0,
 			},
-			
+
 			petspells = {
 				enabled = true,
 				showByDefault = true,
@@ -980,7 +980,7 @@ local defaults = {
 				defaultBar = 1,
 			},
 		},
-	
+
 		lanes = {
 			global = {
 				fgTexture = "CDTL3 Smooth",
@@ -1036,7 +1036,7 @@ local defaults = {
 				tracking = { secondaryTracking = "NONE", stHeight = 20 },
 			}),
 		},
-		
+
 		barFrames = {
 			frame1 = WithOverrides(barFrameDefaults),
 			frame2 = WithOverrides(barFrameDefaults, {
@@ -1051,7 +1051,7 @@ local defaults = {
 				bar = { fgTextureColor = { r = 0.15294, g = 0.63922, b = 0.77647 } },
 			}),
 		},
-		
+
 		ready = {
 			ready1 = WithOverrides(readyDefaults),
 			ready2 = WithOverrides(readyDefaults, {
@@ -1069,7 +1069,7 @@ local defaults = {
 				icons = { border = { color = { a = 1 } } },
 			}),
 		},
-		
+
 		holders = {
 			iconPadding = 12,
 			iconSize = 48,
@@ -1078,7 +1078,7 @@ local defaults = {
 			barHeight = 22,
 			fontSize = 10,
 		},
-		
+
 		tables = {
 			spells = {},
 			petspells = {},
@@ -1128,11 +1128,11 @@ function CDTL3:OnInitialize()
 	-- "default" (Filters -> Defaults) is read as soon as the options window opens, which
 	-- can be before OnEnable's delayed step fills the rest
 	CDTL3.currentFilter = { default = "SPELLS" }
-	
+
 	self.db.RegisterCallback(self, "OnProfileChanged", "RefreshConfig")
 	self.db.RegisterCallback(self, "OnProfileCopied", "RefreshConfig")
 	self.db.RegisterCallback(self, "OnProfileReset", "RefreshConfig")
-	
+
 	--LibStub("AceConfig-3.0"):RegisterOptionsTable("CDTL3", CDTL3:GetMainOptions(), { "cdtl2", "cooldowntimeline2"})
 	-- ALL settings live in the standalone movable window (/cdtl3): the full tree with the
 	-- Lanes/Ready/Bar Frames/Filters/Profiles panels as tabs. Blizzard's Settings frame is
@@ -1165,7 +1165,7 @@ function CDTL3:OnInitialize()
 		},
 	})
 	self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("CDTL3Bliz", "CDTL3")
-	
+
 	self:RegisterChatCommand("cdtl3", "ChatCommand")
 	self:RegisterChatCommand("cooldowntimeline3", "ChatCommand")
 	-- legacy aliases (kept so long-time users' muscle memory still works)
@@ -1255,7 +1255,7 @@ function CDTL3:BuildMinimapButton()
 	self.minimapBtn = btn
 end
 
-function CDTL3:OnEnable()	
+function CDTL3:OnEnable()
 	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self:RegisterEvent("GROUP_JOINED")
 	self:RegisterEvent("GROUP_LEFT")
@@ -1270,18 +1270,18 @@ function CDTL3:OnEnable()
 	CDTL3:CreateBarFrames()
 	CDTL3:CreateReadyFrames()
 	CDTL3:CreateHolders()
-	
+
 	private.CreateUnlockFrame()
 	private.CreateDebugFrame()
-	
+
 	CDTL3:Print(string.format(L["Loaded version: %s"], CDTL3.version))
 	CDTL3:Print(L["Type /cdtl3 or /cooldowntimeline3 for options"])
-	
+
 	CDTL3.tracking["manaTime"] = GetTime()
 	CDTL3.tracking["manaPrevious"] = 0
 	CDTL3.tracking["energyTimeCount"] = 2
 	CDTL3.tracking["energyPrevious"] = 0
-	
+
 	C_Timer.After(5, function()
 		CDTL3.currentFilter["default"] = "SPELLS"
 		CDTL3.currentFilter["spells"] = CDTL3:GetAardvark("spells")
@@ -1316,7 +1316,7 @@ function CDTL3:OnEnable()
 		CDTL3:RefreshLane(2)
 		CDTL3:RefreshLane(3)
 	end)
-	
+
 	-- After an update from anything older than noticeVersion the welcome window opens once, on
 	-- every client (its text says what's new; the 3.1 combat timers block adds itself only where
 	-- they run); a first run opens it everywhere, as before.
@@ -1474,49 +1474,49 @@ end
 private.CreateDebugFrame = function()
 	local frameName = "CDTL3_Debug_Frame"
 	local f = CreateFrame("Frame", frameName, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	
+
 	f:ClearAllPoints()
 	f:SetPoint("TOP", 300, -75)
 	f:SetSize(300, 200)
-	
+
 	-- BACKGROUND
 	f.bg = f:CreateTexture(nil, "BACKGROUND")
 	f.bg:SetAllPoints(true)
-	f.bg:SetColorTexture( 
+	f.bg:SetColorTexture(
 		CDTL3.colors["db"]["r"],
 		CDTL3.colors["db"]["g"],
 		CDTL3.colors["db"]["b"],
 		CDTL3.colors["db"]["a"]
 	)
-	
+
 	f.text = f:CreateFontString(nil,"ARTWORK")
 	f.text:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 12)
 	f.text:SetShadowColor( 0, 0, 0, 1 )
 	f.text:SetShadowOffset(1.5, -1)
 	f.text:SetText("CDTL3: Debug Enabled")
 	f.text:SetPoint("TOP", 0, -5)
-	
+
 	f.t1 = f:CreateFontString(nil,"ARTWORK")
 	f.t1:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 12)
 	f.t1:SetShadowColor( 0, 0, 0, 1 )
 	f.t1:SetShadowOffset(1.5, -1)
 	f.t1:SetText("Text 1")
 	f.t1:SetPoint("TOP", 0, -30)
-	
+
 	f.t2 = f:CreateFontString(nil,"ARTWORK")
 	f.t2:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 12)
 	f.t2:SetShadowColor( 0, 0, 0, 1 )
 	f.t2:SetShadowOffset(1.5, -1)
 	f.t2:SetText("Text 2")
 	f.t2:SetPoint("TOP", 0, -60)
-	
+
 	f.t3 = f:CreateFontString(nil,"ARTWORK")
 	f.t3:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 12)
 	f.t3:SetShadowColor( 0, 0, 0, 1 )
 	f.t3:SetShadowOffset(1.5, -1)
 	f.t3:SetText("Text 3")
 	f.t3:SetPoint("TOP", 0, -90)
-	
+
 	local b = CreateFrame("Button", frameName.."_B_Reload", f, "UIPanelButtonTemplate")
 	b:SetSize(80 ,25) -- width, height
 	b:SetText("Reload")
@@ -1524,7 +1524,7 @@ private.CreateDebugFrame = function()
 	b:SetScript("OnClick", function()
 		ReloadUI()
 	end)
-	
+
 	local b = CreateFrame("Button", frameName.."_B_Options", f, "UIPanelButtonTemplate")
 	b:SetSize(80 ,25) -- width, height
 	b:SetText("Options")
@@ -1533,7 +1533,7 @@ private.CreateDebugFrame = function()
 		-- Settings.OpenToCategory("CDTL3") errors on Midnight / Forever (string category)
 		LibStub("AceConfigDialog-3.0"):Open("CDTL3")
 	end)
-	
+
 	local b = CreateFrame("Button", frameName.."_B_UnLock", f, "UIPanelButtonTemplate")
 	b:SetSize(80 ,25) -- width, height
 	b:SetText("(Un)Lock")
@@ -1541,7 +1541,7 @@ private.CreateDebugFrame = function()
 	b:SetScript("OnClick", function()
 		CDTL3:ToggleFrameLock()
 	end)
-	
+
 	local b = CreateFrame("Button", frameName.."_B_TestCode1", f, "UIPanelButtonTemplate")
 	b:SetSize(80 ,25) -- width, height
 	b:SetText("TestCode1")
@@ -1549,7 +1549,7 @@ private.CreateDebugFrame = function()
 	b:SetScript("OnClick", function()
 		-- TEST CODE 1
 	end)
-		
+
 	local b = CreateFrame("Button", frameName.."_B_TestCode2", f, "UIPanelButtonTemplate")
 	b:SetSize(80 ,25) -- width, height
 	b:SetText("TestCode2")
@@ -1557,23 +1557,23 @@ private.CreateDebugFrame = function()
 	b:SetScript("OnClick", function()
 		-- TEST CODE 2
 	end)
-	
+
 	-- ON UPDATE
 	f:HookScript("OnUpdate", function(self, elapsed)
-		
+
 	end)
-		
+
 	-- DRAG AND DROP MOVEMENT
 	f:SetMovable(true)
 	f:EnableMouse(true)
 	f:RegisterForDrag("LeftButton")
 	f:SetScript("OnDragStart", f.StartMoving)
 	f:SetScript("OnDragStop", f.StopMovingOrSizing)
-	
+
 	if not CDTL3.db.profile.global["debugMode"] then
 		f:Hide()
 	end
-	
+
 	CDTL3.debugFrame = f
 end
 
@@ -1594,12 +1594,12 @@ private.CreateFirstRunFrame = function()
 	private.firstRunFrame = f
 	f:SetPoint("TOP", 0, -150)
 	f:SetSize(550, 300)
-	
+
 	-- BACKGROUND
 	f.bg = f:CreateTexture(nil, "BACKGROUND")
 	f.bg:SetAllPoints(true)
 	f.bg:SetColorTexture( 0.1, 0.1, 0.1, 0.9 )
-	
+
 	-- HEADING TEXT
 	f.text = f:CreateFontString(nil,"ARTWORK")
 	f.text:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 20)
@@ -1615,21 +1615,21 @@ private.CreateFirstRunFrame = function()
 	f:RegisterForDrag("LeftButton")
 	f:SetScript("OnDragStart", f.StartMoving)
 	f:SetScript("OnDragStop", f.StopMovingOrSizing)
-	
+
 	-- SCROLL FRAME
 	local sf = CreateFrame("ScrollFrame", "CDTL3_Firstrun_Scroll", CDTL3_Firstrun, "UIPanelScrollFrameTemplate")
 	sf:SetPoint("LEFT", 16, 0)
 	sf:SetPoint("RIGHT", -32, 0)
 	sf:SetPoint("TOP", 0, -55)
 	sf:SetPoint("BOTTOM", 0, 70)
-	
+
 	-- EDIT BOX
 	local ef = CreateFrame("EditBox", name.."_Edit", CDTL3_Firstrun_Scroll)
 	ef:SetSize(sf:GetSize())
 	ef:SetMultiLine(true)
 	ef:SetAutoFocus(false)
 	ef:SetFontObject("GameFontWhite")
-	
+
 	-- TEXT FOR THE BOX
 	local text = ""
 	text = text.."Found a problem or have a suggestion? Open an issue on GitHub (or leave a comment on CurseForge):\n\n"
@@ -1639,7 +1639,7 @@ private.CreateFirstRunFrame = function()
 	text = text..CDTL3:GetChangeLog()
 
 	ef:SetText(text)
-	
+
 	sf:SetScrollChild(ef)
 
 	-- BORDER
@@ -1655,7 +1655,7 @@ private.CreateFirstRunFrame = function()
 	CDTL3:SetBorder(border, s)
 	border:Show()
 	border:SetFrameLevel(f:GetFrameLevel() + 1)
-	
+
 	-- RESIZABLE
 	f:SetResizable(true)
 	local rb = CreateFrame("Button", name.."_Resize", CDTL3_Firstrun)
@@ -1691,7 +1691,7 @@ private.CreateFirstRunFrame = function()
 	b1:SetScript("OnClick", function()
 		f:Hide()
 	end)
-	
+
 	local b2 = CreateFrame("Button", name.."_No", f, "UIPanelButtonTemplate")
 	b2:SetSize(80 ,25)
 	b2:SetText("No")
@@ -1741,21 +1741,21 @@ end
 
 private.CreateUnlockFrame = function()
 	local f = CreateFrame("Frame", "CDTL3_Unlock_Frame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	
+
 	f:ClearAllPoints()
 	f:SetPoint("TOP", 0, -70)
 	f:SetSize(180, 70)
-	
+
 	-- BACKGROUND
 	f.bg = f:CreateTexture(nil, "BACKGROUND")
 	f.bg:SetAllPoints(true)
-	f.bg:SetColorTexture( 
+	f.bg:SetColorTexture(
 		CDTL3.colors["db"]["r"],
 		CDTL3.colors["db"]["g"],
 		CDTL3.colors["db"]["b"],
 		CDTL3.colors["db"]["a"]
 	)
-	
+
 	-- BORDER
 	f.bd = CreateFrame("Frame", "CDTL3_Unlock_Frame_BD", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	f.bd:SetParent(f)
@@ -1767,7 +1767,7 @@ private.CreateUnlockFrame = function()
 					inset = 0,
 				})
 	f.bd:SetFrameLevel(f:GetFrameLevel() + 1)
-	
+
 	-- TEXT
 	f.text = f:CreateFontString(nil,"ARTWORK")
 	f.text:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 12)
@@ -1788,16 +1788,16 @@ private.CreateUnlockFrame = function()
 		end
 		f:Hide()
 	end)
-	
+
 	-- ON UPDATE
 	f:HookScript("OnUpdate", function(self, elapsed)
-		
+
 	end)
-	
+
 	if not CDTL3.db.profile.global["unlockFrames"] then
 		f:Hide()
 	end
-	
+
 	CDTL3.unlockFrame = f
 end
 
@@ -1873,7 +1873,7 @@ function CDTL3:CreateTestingFrame()
 				LibStub("AceConfigRegistry-3.0"):NotifyChange("CDTL3")	-- the Preview button's label
 			end)
 		CDTL3.testingFrame = f
-		
+
 		local lblMain = CDTL3.GUI:Create("Label")
 		lblMain:SetText("Here you can create a series of test Cooldowns to assist with configuration\n\n")
 		lblMain:SetFullWidth(true)
@@ -2015,12 +2015,12 @@ function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer,
 		if auraType == "buffs" and not CDTL3.db.profile.global["buffs"]["onlyPlayer"] then
 			validSource = true
 		end
-		
+
 		if auraType == "debuffs" and not CDTL3.db.profile.global["debuffs"]["onlyPlayer"] then
 			validSource = true
 		end
 	end
-	
+
 	if validSource then
 		-- CHECK FOR TRIGGERS
 		--local spellName, _, _ = CDTL3:GetSpellInfo(spellID)
@@ -2043,7 +2043,7 @@ function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer,
 						if CDTL3.db.profile.global["customs"]["enabled"] then
 							CDTL3:CreateCooldown(CDTL3:GetUID(),"customs" , s)
 							CDTL3:CheckEdgeCases(spellName)
-							
+
 							if CDTL3:IsUsedBy("customs", s["id"]) then
 								--CDTL3:Print("USEDBY MATCH: "..s["id"])
 							else
@@ -2054,7 +2054,7 @@ function CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceIsPlayer,
 				end
 			--end
 		else
-			
+
 		end
 
 		local s = CDTL3:GetSpellSettings(spellName, auraType)
@@ -2334,17 +2334,17 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 		if sourceGUID == CDTL3.player["guid"] or destGUID == CDTL3.player["guid"] then
 			local spellID, spellName, _, auraType, _, _, _, _, _, _, _, _, _ = select(12, GetCombatLogEventInfo())
 			auraType = auraType:lower().."s"
-			
+
 			--CDTL3:Print(destGUID)
-			
+
 			if CDTL3.db.profile.global["debugMode"] then
 				CDTL3:Print("AURA APPLIED: "..spellID.." - "..spellName.." - "..auraType.." - "..tostring(sourceName).." - "..destName)
 			end
-			
+
 			-- PLAYER AURAS
 			if destGUID == CDTL3.player["guid"] then
 				CDTL3:OnPlayerAuraApplied(spellID, spellName, auraType, sourceGUID == CDTL3.player["guid"])
-			
+
 			-- OFFENSIVE AURAS
 			else
 				local s = CDTL3:GetSpellSettings(spellName, "offensives")
@@ -2354,7 +2354,7 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 						if ef then
 							CDTL3:SendToLane(ef)
 							CDTL3:SendToBarFrame(ef)
-							
+
 							ef.data["currentCD"] = ef.data["baseCD"]
 							ef.data["targetID"] = destGUID
 							ef.data["targetName"] = destName
@@ -2366,38 +2366,38 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 								--rcd.data["rank"] = s["rank"]
 								rcd.data["desc"] = s["desc"]
 								rcd.data["icon"] = s["icon"]
-								
+
 								-- copy the entry's flags ("" is truthy in Lua, so the old
 								-- ignored = "" hid every recycled offensive icon)
 								rcd.data["ignored"] = s["ignored"]
 								rcd.data["highlight"] = s["highlight"]
 								rcd.data["enabled"] = s["enabled"]
 								rcd.data["link"] = s["link"]
-								
+
 								rcd.data["lane"] = s["lane"]
 								rcd.data["barFrame"] = s["barFrame"]
 								rcd.data["readyFrame"] = s["readyFrame"]
-								
+
 								rcd.data["baseCD"] = s["bCD"] / 1000
 								rcd.data["currentCD"] = s["bCD"] / 1000
-								
+
 								rcd.icon.icon = rcd.data["icon"]
 								rcd.icon.name = rcd.data["name"]
 								--rcd.icon.rank = rcd.data["rank"]
 								rcd.icon.lane = rcd.data["lane"]
-								
+
 								rcd.data["targetID"] = destGUID
 								rcd.data["targetName"] = destName
-								
+
 								CDTL3:SendToLane(rcd)
 								CDTL3:SendToBarFrame(rcd)
 							else
 								if CDTL3.db.profile.global["offensives"]["enabled"] then
 									local ncd = CDTL3:CreateCooldown(CDTL3:GetUID(),"offensives" , s)
-									
+
 									ncd.data["targetID"] = destGUID
 									ncd.data["targetName"] = destName
-									
+
 									if not CDTL3:IsUsedBy("offensives", s["id"]) then
 										CDTL3:AddUsedBy("offensives", s["id"], CDTL3.player["guid"])
 									end
@@ -2407,7 +2407,7 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 					end
 				else
 					local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
-					
+
 					-- no ignore check: an offensive's length is only known once it lands
 					local s = CDTL3:ApplyEntryDefaults({
 						id = spellID,
@@ -2417,15 +2417,15 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 						icon = icon,
 					}, "offensives")
 					s["link"] = CDTL3:GetSpellLink(spellID)
-					
+
 					table.insert(CDTL3.db.profile.tables["offensives"], s)
-										
+
 					if CDTL3.db.profile.global["offensives"]["enabled"] then
 						--s["targetID"] = destGUID
 						--s["targetName"] = destName
-						
+
 						local ncd = CDTL3:CreateCooldown(CDTL3:GetUID(),"offensives" , s)
-						
+
 						ncd.data["targetID"] = destGUID
 						ncd.data["targetName"] = destName
 					end
@@ -2436,50 +2436,50 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 		if sourceGUID == CDTL3.player["guid"] then
 			local spellID, spellName, _, auraType, _, _, _, _, _, _, _, _, _ = select(12, GetCombatLogEventInfo())
 			auraType = auraType:lower().."s"
-			
+
 			if CDTL3.db.profile.global["debugMode"] then
 				CDTL3:Print("AURA REFRESH: "..spellID.." - "..spellName.." - "..auraType.." - "..sourceName.." - "..destName)
 			end
-			
+
 			local ef = CDTL3:GetExistingCooldown(spellName, "offensives", destGUID)
 			if ef then
 				ef.data["currentCD"] = ef.data["baseCD"]
 			end
-		end		
+		end
 	elseif subevent == "SPELL_AURA_REMOVED" then
 		if sourceGUID == CDTL3.player["guid"] then
 			local spellID, spellName, _, auraType, _, _, _, _, _, _, _, _, _ = select(12, GetCombatLogEventInfo())
 			auraType = auraType:lower().."s"
-			
+
 			if CDTL3.db.profile.global["debugMode"] then
 				CDTL3:Print("AURA REMOVED: "..spellID.." - "..spellName.." - "..auraType.." - "..sourceName.." - "..destName)
 			end
-			
+
 			local ef = CDTL3:GetExistingCooldown(spellName, "offensives", destGUID)
 			if ef then
 				ef.data["currentCD"] = -1
 			end
 		end
-		
+
 	-- SWING DAMAGE
 	elseif subevent == "SWING_DAMAGE" then
 		if sourceGUID == CDTL3.player["guid"] then
 			local amount, _, _, _, _, _, _, _, _, isOffHand = select(12, GetCombatLogEventInfo())
 			local mhSpeed, ohSpeed = UnitAttackSpeed("player")
-			
+
 			if isOffHand then
 				CDTL3.tracking["ohSwingTime"] = ohSpeed
 			else
 				CDTL3.tracking["mhSwingTime"] = mhSpeed
 			end
 		end
-	
+
 	-- SWING MISSED
 	elseif subevent == "SWING_MISSED" then
 		if sourceGUID == CDTL3.player["guid"] then
 			local _, isOffHand, _, _ = select(12, GetCombatLogEventInfo())
 			local mhSpeed, ohSpeed = UnitAttackSpeed("player")
-			
+
 			if isOffHand then
 				CDTL3.tracking["ohSwingTime"] = ohSpeed
 			else
@@ -2618,7 +2618,7 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 						if CDTL3.db.profile.global["spells"]["enabled"] then
 							CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
 							CDTL3:CheckEdgeCases(spellName)
-							
+
 							if CDTL3:IsUsedBy("spells", s["id"]) then
 								--CDTL3:Print("USEDBY MATCH: "..s["id"])
 							else
@@ -2642,7 +2642,7 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 			else
 				s = CDTL3:GetSpellSettings(spellName, "items", true, spellID)
 			end
-			
+
 			if s then
 				if not s["ignored"] then
 					local ef = CDTL3:GetExistingCooldown(s["name"], "items")
@@ -2654,7 +2654,7 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 							if not CDTL3:IsUsedBy("items", s["id"]) then
 								CDTL3:AddUsedBy("items", s["id"], CDTL3.player["guid"])
 							end
-							
+
 							CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
 						end
 					end
@@ -2664,7 +2664,7 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 				if s then
 					if CDTL3:IsValidItem(s["itemID"]) then
 						table.insert(CDTL3.db.profile.tables["items"], s)
-						
+
 						if CDTL3.db.profile.global["items"]["enabled"] then
 							CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
 						end
@@ -2687,7 +2687,7 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 									--local currentCharges, maxCharges, _, cooldownDuration, _ = GetSpellCharges(spellID)
 									local currentCharges, maxCharges, cooldownStart, cooldownDuration = CDTL3:GetSpellCharges(spellID)
 									local cooldownMS, gcdMS = GetSpellBaseCooldown(spellID)
-									
+
 									if cooldownDuration ~= nil and cooldownDuration ~= 0 then
 										cooldownMS = cooldownDuration * 1000
 									end
@@ -2697,11 +2697,11 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 									end
 
 									local s = {}
-									
+
 									s["id"] = spellID
 									s["name"] = spellName
 									s["type"] = "detected"
-							
+
 									if maxCharges then
 										s["charges"] = maxCharges
 										s["bCD"] = cooldownMS
@@ -2711,15 +2711,15 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 									s["highlight"] = false
 									s["pinned"] = false
 									s["setCustomCD"] = false
-									
+
 									local link, _ = CDTL3:GetSpellLink(spellID)
 									s["link"] = link
-									
+
 									table.insert(CDTL3.db.profile.tables["detected"], s)
 							end
 						else
 							local cooldownMS, gcdMS = GetSpellBaseCooldown(spellID)
-								
+
 							if CDTL3.db.profile.global["debugMode"] then
 								CDTL3:Print("OTHER_SKIPPED: "..tostring(spellName).." - "..tostring(spellID).." - "..tostring(cooldownMS).." - "..tostring(CDTL3.player["guid"]))
 							end
@@ -2735,7 +2735,7 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 		CDTL3.spellCastTimes[spellID] = GetTime()
 
 		local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
-		
+
 		local isKnown = CDTL3.Compat.IsSpellKnown(spellID, true)
 		local isKnownOrOverridesKnown = CDTL3.Compat.IsSpellKnownOrOverridesKnown(spellID, true)
 
@@ -2761,7 +2761,7 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 						if CDTL3.db.profile.global["petspells"]["enabled"] then
 							CDTL3:CreateCooldown(CDTL3:GetUID(),"petspells" , s)
 							CDTL3:CheckEdgeCases(spellName)
-							
+
 							if CDTL3:IsUsedBy("petspells", s["id"]) then
 								--CDTL3:Print("USEDBY MATCH: "..s["id"])
 							else
@@ -2784,12 +2784,12 @@ function CDTL3:ITEM_LOCK_CHANGED(...)
 	-- Detect item lock cooldowns
 	-- Most commonly trinkets being equipped, that will begin a 30 second cooldown
 	local _, bagOrSlotIndex, slotIndex = ...
-	
+
 	if not IsInventoryItemLocked(bagOrSlotIndex) and not IsInventoryItemLocked(slotIndex) then
 		if slotIndex == nil then
 			local itemId = GetInventoryItemID("player", bagOrSlotIndex)
 			local spellName, spellID = CDTL3.Compat.GetItemSpell(itemId)
-			
+
 			if spellID then
 				local s = CDTL3:GetSpellSettings(spellName, "items", false, spellID)
 				if s then
@@ -2807,7 +2807,7 @@ function CDTL3:ITEM_LOCK_CHANGED(...)
 								if not CDTL3:IsUsedBy("items", s["id"]) then
 									CDTL3:AddUsedBy("items", s["id"], CDTL3.player["guid"])
 								end
-								
+
 								local ncd = CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
 								if ncd then
 									ncd.data["currentCD"] = 30
@@ -2820,7 +2820,7 @@ function CDTL3:ITEM_LOCK_CHANGED(...)
 					if s then
 						if CDTL3:IsValidItem(s["itemID"]) then
 							table.insert(CDTL3.db.profile.tables["items"], s)
-							
+
 							if CDTL3.db.profile.global["items"]["enabled"] then
 								local ncd = CDTL3:CreateCooldown(CDTL3:GetUID(),"items" , s)
 								if ncd then
@@ -2840,16 +2840,16 @@ end
 function CDTL3:PLAYER_REGEN_DISABLED()
 	CDTL3.combat = true
 	CDTL3:ApplyCombatVisibility()
-	
-	
+
+
 	if CDTL3_Ready_1 then
 		CDTL3_Ready_1.combatTimer = CDTL3.db.profile.ready["ready1"]["pTime"]
 	end
-	
+
 	if CDTL3_Ready_2 then
 		CDTL3_Ready_2.combatTimer = CDTL3.db.profile.ready["ready2"]["pTime"]
 	end
-	
+
 	if CDTL3_Ready_3 then
 		CDTL3_Ready_3.combatTimer = CDTL3.db.profile.ready["ready3"]["pTime"]
 	end
@@ -2863,15 +2863,15 @@ function CDTL3:PLAYER_REGEN_ENABLED()
 	if CDTL3.retailAPI and CDTL3.enabled then
 		CDTL3:UNIT_AURA("UNIT_AURA", "player")
 	end
-	
+
 	if CDTL3_Ready_1 then
 		CDTL3_Ready_1.combatTimer = 0
 	end
-	
+
 	if CDTL3_Ready_2 then
 		CDTL3_Ready_2.combatTimer = 0
 	end
-	
+
 	if CDTL3_Ready_3 then
 		CDTL3_Ready_3.combatTimer = 0
 	end
@@ -2896,7 +2896,7 @@ end]]--
 
 function CDTL3:UNIT_POWER_FREQUENT(...)
 	local _, unitTarget, powerType = ...
-	
+
 	if unitTarget == "player" and powerType == "MANA" then
 		if CDTL3:AnyLaneTracks("MANA_TICK") then
 			-- mana can be SECRET (Midnight / WoW: Forever): skip the tick estimate then
@@ -2905,27 +2905,27 @@ function CDTL3:UNIT_POWER_FREQUENT(...)
 				local currentMana = UnitPower("player", Enum.PowerType.Mana)
 				if currentMana ~= UnitPowerMax("player", Enum.PowerType.Mana) then
 					local difference = currentMana - CDTL3.tracking["manaPrevious"]
-							
+
 					local timeDifference = 0
 					if CDTL3.tracking["manaTime"] then
 						timeDifference = currentTime - CDTL3.tracking["manaTime"]
 					end
-				
+
 					if difference < 0 then
 						if CDTL3.combat then
 							CDTL3.tracking["manaTime"] = currentTime
 							CDTL3.tracking["fsr"] = true
 						end
 					end
-				
+
 					if difference > 0 then
 						local low = 0.1
 						local high = 1.9
-					
+
 						if CDTL3.tracking["fsr"] then
 							high = 4.9	-- was "local high", which never widened the window
 						end
-					
+
 						if timeDifference < low or  timeDifference > high then
 							CDTL3.tracking["fsr"] = false
 							CDTL3.tracking["manaTime"] = currentTime
@@ -2943,7 +2943,7 @@ end
 
 function CDTL3:UNIT_POWER_UPDATE(...)
 	local _, unitTarget, powerType = ...
-	
+
 	if unitTarget == "player" and powerType == "ENERGY" then
 		if CDTL3:AnyLaneTracks("ENERGY_TICK") then
 			-- energy can be SECRET (Midnight / WoW: Forever): skip the tick estimate then
@@ -2951,14 +2951,14 @@ function CDTL3:UNIT_POWER_UPDATE(...)
 				local currentTime = GetTime()
 				local maxenergy = UnitPowerMax("player", Enum.PowerType.Energy)
 				local currentEnergy = UnitPower("player", Enum.PowerType.Energy)
-			
+
 				if currentEnergy < maxenergy then
 					local difference = currentEnergy - CDTL3.tracking["energyPrevious"]
 					if (difference > 18 and difference < 22) or (difference > 38 and difference < 42) then
 						CDTL3.tracking["energyTimeCount"] = 0
 					end
 				end
-			
+
 				CDTL3.tracking["energyPrevious"] = currentEnergy
 			end)
 		end
@@ -2972,7 +2972,7 @@ function CDTL3:RUNE_POWER_UPDATE(...)
 	if CDTL3.db.profile.global["debugMode"] then
 		CDTL3:Print("RUNES UPDATE: "..tostring(runeIndex).." - "..tostring(added))
 	end
-	
+
 	if not added then
 		local spellName = ""
 		local icon = 0
@@ -2986,12 +2986,12 @@ function CDTL3:RUNE_POWER_UPDATE(...)
 			spellName = "Frost Rune "..tostring(runeIndex)
 			icon = 135773
 		end
-		
+
 		local s = CDTL3:GetSpellSettings(spellName, "runes")
 		if s then
 			if not s["ignored"] then
 				local ef = CDTL3:GetExistingCooldown(s["name"], "runes")
-				if ef then			
+				if ef then
 					local graceTime = GetTime() - ef.data["runeGraceTime"]
 					if graceTime >= 2.5 then
 						ef.data["baseCD"] = 7.5
@@ -3000,7 +3000,7 @@ function CDTL3:RUNE_POWER_UPDATE(...)
 					else
 						ef.data["baseCD"] = 10
 					end
-					
+
 					CDTL3:SendToLane(ef)
 					CDTL3:SendToBarFrame(ef)
 				else
@@ -3070,9 +3070,9 @@ function CDTL3:SPELLS_CHANGED()
 	end)
 end
 
-function CDTL3:PLAYER_ENTERING_WORLD()	
+function CDTL3:PLAYER_ENTERING_WORLD()
 	local turnOn = CDTL3:DetermineOnOff()
-	
+
 	if turnOn then
 		CDTL3:TurnOn()
 	else
@@ -3080,9 +3080,9 @@ function CDTL3:PLAYER_ENTERING_WORLD()
 	end
 end
 
-function CDTL3:GROUP_JOINED()	
+function CDTL3:GROUP_JOINED()
 	local turnOn = CDTL3:DetermineOnOff()
-	
+
 	if turnOn then
 		CDTL3:TurnOn()
 	else
@@ -3090,9 +3090,9 @@ function CDTL3:GROUP_JOINED()
 	end
 end
 
-function CDTL3:GROUP_LEFT()	
+function CDTL3:GROUP_LEFT()
 	local turnOn = CDTL3:DetermineOnOff()
-	
+
 	if turnOn then
 		CDTL3:TurnOn()
 	else
@@ -3102,24 +3102,24 @@ end
 
 function CDTL3:DetermineOnOff()
 	local turnOn = false
-	
+
 	if CDTL3.db.profile.global["enabledAlways"] then
 		turnOn = true
 	else
 		local inInstance, instanceType = IsInInstance()
 		local inGroup = IsInGroup()
-		
+
 		if inInstance or inGroup then
 			if inInstance and CDTL3.db.profile.global["enabledInstance"] then
 				turnOn = true
 			end
-			
+
 			if inGroup and CDTL3.db.profile.global["enabledGroup"] then
 				turnOn = true
 			end
 		end
 	end
-	
+
 	return turnOn
 end
 
@@ -3152,12 +3152,12 @@ function CDTL3:AnyLaneTracks(kind)
 	return false
 end
 
-function CDTL3:TurnOn()	
+function CDTL3:TurnOn()
 	if not CDTL3.enabled then
 		if CDTL3.db.profile.global["debugMode"] then
 			CDTL3:Print("ENABLING DETECTION")
 		end
-	
+
 		-- The combat log is closed to addons on retail 12.x and WoW: Forever (retail still has
 		-- CombatLogGetCurrentEventInfo as a deprecated stub, so the function alone proves
 		-- nothing). Only register it on the other clients, where its accessor exists, and never
@@ -3177,7 +3177,7 @@ function CDTL3:TurnOn()
 
 		CDTL3:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 		CDTL3:RegisterEvent("SPELLS_CHANGED")
-		
+
 		if CDTL3.retailAPI then
 			CDTL3:RegisterUnitEvents("UNIT_AURA", "player")
 			--CDTL3:RegisterEvent("TRAIT_CONFIG_UPDATED")
@@ -3186,7 +3186,7 @@ function CDTL3:TurnOn()
 		if CDTL3.tocversion < 20000 and not CDTL3.isForever then
 			CDTL3:RegisterEvent("RUNE_UPDATED")
 		end
-		
+
 		CDTL3.enabled = true
 	end
 end
@@ -3196,7 +3196,7 @@ function CDTL3:TurnOff()
 		if CDTL3.db.profile.global["debugMode"] then
 			CDTL3:Print("DISABLING DETECTION")
 		end
-		
+
 		pcall(CDTL3.UnregisterEvent, CDTL3, "COMBAT_LOG_EVENT_UNFILTERED")
 		CDTL3.unitEventFrame:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 		CDTL3:UnregisterEvent("ITEM_LOCK_CHANGED")
@@ -3207,7 +3207,7 @@ function CDTL3:TurnOff()
 
 		CDTL3:UnregisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 		CDTL3:UnregisterEvent("SPELLS_CHANGED")
-		
+
 		if CDTL3.retailAPI then
 			CDTL3.unitEventFrame:UnregisterEvent("UNIT_AURA")
 			--CDTL3:UnregisterEvent("TRAIT_CONFIG_UPDATED")
@@ -3216,7 +3216,7 @@ function CDTL3:TurnOff()
 		if CDTL3.tocversion < 20000 and not CDTL3.isForever then
 			CDTL3:UnregisterEvent("RUNE_UPDATED")
 		end
-		
+
 		CDTL3.enabled = false
 	end
 end
