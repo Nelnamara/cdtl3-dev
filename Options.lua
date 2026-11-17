@@ -77,7 +77,8 @@ private.AddBorderArgs = function(args, base, border, refresh, first)
 	first = first or base + 1
 
 	args["border"] = {
-		name = "                    " .. L["Border Texture"],
+		-- no leading spaces: the menu's label starts right of its 42px preview square, so padding cut it off
+		name = L["Border Texture"],
 		desc = L["Selects the border texture"],
 		order = first,
 		type = "select",
@@ -6149,7 +6150,7 @@ private.GetLaneSet = function(i)
 							end,
 					},
 					hlBorder = {
-						name = "                    " .. L["Border Texture"],
+						name = L["Border Texture"],
 						desc = L["Selects the border texture"],
 						order = 501,
 						hidden = function(info)
