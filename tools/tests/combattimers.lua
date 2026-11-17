@@ -605,6 +605,190 @@ FireEvent("SPELL_UPDATE_CHARGES")
 poll(fc, 0.3)
 check("recharge done (charge isActive false): Ready", parentName(fc.icon) == "CDTL3_Ready_1_MF")
 
+---------------------------------------------------------------- 2b. a bordered icon riding a combat timer (issue #9)
+-- Blizzard's BackdropTemplate as the game has it (Blizzard_SharedXML/Backdrop.lua, the same on Retail,
+-- Forever and Era): SetBackdrop (336) skips everything when handed the table it already has, else
+-- ApplyBackdrop (332) and OnSizeChanged (189) both work out the edge tiling from the frame's own size
+-- (221-226). A frame anchored to a timer bar's fill, directly or through the frame it hangs on, reads its
+-- size hidden (GetWidth is "SecretWhenAnchoringSecret"). The game works that out on its layout pass, so a
+-- frame that has just left the bar still reads hidden until the next one: 3.1.1 threw from 226 while a
+-- bordered icon rode, and again from RefreshIcon when it left the bar for Ready or holding.
+print("[icon borders " .. FLAVOR .. "]")
+local BD, MODELLED = {}, {}
+local function fillOfHiddenBar(r)
+	local bar = type(r) == "table" and rawget(r, "__otype") == "Texture" and rawget(r, "__parent")
+	return bar and rawget(bar, "__otype") == "StatusBar" and IsS(rawget(bar, "__val")) or false
+end
+local function anchoredHidden(r, depth)
+	if depth > 8 then return false end
+	for _, p in ipairs(rawget(r, "__points") or {}) do
+		local to = type(p[2]) == "table" and p[2] or rawget(r, "__parent")
+		if to and (fillOfHiddenBar(to) or anchoredHidden(to, depth + 1)) then return true end
+	end
+	return false
+end
+-- the size it lays out at: TOPLEFT and BOTTOMRIGHT on one frame = that frame plus the offsets, else its own
+local function plainSize(r)
+	local tl, br = nil, nil
+	for _, p in ipairs(rawget(r, "__points")) do
+		if p[1] == "TOPLEFT" then tl = p elseif p[1] == "BOTTOMRIGHT" then br = p end
+	end
+	if tl and br and type(tl[2]) == "table" and tl[2] == br[2] then
+		return rawget(tl[2], "__w") - (tl[4] or 0) + (br[4] or 0), rawget(tl[2], "__h") + (tl[5] or 0) - (br[5] or 0)
+	end
+	return rawget(r, "__w"), rawget(r, "__h")
+end
+function BD:SetBackdrop(info)
+	if info then
+		if self.backdropInfo == info then return end
+		if not info.edgeFile and not info.bgFile then self.backdropInfo = nil; return end
+		self.backdropInfo = info
+		self.__backdrop = info
+		self.__applied = (self.__applied or 0) + 1
+		self:SetupTextureCoordinates()
+	else
+		self.backdropInfo = nil
+	end
+end
+function BD:OnBackdropSizeChanged()
+	if self.backdropInfo then self:SetupTextureCoordinates() end
+end
+function BD:SetupTextureCoordinates()
+	local width, height = self:GetWidth(), self:GetHeight()
+	local edge = (self.backdropInfo.edgeSize and self.backdropInfo.edgeSize > 0) and self.backdropInfo.edgeSize or 39
+	self.__tiled = { x = math.max(0, (width / edge) - 2 - 0.0625), y = math.max(0, (height / edge) - 2 - 0.0625), w = width, h = height }
+end
+function BD:SetBackdropBorderColor(r, g, b, a) self.__border = { r, g, b, a } end
+function BD:SetBackdropColor() end
+local function modelWidth(self) local w = plainSize(self); if self.__hidden then return S(w) end return w end
+local function modelHeight(self) local _, h = plainSize(self); if self.__hidden then return S(h) end return h end
+local function modelHidden(self) return self.__hidden and true or false end
+local RealCreateFrame = CreateFrame
+CreateFrame = function(otype, name, parent, template, id)
+	local r = RealCreateFrame(otype, name, parent, template, id)
+	if type(template) == "string" and template:find("BackdropTemplate", 1, true) then
+		for k, v in pairs(BD) do rawset(r, k, v) end
+		rawset(r, "GetWidth", modelWidth)
+		rawset(r, "GetHeight", modelHeight)
+		rawset(r, "IsAnchoringSecret", modelHidden)
+		r:SetScript("OnSizeChanged", function(self) self:OnBackdropSizeChanged() end)
+		MODELLED[#MODELLED + 1] = r
+	end
+	return r
+end
+BackdropTemplateMixin = BD
+-- the layout pass: the game fires OnSizeChanged when a laid-out size changes and when it turns hidden;
+-- whether it fires when a hidden size reads plain again is not known, so it doesn't here
+local function Layout()
+	for _, r in ipairs(MODELLED) do
+		local was = r.__hidden
+		r.__hidden = anchoredHidden(r, 0)
+		local w, h = plainSize(r)
+		local key = r.__hidden and "hidden" or (tostring(w) .. "x" .. tostring(h))
+		if r.__layoutKey and key ~= r.__layoutKey and not (was and not r.__hidden) then
+			local s = r.__scripts.OnSizeChanged
+			if s then xpcall(s, ERRH, r) end
+		end
+		r.__layoutKey = key
+	end
+end
+-- one game frame: the cooldown's update, the OnUpdate of every shown modelled frame, then the layout pass
+local function frames(f, seconds)
+	for _ = 1, math.max(1, math.floor(seconds / 0.02 + 0.5)) do
+		NOW = NOW + 0.02
+		xpcall(f.__scripts.OnUpdate, ERRH, f, 0.02)
+		for _, r in ipairs(MODELLED) do
+			local u = r.__scripts.OnUpdate
+			if u and r:IsVisible() then xpcall(u, ERRH, r, 0.02) end
+		end
+		Layout()
+	end
+end
+local function errorsSince(n)
+	local t = {}
+	for i = n + 1, #ERRORS do t[#t + 1] = (tostring(ERRORS[i]):match("[^\n]+")) end
+	return table.concat(t, " | ")
+end
+
+local ready = CDTL3.db.profile.ready["ready1"]
+local laneBorder, readyBorder = lane.icons.border, ready.icons.border
+local wasLane, wasReady = laneBorder.style, readyBorder.style
+local wasReadySize = readyBorder.size
+laneBorder.style, readyBorder.style = "Blizzard Tooltip", "Blizzard Tooltip"
+readyBorder.size = laneBorder.size + 3	-- the Ready frame's border differs, so leaving for Ready applies a new one
+local BORDER = 6020
+declare(BORDER, "Border Bolt", 30000)
+table.insert(tables.spells, entry(BORDER, "Border Bolt", "spells"))
+local function ride()
+	COMBAT = true
+	DUR[BORDER] = { NOW, 24 }
+	SPELLCD[BORDER] = { startTime = S(NOW), duration = S(30), isEnabled = true, isActive = true, isOnGCD = false, modRate = 1 }
+	cast(BORDER)
+	Layout()	-- laid out once on the lane before it starts riding
+	FireEvent("SPELL_UPDATE_COOLDOWN")
+end
+local function refresh(f) xpcall(CDTL3.RefreshIcon, ERRH, CDTL3, f) end
+local function done()
+	SPELLCD[BORDER] = { startTime = S(0), duration = S(0), isEnabled = true, isActive = false, isOnGCD = false, modRate = 1 }
+	FireEvent("SPELL_UPDATE_COOLDOWN")
+end
+
+local e0 = #ERRORS
+ride()
+local fbd = CDTL3:GetExistingCooldown("Border Bolt", "spells")
+frames(fbd, 0.5)
+local bd = fbd and fbd.icon.bd
+check("a bordered icon rides in combat", fbd and CT:Riding(fbd) and bd and bd.backdropInfo ~= nil)
+check("riding: its border frame reads a hidden size (it hangs on the timer bar's fill)", bd and bd.__hidden == true)
+check("riding: the border's size change throws nothing (OnSizeChanged, Backdrop.lua:189)", #ERRORS == e0, errorsSince(e0))
+local applied = bd and bd.__applied
+e0 = #ERRORS
+refresh(fbd)
+check("riding: a refresh with the same border settings throws nothing", #ERRORS == e0, errorsSince(e0))
+check("riding: ... and leaves the border as it was (no new backdrop)", bd and bd.__applied == applied, tostring(bd and bd.__applied))
+e0 = #ERRORS
+laneBorder.size = laneBorder.size + 1
+refresh(fbd)
+check("riding: a border settings change throws nothing", #ERRORS == e0, errorsSince(e0))
+check("riding: the new border is applied, its tiling waits for a size it can read", bd and bd.__applied == applied + 1 and bd.cdtl3Retile == true)
+laneBorder.size = laneBorder.size - 1
+frames(fbd, 0.2)
+check("still riding: the tiling still waits, nothing thrown", CT:Riding(fbd) and bd.cdtl3Retile == true and #ERRORS == e0, errorsSince(e0))
+
+-- the game says done: Ready on that frame, a new border (the Ready frame's) while the size still reads hidden
+e0 = #ERRORS
+done()
+frames(fbd, 0.02)
+check("done: in the Ready frame, not riding", parentName(fbd.icon) == "CDTL3_Ready_1_MF" and not CT:Riding(fbd), tostring(parentName(fbd.icon)))
+check("done: leaving the bar for Ready throws nothing (RefreshIcon, Cooldown.lua:759)", #ERRORS == e0, errorsSince(e0))
+frames(fbd, 0.1)
+local want = ready.icons.size + 2 * readyBorder.padding
+check("in Ready: the border reads plain again and its tiling is redone at its real size",
+	bd.__hidden == false and not bd.cdtl3Retile and bd.__tiled and bd.__tiled.w == want,
+	string.format("w=%s want=%s", tostring(bd.__tiled and bd.__tiled.w), tostring(want)))
+check("in Ready: the border's waiting OnUpdate is gone", bd.__scripts.OnUpdate == nil)
+
+-- the reported case: Ready frame 1 is off, so the icon leaves the bar for holding (SendToReady -> SendToHolding)
+e0 = #ERRORS
+ride()
+frames(fbd, 0.5)
+check("rides again", CT:Riding(fbd) and bd.__hidden == true and #ERRORS == e0, errorsSince(e0))
+local readyMF = CDTL3_Ready_1_MF
+CDTL3_Ready_1_MF = nil
+done()
+frames(fbd, 0.02)
+CDTL3_Ready_1_MF = readyMF
+check("Ready frame off: the icon goes to holding", parentName(fbd.icon) == "CDTL3_Active_Icon_Holding", tostring(parentName(fbd.icon)))
+check("Ready frame off: leaving the bar for holding throws nothing (the reported stack)", #ERRORS == e0, errorsSince(e0))
+frames(fbd, 0.1)
+check("in holding: nothing thrown afterwards", #ERRORS == e0, errorsSince(e0))
+
+laneBorder.style, readyBorder.style, readyBorder.size = wasLane, wasReady, wasReadySize
+CDTL3:SendToHolding(fbd)
+COMBAT = false
+FireEvent("PLAYER_REGEN_ENABLED")
+frames(fbd, 0.1)
+
 ---------------------------------------------------------------- 3. Tracked Bars mirror
 print("[mirror " .. FLAVOR .. "]")
 check("hide is off by default (3.1.0): Blizzard's Tracked Bars shown at login",

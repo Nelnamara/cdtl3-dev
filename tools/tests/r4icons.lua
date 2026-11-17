@@ -489,6 +489,22 @@ do
 	local e = CDTL3:GetSpellSettings("Plain Spell", "spells")
 	check("Filters: Warn before ready is there, 0 (off) by default, with a tooltip", fa.warnSecs and fa.warnSecs.get({}) == 0 and fa.warnSecs.desc ~= "")
 	check("  its sound is hidden until a time is set", fa.warnSound.hidden({}) == true)
+	check("  1.5 wide, so its label isn't cut to \"Warn before ready (seco...\"", fa.warnSecs.width == 1.5)
+	-- no control label padded with leading spaces (Border Texture had 20, and lost its end to them)
+	local padded, seen = {}, {}
+	local function walkOpts(t, path)
+		if type(t) ~= "table" or seen[t] then return end
+		seen[t] = true
+		if type(t.name) == "string" and t.type ~= "description" and t.type ~= "header" and t.name:match("^%s%s") then
+			padded[#padded + 1] = path
+		end
+		if type(t.args) == "table" then
+			for k, v in pairs(t.args) do walkOpts(v, path .. "." .. tostring(k)) end
+		end
+	end
+	walkOpts(LibStub("AceConfigRegistry-3.0"):GetOptionsTable("CDTL3", "dialog", "MyLib-1.0"), "CDTL3")
+	walkOpts(CDTL3:GetFilterOptions(), "filters")
+	check("Options: no control label starts with padding spaces", #padded == 0, table.concat(padded, ", "))
 	local PL = live("Plain Spell")
 	fa.warnSecs.set({}, 6)
 	check("  set to 6: saved on the entry and on the live icon", e.warnSecs == 6 and PL.data.warnSecs == 6 and fa.warnSound.hidden({}) == false and fa.warnSound.get({}) == "None")
