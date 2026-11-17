@@ -88,6 +88,8 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
 - `profiles.lua`: Profiles tab extras (card 39): the profile a new character starts on, shared Filters entries
   (round trips, other profiles joining and getting them back, Copy From, Reset Profile and imports while shared, a
   logout saving each table once, a reload), profiles by zone and with spec profiles, a deleted profile.
+- `slots.lua`: `CDTL3:SlotSettings` / `CDTL3:SlotFrame` give lane, bar frame and Ready frame 1 to 3, and nil for
+  anything else (0, 4, nil, the string "1").
 - The `/cdtl3 probe` test build and its `probe.lua` harness live on branch `cdm-probe`.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).
