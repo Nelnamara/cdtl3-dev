@@ -422,6 +422,53 @@ function CDTL3:ApplyCombatVisibility(bossOnly)
 	end
 end
 
+-- Put a spell on its shared lockout (Paladin protections): lift a running cooldown to
+-- lockoutTime, or start one (and save the entry if it is new)
+local function LockOut(secondarySpellName, lockoutTime)
+	local s = CDTL3:GetSpellSettings(secondarySpellName, "spells")
+	if s then
+		if not CDTL3:IsIgnored(s, "spells") then
+			local ef = CDTL3:GetExistingCooldown(secondarySpellName, "spells")
+			if ef then
+				if ef.data["currentCD"] < lockoutTime then
+					CDTL3:SendToLane(ef)
+					CDTL3:SendToBarFrame(ef)
+
+					ef.data["currentCD"] = lockoutTime
+					ef.data["overrideCD"] = true
+				end
+			else
+				if CDTL3.db.profile.global["spells"]["enabled"] then
+					local f = CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
+					f.data["currentCD"] = lockoutTime
+					f.data["overrideCD"] = true
+
+					if CDTL3:IsUsedBy("spells", s["id"]) then
+						--CDTL3:Print("USEDBY MATCH: "..s["id"])
+					else
+						--CDTL3:Print("NEW USEDBY: "..s["id"])
+						CDTL3:AddUsedBy("spells", s["id"], CDTL3.player["guid"])
+					end
+				end
+			end
+		end
+	else
+		s = CDTL3:TableCopy(CDTL3:GetSpellData(0, secondarySpellName))
+		if s then
+			CDTL3:ApplyEntryDefaults(s, "spells")
+			s["icon"] = select(2, CDTL3:GetSpellInfo(s["id"]))
+			s["link"] = CDTL3:GetSpellLink(s["id"])
+			s["ignored"] = CDTL3:IgnoredByDefault("spells", s["bCD"])
+
+			local f = CDTL3:SaveNewEntry(s, "spells")
+			if f then
+				f.data["currentCD"] = lockoutTime
+				f.data["overrideCD"] = true
+			end
+		end
+	end
+end
+
 function CDTL3:CheckEdgeCases(spellName)
 	-- VANISH SHOULD ALSO SPAWN A STEALTH ICON/BAR
 	if spellName == "Vanish" then
@@ -524,48 +571,7 @@ function CDTL3:CheckEdgeCases(spellName)
 				end
 
 				if spellName ~= secondarySpellName then
-					local s = CDTL3:GetSpellSettings(secondarySpellName, "spells")
-					if s then
-						if not CDTL3:IsIgnored(s, "spells") then
-							local ef = CDTL3:GetExistingCooldown(secondarySpellName, "spells")
-							if ef then
-								if ef.data["currentCD"] < lockoutTime then
-									CDTL3:SendToLane(ef)
-									CDTL3:SendToBarFrame(ef)
-
-									ef.data["currentCD"] = lockoutTime
-									ef.data["overrideCD"] = true
-								end
-							else
-								if CDTL3.db.profile.global["spells"]["enabled"] then
-									local f = CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-									f.data["currentCD"] = lockoutTime
-									f.data["overrideCD"] = true
-
-									if CDTL3:IsUsedBy("spells", s["id"]) then
-										--CDTL3:Print("USEDBY MATCH: "..s["id"])
-									else
-										--CDTL3:Print("NEW USEDBY: "..s["id"])
-										CDTL3:AddUsedBy("spells", s["id"], CDTL3.player["guid"])
-									end
-								end
-							end
-						end
-					else
-						s = CDTL3:TableCopy(CDTL3:GetSpellData(0, secondarySpellName))
-						if s then
-							CDTL3:ApplyEntryDefaults(s, "spells")
-							s["icon"] = select(2, CDTL3:GetSpellInfo(s["id"]))
-							s["link"] = CDTL3:GetSpellLink(s["id"])
-							s["ignored"] = CDTL3:IgnoredByDefault("spells", s["bCD"])
-
-							local f = CDTL3:SaveNewEntry(s, "spells")
-							if f then
-								f.data["currentCD"] = lockoutTime
-								f.data["overrideCD"] = true
-							end
-						end
-					end
+					LockOut(secondarySpellName, lockoutTime)
 				end
 			end
 		end
@@ -586,48 +592,7 @@ function CDTL3:CheckEdgeCases(spellName)
 				secondarySpellName = "Lay on Hands"
 			end
 
-			local s = CDTL3:GetSpellSettings(secondarySpellName, "spells")
-			if s then
-				if not CDTL3:IsIgnored(s, "spells") then
-					local ef = CDTL3:GetExistingCooldown(secondarySpellName, "spells")
-					if ef then
-						if ef.data["currentCD"] < lockoutTime then
-							CDTL3:SendToLane(ef)
-							CDTL3:SendToBarFrame(ef)
-
-							ef.data["currentCD"] = lockoutTime
-							ef.data["overrideCD"] = true
-						end
-					else
-						if CDTL3.db.profile.global["spells"]["enabled"] then
-							local f = CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-							f.data["currentCD"] = lockoutTime
-							f.data["overrideCD"] = true
-
-							if CDTL3:IsUsedBy("spells", s["id"]) then
-								--CDTL3:Print("USEDBY MATCH: "..s["id"])
-							else
-								--CDTL3:Print("NEW USEDBY: "..s["id"])
-								CDTL3:AddUsedBy("spells", s["id"], CDTL3.player["guid"])
-							end
-						end
-					end
-				end
-			else
-				s = CDTL3:TableCopy(CDTL3:GetSpellData(0, secondarySpellName))
-				if s then
-					CDTL3:ApplyEntryDefaults(s, "spells")
-					s["icon"] = select(2, CDTL3:GetSpellInfo(s["id"]))
-					s["link"] = CDTL3:GetSpellLink(s["id"])
-					s["ignored"] = CDTL3:IgnoredByDefault("spells", s["bCD"])
-
-					local f = CDTL3:SaveNewEntry(s, "spells")
-					if f then
-						f.data["currentCD"] = lockoutTime
-						f.data["overrideCD"] = true
-					end
-				end
-			end
+			LockOut(secondarySpellName, lockoutTime)
 		end
 	end
 end
@@ -2275,6 +2240,52 @@ function CDTL3:ScanSharedSpellCooldown(initialName, initialDuration)
 	end
 end
 
+-- A known spell with a saved entry: put it on its lane and bar frame, or start a cooldown for it,
+-- unless it is ignored
+function CDTL3:ShowKnownSpell(s, spellName)
+	if not CDTL3:IsIgnored(s, "spells") then
+		local ef = CDTL3:GetExistingCooldown(s["name"], "spells")
+		if ef then
+			CDTL3:SendToLane(ef)
+			CDTL3:SendToBarFrame(ef)
+			CDTL3:CheckEdgeCases(spellName)
+		else
+			if CDTL3.db.profile.global["spells"]["enabled"] then
+				CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
+				CDTL3:CheckEdgeCases(spellName)
+
+				if CDTL3:IsUsedBy("spells", s["id"]) then
+					--CDTL3:Print("USEDBY MATCH: "..s["id"])
+				else
+					CDTL3:AddUsedBy("spells", s["id"], CDTL3.player["guid"])
+				end
+			end
+		end
+	end
+end
+
+-- One spellbook spell: if it is cooling down, show it (saving a new entry when it has none)
+local function ScanSpell(spellName, spellID)
+	local _, duration = CDTL3:GetSpellCooldown(spellID)
+
+	if duration > 1.5 then
+		if CDTL3.db.profile.global["debugMode"] then
+			CDTL3:Print("COOLINGDOWN: "..tostring(spellName).." - "..spellID)
+		end
+
+		local s = CDTL3:GetSpellSettings(spellName, "spells")
+		if s then
+			CDTL3:ShowKnownSpell(s, spellName)
+		else
+			local infoName, icon = CDTL3:GetSpellInfo(spellID)
+			s = CDTL3:NewSpellEntry(spellID, infoName, icon, "spells")
+			if CDTL3:SaveNewEntry(s, "spells") then
+				CDTL3:CheckEdgeCases(infoName)
+			end
+		end
+	end
+end
+
 function CDTL3:ScanCurrentCooldowns(class, race)
 	-- SPELLS
 	if CDTL3.retailAPI then
@@ -2288,42 +2299,7 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 				local spellName = C_SpellBook.GetSpellBookItemName(j, Enum.SpellBookSpellBank.Player)
 				local spellID = select(2,C_SpellBook.GetSpellBookItemType(j, Enum.SpellBookSpellBank.Player))
 
-				local _, duration = CDTL3:GetSpellCooldown(spellID)
-
-				if duration > 1.5 then
-					if CDTL3.db.profile.global["debugMode"] then
-						CDTL3:Print("COOLINGDOWN: "..tostring(spellName).." - "..spellID)
-					end
-
-					local s = CDTL3:GetSpellSettings(spellName, "spells")
-					if s then
-						if not CDTL3:IsIgnored(s, "spells") then
-							local ef = CDTL3:GetExistingCooldown(s["name"], "spells")
-							if ef then
-								CDTL3:SendToLane(ef)
-								CDTL3:SendToBarFrame(ef)
-								CDTL3:CheckEdgeCases(spellName)
-							else
-								if CDTL3.db.profile.global["spells"]["enabled"] then
-									CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-									CDTL3:CheckEdgeCases(spellName)
-
-									if CDTL3:IsUsedBy("spells", s["id"]) then
-										--CDTL3:Print("USEDBY MATCH: "..s["id"])
-									else
-										CDTL3:AddUsedBy("spells", s["id"], CDTL3.player["guid"])
-									end
-								end
-							end
-						end
-					else
-						local infoName, icon = CDTL3:GetSpellInfo(spellID)
-						s = CDTL3:NewSpellEntry(spellID, infoName, icon, "spells")
-						if CDTL3:SaveNewEntry(s, "spells") then
-							CDTL3:CheckEdgeCases(infoName)
-						end
-					end
-				end
+				ScanSpell(spellName, spellID)
 			end
 		end
 	else
@@ -2336,42 +2312,7 @@ function CDTL3:ScanCurrentCooldowns(class, race)
 				---@diagnostic disable-next-line: undefined-global
 				local spellName, _, spellID = GetSpellBookItemName(j, BOOKTYPE_SPELL)
 				if spellID then
-					local _, duration = CDTL3:GetSpellCooldown(spellID)
-
-					if duration > 1.5 then
-						if CDTL3.db.profile.global["debugMode"] then
-							CDTL3:Print("COOLINGDOWN: "..tostring(spellName).." - "..spellID)
-						end
-
-						local s = CDTL3:GetSpellSettings(spellName, "spells")
-						if s then
-							if not CDTL3:IsIgnored(s, "spells") then
-								local ef = CDTL3:GetExistingCooldown(s["name"], "spells")
-								if ef then
-									CDTL3:SendToLane(ef)
-									CDTL3:SendToBarFrame(ef)
-									CDTL3:CheckEdgeCases(spellName)
-								else
-									if CDTL3.db.profile.global["spells"]["enabled"] then
-										CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-										CDTL3:CheckEdgeCases(spellName)
-
-										if CDTL3:IsUsedBy("spells", s["id"]) then
-											--CDTL3:Print("USEDBY MATCH: "..s["id"])
-										else
-											CDTL3:AddUsedBy("spells", s["id"], CDTL3.player["guid"])
-										end
-									end
-								end
-							end
-						else
-							local infoName, icon = CDTL3:GetSpellInfo(spellID)
-							s = CDTL3:NewSpellEntry(spellID, infoName, icon, "spells")
-							if CDTL3:SaveNewEntry(s, "spells") then
-								CDTL3:CheckEdgeCases(infoName)
-							end
-						end
-					end
+					ScanSpell(spellName, spellID)
 				end
 			end
 		end

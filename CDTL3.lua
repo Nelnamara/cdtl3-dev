@@ -211,6 +211,52 @@ local function WithOverrides(base, overrides)
 	return copy
 end
 
+-- The usual text on an icon or bar (tags on, white, outlined); each text lists only what it changes.
+local ICON_TEXT = {
+	enabled = true,
+	used = true,
+	edit = false,
+	dtags = false,
+	ttags = false,
+	font = "Fira Sans Condensed",
+	color = { r = 1, g = 1, b = 1, a = 1 },
+	outline = "OUTLINE",
+	shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
+	shadX = 1.5,
+	shadY = -1,
+}
+
+-- The usual lane text of Mode and Custom Text (small, white, plain, left anchored).
+local MODE_TEXT = {
+	enabled = true,
+	used = true,
+	font = "Fira Sans Condensed",
+	size = 12,
+	color = { r = 1, g = 1, b = 1, a = 1 },
+	align = "CENTER",
+	anchor = "LEFT",
+	pos = 0,
+	offX = 0,
+	offY = 0,
+	outline = "",
+	shadColor = { r = 0, g = 0, b = 0, a = 1 },
+	shadX = 1.5,
+	shadY = -1,
+}
+
+-- The backdrop and border a bar frame and a ready frame start with
+local FRAME_BACK = {
+	bgTexture = "CDTL3 Smooth",
+	bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
+	border = {
+		style = "CDTL3 Shadow",
+		color = { r = 0, g = 0, b = 0, a = 0.25 },
+		size = 5,
+		padding = 5,
+		inset = 0,
+	},
+}
+
 -- Show (each lane, bar frame and ready frame): "GLOBAL" follows Global > Hide out of combat, or
 -- "ALWAYS", "COMBAT" (only in combat), "BOSS" (boss fights only). Dim instead of hide keeps the
 -- frame at dimAlpha while its Show rule would hide it (CDTL3:Autohide, Helpers.lua). The same
@@ -322,63 +368,32 @@ local laneDefaults = {
 			},
 		},
 
-		text1 = {
-			enabled = true,
-			used = true,
-			edit = false,
+		text1 = WithOverrides(ICON_TEXT, {
 			dtags = true,
-			ttags = false,
 			text = "[cd.stacks]",
-			font = "Fira Sans Condensed",
 			size = 11,
-			color = { r = 1, g = 1, b = 1, a = 1 },
 			align = "LEFT",
 			anchor = "TOPLEFT",
 			offX = 2,
 			offY = -7,
-			outline = "OUTLINE",
-			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text2 = {
-			enabled = true,
-			used = true,
-			edit = false,
-			dtags = false,
+		}),
+		text2 = WithOverrides(ICON_TEXT, {
 			ttags = true,
 			text = "[cd.time]",
-			font = "Fira Sans Condensed",
 			size = 16,
-			color = { r = 1, g = 1, b = 1, a = 1 },
 			align = "CENTER",
 			anchor = "CENTER",
 			offX = 0,
 			offY = 0,
-			outline = "OUTLINE",
-			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text3 = {
-			enabled = true,
-			used = true,
-			edit = false,
-			dtags = false,
-			ttags = false,
+		}),
+		text3 = WithOverrides(ICON_TEXT, {
 			text = "",
-			font = "Fira Sans Condensed",
 			size = 11,
-			color = { r = 1, g = 1, b = 1, a = 1 },
 			align = "CENTER",
 			anchor = "BOTTOM",
 			offX = 2,
 			offY = 5,
-			outline = "OUTLINE",
-			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-			shadX = 1.5,
-			shadY = -1,
-		},
+		}),
 	},
 
 	mode = {
@@ -418,198 +433,76 @@ local laneDefaults = {
 	},
 
 	modeText = {
-		text1 = {
-			enabled = true,
-			used = true,
+		text1 = WithOverrides(MODE_TEXT, {
 			edit = false,
 			text = "T1",
-			font = "Fira Sans Condensed",
-			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
 			align = "LEFT",
-			anchor = "LEFT",
-			pos = 0,
 			offX = 5,
-			offY = 0,
-			outline = "",
-			shadColor = { r = 0, g = 0, b = 0, a = 1 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text2 = {
-			enabled = true,
-			used = true,
+		}),
+		text2 = WithOverrides(MODE_TEXT, {
 			text = "T2",
-			font = "Fira Sans Condensed",
-			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
-			align = "CENTER",
-			anchor = "LEFT",
 			pos = 0.25,
-			offX = 0,
-			offY = 0,
-			outline = "",
-			shadColor = { r = 0, g = 0, b = 0, a = 1 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text3 = {
-			enabled = true,
-			used = true,
+		}),
+		text3 = WithOverrides(MODE_TEXT, {
 			text = "T3",
-			font = "Fira Sans Condensed",
-			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
-			align = "CENTER",
-			anchor = "LEFT",
 			pos = 0.5,
-			offX = 0,
-			offY = 0,
-			outline = "",
-			shadColor = { r = 0, g = 0, b = 0, a = 1 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text4 = {
-			enabled = true,
-			used = true,
+		}),
+		text4 = WithOverrides(MODE_TEXT, {
 			text = "T4",
-			font = "Fira Sans Condensed",
-			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
-			align = "CENTER",
-			anchor = "LEFT",
 			pos = 0.75,
-			offX = 0,
-			offY = 0,
-			outline = "",
-			shadColor = { r = 0, g = 0, b = 0, a = 1 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text5 = {
-			enabled = true,
-			used = true,
+		}),
+		text5 = WithOverrides(MODE_TEXT, {
 			text = "T5",
-			font = "Fira Sans Condensed",
-			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
 			align = "RIGHT",
-			anchor = "LEFT",
 			pos = 1,
 			offX = -5,
-			offY = 0,
-			outline = "",
-			shadColor = { r = 0, g = 0, b = 0, a = 1 },
-			shadX = 1.5,
-			shadY = -1,
-		},
+		}),
 	},
 	customText = {
-		text1 = {
+		text1 = WithOverrides(MODE_TEXT, {
 			enabled = false,
-			used = true,
 			edit = false,
 			dtags = false,
 			ttags = false,
 			text = "Custom Text 1",
-			font = "Fira Sans Condensed",
-			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
-			align = "CENTER",
 			anchor = "TOPLEFT",
-			pos = 0,
-			offX = 0,
-			offY = 0,
-			outline = "",
-			shadColor = { r = 0, g = 0, b = 0, a = 1 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text2 = {
+		}),
+		text2 = WithOverrides(MODE_TEXT, {
 			enabled = false,
-			used = true,
 			edit = false,
 			dtags = false,
 			ttags = false,
 			text = "Custom Text 2",
-			font = "Fira Sans Condensed",
-			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
-			align = "CENTER",
 			anchor = "TOPRIGHT",
-			pos = 0,
-			offX = 0,
-			offY = 0,
-			outline = "",
-			shadColor = { r = 0, g = 0, b = 0, a = 1 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text3 = {
+		}),
+		text3 = WithOverrides(MODE_TEXT, {
 			enabled = false,
-			used = true,
 			edit = false,
 			dtags = false,
 			ttags = false,
 			text = "Custom Text 3",
-			font = "Fira Sans Condensed",
-			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
-			align = "CENTER",
 			anchor = "CENTER",
-			pos = 0,
-			offX = 0,
-			offY = 0,
-			outline = "",
-			shadColor = { r = 0, g = 0, b = 0, a = 1 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text4 = {
+		}),
+		text4 = WithOverrides(MODE_TEXT, {
 			enabled = false,
-			used = true,
 			edit = false,
 			dtags = false,
 			ttags = false,
 			text = "Custom Text 4",
-			font = "Fira Sans Condensed",
-			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
-			align = "CENTER",
 			anchor = "BOTTOMLEFT",
-			pos = 0,
-			offX = 0,
-			offY = 0,
-			outline = "",
-			shadColor = { r = 0, g = 0, b = 0, a = 1 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text5 = {
+		}),
+		text5 = WithOverrides(MODE_TEXT, {
 			enabled = false,
-			used = true,
 			edit = false,
 			dtags = false,
 			ttags = false,
 			text = "Custom Text 5",
-			font = "Fira Sans Condensed",
-			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
-			align = "CENTER",
 			anchor = "BOTTOMRIGHT",
-			pos = 0,
-			offX = 0,
-			offY = 0,
-			outline = "",
-			shadColor = { r = 0, g = 0, b = 0, a = 1 },
-			shadX = 1.5,
-			shadY = -1,
-		},
+		}),
 	},
 }
 
-local barFrameDefaults = {
+local barFrameDefaults = WithOverrides(FRAME_BACK, {
 	enabled = true,
 	showMode = "GLOBAL", dimInsteadOfHide = false, dimAlpha = 0.3,
 	name = "Bar Frame 1",
@@ -635,17 +528,6 @@ local barFrameDefaults = {
 		textureColor = { r = 1, g = 1, b = 1, a = 0.5 },
 
 		width = 5,
-	},
-
-	bgTexture = "CDTL3 Smooth",
-	bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-
-	border = {
-		style = "CDTL3 Shadow",
-		color = { r = 0, g = 0, b = 0, a = 0.25 },
-		size = 5,
-		padding = 5,
-		inset = 0,
 	},
 
 	bar = {
@@ -681,67 +563,40 @@ local barFrameDefaults = {
 			inset = 0,
 		},
 
-		text1 = {
-			enabled = true,
-			used = true,
-			edit = false,
+		text1 = WithOverrides(ICON_TEXT, {
 			dtags = true,
-			ttags = false,
 			text = "[cd.stacks]",
-			font = "Fira Sans Condensed",
 			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
 			align = "CENTER",
 			anchor = "LEFT",
 			offX = 14,
 			offY = 0,
-			outline = "OUTLINE",
-			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
 			shadX = 0,
 			shadY = 0,
-		},
-		text2 = {
-			enabled = true,
-			used = true,
-			edit = false,
-			dtags = false,
-			ttags = false,
+		}),
+		text2 = WithOverrides(ICON_TEXT, {
 			text = "[cd.name]",
-			font = "Fira Sans Condensed",
 			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
 			align = "LEFT",
 			anchor = "LEFT",
 			offX = 30,
 			offY = 0,
 			outline = "",
-			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text3 = {
-			enabled = true,
-			used = true,
-			edit = false,
-			dtags = false,
+		}),
+		text3 = WithOverrides(ICON_TEXT, {
 			ttags = true,
 			text = "[cd.time]",
-			font = "Fira Sans Condensed",
 			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
 			align = "RIGHT",
 			anchor = "RIGHT",
 			offX = -5,
 			offY = 0,
 			outline = "",
-			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-			shadX = 1.5,
-			shadY = -1,
-		},
+		}),
 	}
-}
+})
 
-local readyDefaults = {
+local readyDefaults = WithOverrides(FRAME_BACK, {
 	enabled = true,
 	showMode = "GLOBAL", dimInsteadOfHide = false, dimAlpha = 0.3,
 	name = "Ready 1",
@@ -761,17 +616,6 @@ local readyDefaults = {
 	relativeTo = "CENTER",
 	anchor = { to = "SCREEN", frame = "", side = "ABOVE", x = 0, y = 0 },
 	alpha = 1,
-
-	bgTexture = "CDTL3 Smooth",
-	bgTextureColor = { r = 0.15, g = 0.15, b = 0.15, a = 0.5 },
-
-	border = {
-		style = "CDTL3 Shadow",
-		color = { r = 0, g = 0, b = 0, a = 0.25 },
-		size = 5,
-		padding = 5,
-		inset = 0,
-	},
 
 	icons = {
 		size = 50,
@@ -805,65 +649,33 @@ local readyDefaults = {
 			},
 		},
 
-		text1 = {
-			enabled = true,
-			used = true,
-			edit = false,
-			dtags = false,
-			ttags = false,
+		text1 = WithOverrides(ICON_TEXT, {
 			text = "[cd.name.s]",
-			font = "Fira Sans Condensed",
 			size = 18,
-			color = { r = 1, g = 1, b = 1, a = 1 },
 			align = "CENTER",
 			anchor = "CENTER",
 			offX = 0,
 			offY = 7,
-			outline = "OUTLINE",
-			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text2 = {
-			enabled = true,
-			used = true,
-			edit = false,
-			dtags = false,
-			ttags = false,
+		}),
+		text2 = WithOverrides(ICON_TEXT, {
 			text = "READY",
-			font = "Fira Sans Condensed",
 			size = 12,
-			color = { r = 1, g = 1, b = 1, a = 1 },
 			align = "CENTER",
 			anchor = "CENTER",
 			offX = 0,
 			offY = -7,
-			outline = "OUTLINE",
-			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-			shadX = 1.5,
-			shadY = -1,
-		},
-		text3 = {
+		}),
+		text3 = WithOverrides(ICON_TEXT, {
 			enabled = false,
-			used = true,
-			edit = false,
-			dtags = false,
-			ttags = false,
 			text = "[cd.type]",
-			font = "Fira Sans Condensed",
 			size = 10,
-			color = { r = 1, g = 1, b = 1, a = 1 },
 			align = "CENTER",
 			anchor = "BOTTOM",
 			offX = 0,
 			offY = 7,
-			outline = "OUTLINE",
-			shadColor = { r = 0, g = 0, b = 0, a = 0.5 },
-			shadX = 1.5,
-			shadY = -1,
-		},
+		}),
 	},
-}
+})
 
 local defaults = {
     profile = {
@@ -1529,15 +1341,8 @@ function CDTL3:ChatCommand(input)
     end
 end
 
-private.CreateDebugFrame = function()
-	local frameName = "CDTL3_Debug_Frame"
-	local f = CreateFrame("Frame", frameName, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-
-	f:ClearAllPoints()
-	f:SetPoint("TOP", 300, -75)
-	f:SetSize(300, 200)
-
-	-- BACKGROUND
+-- the dark panel behind the debug and unlock boxes
+private.PanelBackground = function(f)
 	f.bg = f:CreateTexture(nil, "BACKGROUND")
 	-- SetAllPoints(true) fills the parent; the definitions only take a region there
 	---@diagnostic disable-next-line: param-type-mismatch
@@ -1548,6 +1353,18 @@ private.CreateDebugFrame = function()
 		CDTL3.colors["db"]["b"],
 		CDTL3.colors["db"]["a"]
 	)
+end
+
+private.CreateDebugFrame = function()
+	local frameName = "CDTL3_Debug_Frame"
+	local f = CreateFrame("Frame", frameName, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+
+	f:ClearAllPoints()
+	f:SetPoint("TOP", 300, -75)
+	f:SetSize(300, 200)
+
+	-- BACKGROUND
+	private.PanelBackground(f)
 
 	-- Media.lua registers this font (and LSM falls back to its default), so Fetch gives a path
 	f.text = f:CreateFontString(nil,"ARTWORK")
@@ -1810,16 +1627,7 @@ private.CreateUnlockFrame = function()
 	f:SetSize(180, 70)
 
 	-- BACKGROUND
-	f.bg = f:CreateTexture(nil, "BACKGROUND")
-	-- SetAllPoints(true) fills the parent; the definitions only take a region there
-	---@diagnostic disable-next-line: param-type-mismatch
-	f.bg:SetAllPoints(true)
-	f.bg:SetColorTexture(
-		CDTL3.colors["db"]["r"],
-		CDTL3.colors["db"]["g"],
-		CDTL3.colors["db"]["b"],
-		CDTL3.colors["db"]["a"]
-	)
+	private.PanelBackground(f)
 
 	-- BORDER
 	f.bd = CreateFrame("Frame", "CDTL3_Unlock_Frame_BD", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
@@ -2677,25 +2485,7 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 				end
 
 				-- the Ignored box, or a Filters > Spells rule (Show only the ticked spells, Only for this spec)
-				if not CDTL3:IsIgnored(s, "spells") then
-					local ef = CDTL3:GetExistingCooldown(s["name"], "spells")
-					if ef then
-						CDTL3:SendToLane(ef)
-						CDTL3:SendToBarFrame(ef)
-						CDTL3:CheckEdgeCases(spellName)
-					else
-						if CDTL3.db.profile.global["spells"]["enabled"] then
-							CDTL3:CreateCooldown(CDTL3:GetUID(),"spells" , s)
-							CDTL3:CheckEdgeCases(spellName)
-
-							if CDTL3:IsUsedBy("spells", s["id"]) then
-								--CDTL3:Print("USEDBY MATCH: "..s["id"])
-							else
-								CDTL3:AddUsedBy("spells", s["id"], CDTL3.player["guid"])
-							end
-						end
-					end
-				end
+				CDTL3:ShowKnownSpell(s, spellName)
 			else
 				s = CDTL3:NewSpellEntry(spellID, spellName, icon, "spells")
 				if CDTL3:SaveNewEntry(s, "spells") then

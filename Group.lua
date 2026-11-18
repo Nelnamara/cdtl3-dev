@@ -664,32 +664,13 @@ local SLOT_W, ICON, GAP, PADX, PADY = 40, 40, 8, 10, 8
 local GOLD, GREY, GREEN, RED = { 1, 0.82, 0 }, { 0.604, 0.627, 0.651 }, { 0.369, 0.941, 0.369 }, { 1, 0.478, 0.42 }
 private.STATE_COLOR = { up = GREEN, ready = GREEN, sated = RED, proc = GOLD, cooling = GREY }
 
--- four bars round a frame, outside its edge: a border (thick, opaque) or a soft shadow (thick, faint)
+-- four bars round a frame (drawn by IconFx.lua; here they default to the BACKGROUND layer)
 local function Ring(frame, thick, r, g, b, a, layer)
-	local ring = {}
-	for i = 1, 4 do
-		ring[i] = frame:CreateTexture(nil, layer or "BACKGROUND")
-		ring[i]:SetColorTexture(r, g, b, a)
-	end
-	ring[1]:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", -thick, 0)
-	ring[1]:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", thick, 0)
-	ring[1]:SetHeight(thick)
-	ring[2]:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", -thick, 0)
-	ring[2]:SetPoint("TOPRIGHT", frame, "BOTTOMRIGHT", thick, 0)
-	ring[2]:SetHeight(thick)
-	ring[3]:SetPoint("TOPRIGHT", frame, "TOPLEFT", 0, 0)
-	ring[3]:SetPoint("BOTTOMRIGHT", frame, "BOTTOMLEFT", 0, 0)
-	ring[3]:SetWidth(thick)
-	ring[4]:SetPoint("TOPLEFT", frame, "TOPRIGHT", 0, 0)
-	ring[4]:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", 0, 0)
-	ring[4]:SetWidth(thick)
-	return ring
+	return CDTL3.IconFx.Ring(frame, thick, r, g, b, a, layer or "BACKGROUND")
 end
 
 local function RingShow(ring, shown)
-	for i = 1, 4 do
-		if shown then ring[i]:Show() else ring[i]:Hide() end
-	end
+	CDTL3.IconFx.RingShow(ring, shown)
 end
 
 private.SLOTS = { L["Lust"], L["Sated"], L["Trinket 1"], L["Trinket 2"], L["Potion"] }

@@ -92,6 +92,8 @@ private.RingShow = function(ring, shown)
 	end
 end
 
+FX.Ring, FX.RingShow = private.Ring, private.RingShow
+
 -- the saved entry's settings on a live cooldown (CreateCooldown)
 function FX:CopyEntry(d, e)
 	for i = 1, #private.ENTRY_KEYS do
