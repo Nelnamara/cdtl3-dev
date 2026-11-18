@@ -395,8 +395,6 @@ private.PlayerPos = function()
 			if v then
 				-- v is only set when mapID is
 				---@diagnostic disable-next-line: param-type-mismatch
-				-- v is only set when mapID is
-				---@diagnostic disable-next-line: param-type-mismatch
 				local cont, world = C_Map.GetWorldPosFromMapPos(mapID, v)
 				local x, y = private.XY(world)
 				if type(cont) == "number" and x then
