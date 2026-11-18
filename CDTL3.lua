@@ -1344,8 +1344,7 @@ end
 -- the dark panel behind the debug and unlock boxes
 private.PanelBackground = function(f)
 	f.bg = f:CreateTexture(nil, "BACKGROUND")
-	-- SetAllPoints(true) fills the parent; the definitions only take a region there
-	---@diagnostic disable-next-line: param-type-mismatch
+	-- SetAllPoints(true) fills the parent
 	f.bg:SetAllPoints(true)
 	f.bg:SetColorTexture(
 		CDTL3.colors["db"]["r"],
