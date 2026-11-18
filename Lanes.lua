@@ -143,8 +143,19 @@ function CDTL3:RefreshLane(i)
 	private.UpdateText(f, s)
 
 	-- ANIMATION
-	-- Fade animations are created once per frame; only their alpha targets change on
-	-- refresh (recreating them on every refresh leaked a pair of groups each time).
+	CDTL3:SetFadeAnimations(f, s["alpha"])
+
+	-- EFFECTS: burst window, refresh zone, Ready-by list (IconFx.lua)
+	CDTL3.IconFx:RefreshLane(f, s)
+
+	-- DEBUG/UNLOCK (its size is set above)
+	CDTL3:FinishFrameRefresh(f, s)
+end
+
+-- Lanes, bar frames and ready frames: the fade in and out to alpha. They are made once per frame
+-- and only their alpha targets change on a refresh (making them on every refresh leaked a pair of
+-- groups each time).
+function CDTL3:SetFadeAnimations(f, alpha)
 	if not f.animateIn then
 		f.animateIn = f:CreateAnimationGroup()
 		f.animateIn:SetLooping("NONE")
@@ -164,14 +175,15 @@ function CDTL3:RefreshLane(i)
 	end
 
 	f.animateIn.fade:SetFromAlpha(0)
-	f.animateIn.fade:SetToAlpha(s["alpha"])
-	f.animateOut.fade:SetFromAlpha(s["alpha"])
+	f.animateIn.fade:SetToAlpha(alpha)
+	f.animateOut.fade:SetFromAlpha(alpha)
 	f.animateOut.fade:SetToAlpha(0)
+end
 
-	-- EFFECTS: burst window, refresh zone, Ready-by list (IconFx.lua)
-	CDTL3.IconFx:RefreshLane(f, s)
-
-	-- DEBUG/UNLOCK
+-- Lanes, bar frames and ready frames, at the end of a refresh: the debug and unlock box (f.db, which
+-- the caller has sized) and its name, then show or hide the frame, lock or unlock it and turn debug
+-- mode on or off, as the settings say.
+function CDTL3:FinishFrameRefresh(f, s)
 	f.db:ClearAllPoints()
 	f.db:SetPoint("CENTER", 0, 0)
 	f.db.text:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 12)
@@ -209,10 +221,18 @@ end
 private.RefreshText = function(f, s)
 	-- MODE TEXT
 	for i = 1, 10, 1 do
+		-- slots 1 to 5 are the mode texts (t1..t5), 6 to 10 the custom texts (c1..c5)
 		---@type table
 		local tSettings = nil
 		---@type table
 		local tObject = nil
+		if i <= 5 then
+			tSettings = s["modeText"]["text"..i]
+			tObject = f["t"..i]
+		else
+			tSettings = s["customText"]["text"..(i - 5)]
+			tObject = f["c"..(i - 5)]
+		end
 
 		local anchor = ""
 		local align = ""
@@ -220,9 +240,6 @@ private.RefreshText = function(f, s)
 		local xOffset = 0
 
 		if i == 1 then
-			tSettings = s["modeText"]["text1"]
-			tObject = f.t1
-
 			if s["vertical"] then
 				anchor = "BOTTOM"
 				align = "CENTER"
@@ -245,60 +262,8 @@ private.RefreshText = function(f, s)
 					xOffset = -xOffset
 				end
 			end
-		elseif i == 2 then
-			tSettings = s["modeText"]["text2"]
-			tObject = f.t2
-
-			if s["vertical"] then
-				anchor = "BOTTOM"
-				align = tSettings["align"]
-				position = tSettings["pos"]
-				xOffset = tSettings["offX"]
-
-				if s["reversed"] then
-					anchor = "TOP"
-					position = -position
-				end
-			else
-				anchor = "LEFT"
-				align = tSettings["align"]
-				position = tSettings["pos"]
-				xOffset = tSettings["offX"]
-
-				if s["reversed"] then
-					anchor = "RIGHT"
-					position = -position
-				end
-			end
-		elseif i == 3 then
-			tSettings = s["modeText"]["text3"]
-			tObject = f.t3
-
-			if s["vertical"] then
-				anchor = "BOTTOM"
-				align = tSettings["align"]
-				position = tSettings["pos"]
-				xOffset = tSettings["offX"]
-
-				if s["reversed"] then
-					anchor = "TOP"
-					position = -position
-				end
-			else
-				anchor = "LEFT"
-				align = tSettings["align"]
-				position = tSettings["pos"]
-				xOffset = tSettings["offX"]
-
-				if s["reversed"] then
-					anchor = "RIGHT"
-					position = -position
-				end
-			end
-		elseif i == 4 then
-			tSettings = s["modeText"]["text4"]
-			tObject = f.t4
-
+		elseif i <= 4 then
+			-- the three marks between the ends
 			if s["vertical"] then
 				anchor = "BOTTOM"
 				align = tSettings["align"]
@@ -321,9 +286,6 @@ private.RefreshText = function(f, s)
 				end
 			end
 		elseif i == 5 then
-			tSettings = s["modeText"]["text5"]
-			tObject = f.t5
-
 			if s["vertical"] then
 				anchor = "BOTTOM"
 				align = "CENTER"
@@ -346,42 +308,7 @@ private.RefreshText = function(f, s)
 					xOffset = -xOffset
 				end
 			end
-		elseif i == 6 then
-			tSettings = s["customText"]["text1"]
-			tObject = f.c1
-
-			anchor = tSettings["anchor"]
-			align = tSettings["align"]
-			position = tSettings["pos"]
-			xOffset = tSettings["offX"]
-		elseif i == 7 then
-			tSettings = s["customText"]["text2"]
-			tObject = f.c2
-
-			anchor = tSettings["anchor"]
-			align = tSettings["align"]
-			position = tSettings["pos"]
-			xOffset = tSettings["offX"]
-		elseif i == 8 then
-			tSettings = s["customText"]["text3"]
-			tObject = f.c3
-
-			anchor = tSettings["anchor"]
-			align = tSettings["align"]
-			position = tSettings["pos"]
-			xOffset = tSettings["offX"]
-		elseif i == 9 then
-			tSettings = s["customText"]["text4"]
-			tObject = f.c4
-
-			anchor = tSettings["anchor"]
-			align = tSettings["align"]
-			position = tSettings["pos"]
-			xOffset = tSettings["offX"]
-		elseif i == 10 then
-			tSettings = s["customText"]["text5"]
-			tObject = f.c5
-
+		else
 			anchor = tSettings["anchor"]
 			align = tSettings["align"]
 			position = tSettings["pos"]
@@ -1206,20 +1133,7 @@ private.SetModeText = function(f, s)
 		st["text4"]["pos"] = s["mode"]["split"]["s3p"]
 		st["text5"]["text"] = "100%"
 
-		local count = CDTL3:SplitCount(s["mode"]["split"])
-		if count == 1 then
-			st["text2"]["used"] = true
-			st["text3"]["used"] = false
-			st["text4"]["used"] = false
-		elseif count == 2 then
-			st["text2"]["used"] = true
-			st["text3"]["used"] = true
-			st["text4"]["used"] = false
-		elseif count == 3 then
-			st["text2"]["used"] = true
-			st["text3"]["used"] = true
-			st["text4"]["used"] = true
-		end
+		private.UseSplitMarks(st, CDTL3:SplitCount(s["mode"]["split"]), 1)
 	elseif mode == "SPLIT_ABS" then
 		local max = s["mode"]["splitAbs"]["max"]
 		tFormat = s["mode"]["splitAbs"]["timeFormat"]
@@ -1234,23 +1148,16 @@ private.SetModeText = function(f, s)
 		st["text5"]["text"] = CDTL3:ConvertTime(max, tFormat)
 
 		-- a mark at or past Max Time isn't drawn (a 3:00 lane doesn't show a 10m mark inside it)
-		local count = CDTL3:SplitAbsCount(s["mode"]["splitAbs"])
-		if count == 0 then
-			st["text2"]["used"] = false
-			st["text3"]["used"] = false
-			st["text4"]["used"] = false
-		elseif count == 1 then
-			st["text2"]["used"] = true
-			st["text3"]["used"] = false
-			st["text4"]["used"] = false
-		elseif count == 2 then
-			st["text2"]["used"] = true
-			st["text3"]["used"] = true
-			st["text4"]["used"] = false
-		elseif count == 3 then
-			st["text2"]["used"] = true
-			st["text3"]["used"] = true
-			st["text4"]["used"] = true
+		private.UseSplitMarks(st, CDTL3:SplitAbsCount(s["mode"]["splitAbs"]), 0)
+	end
+end
+
+-- Split lanes: the marks between the ends (text2 to text4) show the first count of them. A count
+-- outside lowest..3 leaves them as they are (a Split (%) count starts at 1, Split (Time) at 0).
+private.UseSplitMarks = function(st, count, lowest)
+	if count and count >= lowest and count <= 3 then
+		for k = 1, 3 do
+			st["text"..(k + 1)]["used"] = k <= count
 		end
 	end
 end
