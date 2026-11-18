@@ -233,9 +233,11 @@ function CDTL3:InBossFight()
 	end
 
 	local ok, yes = pcall(function()
-		-- the old global, existence-guarded; where it is gone the boss1 check decides
+		-- every client has C_InstanceEncounter's call; the bare global is only Blizzard's deprecation
+		-- copy of it, gone when a player turns the fallbacks off
 		---@diagnostic disable-next-line: undefined-global
-		if IsEncounterInProgress and IsEncounterInProgress() == true then
+		local inEncounter = (C_InstanceEncounter and C_InstanceEncounter.IsEncounterInProgress) or IsEncounterInProgress
+		if inEncounter and inEncounter() == true then
 			return true
 		end
 		return UnitExists("boss1") == true
@@ -1266,7 +1268,8 @@ function CDTL3:GetUnitAura(unit, i, filter)
 		end
 	else
 		local _
-		-- Classic clients only (the other branch uses C_UnitAuras)
+		-- a fallback only: every current client has C_UnitAuras.GetAuraDataByIndex, and on the Classic
+		-- clients UnitAura is Blizzard's deprecation copy of it
 		---@diagnostic disable-next-line: undefined-global
 		name, icon, count, _, duration, expirationTime, _, _, _, spellID = UnitAura(unit, i, filter)
 	end
