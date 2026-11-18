@@ -38,33 +38,39 @@ auto-defines (names in its globals list that aren't API functions). Warnings are
 Problems list shows. Hints (trailing spaces, unused callback arguments) only show as faded
 text.
 
-## Known noise (checked 17 Nov 2026)
+## The bar: 0 warnings (since 17 Nov 2026)
 
-Ketho's definitions follow Retail, so these warnings are expected and are not bugs:
+Both CDTL3 and CooldownCollaborator show no warnings. Ketho's definitions follow Retail, so some lines are
+right on purpose and still raise one. Each of those carries its reason in a comment and the marker
+`---@diagnostic disable-next-line: <code>` directly above it (never a file-wide disable). The kinds:
 
-- `undefined-global` for Classic-only calls (`GetSpellInfo`, `UnitAura`, `GetSpellCharges`,
-  `CombatLogGetCurrentEventInfo`, the old spellbook calls, `BOOKTYPE_SPELL`). Each one sits in
-  a Classic branch or behind an existence check. `data/flavor.ts` shows which game types have
-  each function (bits 0x1 Retail, 0x2 MoP, 0x4 TBC, 0x8 Era; Forever isn't covered).
-- `undefined-global` for our own named frames (`CDTL3_Lane_1`, `CDTL3_Ready_1_MF`, …), the old
-  `CDTL2DB`, and `AceGUIWidgetLSMlists` (from the skipped Libs).
-- `deprecated` on the `CDTL3.Compat` / `CC.Compat` shims and the overlay glow. Each is
-  guarded, with the current call as the fallback.
-- `undefined-field` on AceGUI widget methods, and on new Midnight calls the definitions don't
-  have yet (they run in pcalls).
-- `duplicate-set-field`: the deliberate wrappers (Profiles.lua `OnInitialize` and
-  `RefreshConfig`, ResourceBars.lua `RefreshLane`, ReadyBoard.lua `RefreshReady`, …).
-- `param-type-mismatch` on `SetAllPoints(true)`, `SetParent` of a BackdropTemplate frame and
-  `LSM:Fetch` results: typing quirks, not wrong calls.
-- `need-check-nil` where the checker can't see a table is always there: AceDB fills
-  `CDTL3.db.global` and `.profile` from the defaults, `Profiles.lua` `P.Store(true)` always
-  returns a table, and the combat log always gives an aura type. About 20 more come from the
-  per-mode `if` chains left in Cooldown.lua (bar settings) and Lanes.lua (text settings).
-- `redundant-parameter` on `TaxiGetNodeSlot` (Flights.lua) and `missing-parameter` on
-  `IsSpellKnown`: the definitions list the wrong argument count (the game's taxi call takes
-  three, and `IsSpellKnown`'s pet-spell flag is optional).
-- `cast-local-type`: a local reused for another type (a string that becomes a number). Style,
-  not a bug.
+- `undefined-global`: Classic-only calls inside a Classic branch or behind an existence check
+  (`GetSpellInfo`, `GetSpellCharges`, `CombatLogGetCurrentEventInfo`, the old spellbook calls,
+  `BOOKTYPE_SPELL`, `UnitAura`); the saved-variable globals (`CDTL3DB`, `CDTL2DB`); `AceGUIWidgetLSMlists`
+  from the skipped Libs.
+- `deprecated`: the `CDTL3.Compat` / `CC.Compat` shims and the old chat and glow fallbacks, each with the
+  current call first.
+- `duplicate-set-field`: the deliberate wrappers (Profiles.lua `OnInitialize` and `RefreshConfig`,
+  ResourceBars.lua `RefreshLane`, ReadyBoard.lua `RefreshReady`, ...).
+- `param-type-mismatch`, `redundant-parameter`, `missing-parameter`: definitions gaps
+  (`SetAllPoints(true)`, `TaxiGetNodeSlot`'s three arguments, `LSM:Fetch` results).
+
+A new warning is worth a look before it is marked: the one real bug the first run found (Request Rez
+calling `IsRaidLeader`, which no client has) was an `undefined-global`. To find markers that no longer
+cover a warning, blank them in a copy, run the check once, and see which next lines stay quiet.
+
+The hints left (about 800 in CDTL3, 1 in CooldownCollaborator) are unused callback parameters
+(AceConfig `info`, event arguments), kept on purpose because they show what each callback receives.
+
+## Copied code and code-change proof
+
+- `python tools/luals-check/dupes.py [addon folder] [--min N]` lists runs of N+ identical code lines
+  (default 8; indentation, blank lines and comments ignored) and every place each starts. CDTL3's
+  Data.lua spell rows and FlightData, and Collaborator's Data_*.lua tables, are data. Keep the rest at none
+  (17 Nov 2026: CDTL3's one run is three settings tabs' 8-line opening, plain layout).
+- `bash tools/luals-check/same-code.sh <git ref> <files>` compiles each file now and at the ref with Lua
+  5.1's luac, drops line numbers and memory addresses, and compares the instructions: SAME means only
+  comments, type notes or layout changed. (`luac -s` alone differs as soon as a line moves.)
 
 To check whether a function exists on a client, look in the per-client dumps in
 Ketho/BlizzardInterfaceResources (branches `live`, `forever`, `classic` = MoP,

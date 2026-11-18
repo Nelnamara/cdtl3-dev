@@ -1,5 +1,10 @@
 # CooldownTimeline 3
 
+## Unreleased
+
+- Under the hood: the code now passes the WoW API check that addon reviewers use with no warnings, and about 2,000 lines of copied code are gone. Nothing looks or works differently in game
+- Boss fights only now asks the game's current encounter call first, so it keeps working if you switch off Blizzard's old-API fallbacks
+
 ## v3.2.2
 
 - Icon borders no longer throw "secret number value" errors in combat on Retail and WoW: Forever. Since 3.1.0 an icon with a border (set by hand, or by the Minimal or Blizzard Modern look) spammed errors while it moved along the lane in combat and again when its cooldown finished. Thanks to TeZwo for posting the full error
