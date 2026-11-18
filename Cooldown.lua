@@ -120,8 +120,8 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 	end
 
 	-- ON UPDATE
-	f:HookScript("OnUpdate", function(self, elapsed)
-		private.CooldownUpdate(self, elapsed)
+	f:HookScript("OnUpdate", function(frame, elapsed)
+		private.CooldownUpdate(frame, elapsed)
 	end)
 
 	f.icon = CDTL3:CreateIcon(fName, f)
@@ -152,7 +152,7 @@ function CDTL3:CreateIcon(fName, cd)
 	f.tx = f:CreateTexture()
 
 	f.db = CreateFrame("Frame", frameName.."_DB", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	f.db:SetParent(f)
+	f.db:SetParent(f --[[@as Frame]])
 	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
 	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
 	if not CDTL3.db.profile.global["unlockFrames"] then
@@ -170,16 +170,16 @@ function CDTL3:CreateBar(fName, cd)
 	f.valid = cd.data["enabled"]
 
 	f.bar = CreateFrame("StatusBar", frameName.."_BA", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	f.bar:SetParent(f)
+	f.bar:SetParent(f --[[@as Frame]])
 	f.bar.transitionThreshold = 0
 	f.bar.bg = f:CreateTexture(nil, "BACKGROUND")
 
 	f.icon = CreateFrame("Frame", frameName.."_IC", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	f.icon:SetParent(f)
+	f.icon:SetParent(f --[[@as Frame]])
 	f.icon.tx = f.icon:CreateTexture(nil, "BACKGROUND")
 
 	f.db = CreateFrame("Frame", frameName.."_DB", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	f.db:SetParent(f)
+	f.db:SetParent(f --[[@as Frame]])
 	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
 	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
 	if not CDTL3.db.profile.global["unlockFrames"] then
@@ -778,6 +778,8 @@ function CDTL3:RefreshIcon(cd)
 			f.hl:ClearAllPoints()
 			f.hl:SetPoint("CENTER", 0, 0)
 			f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
+			-- SetAllPoints(true) fills the parent; the definitions only take a region there
+			---@diagnostic disable-next-line: param-type-mismatch
 			f.hl.tx:SetAllPoints(true)
 			f.hl.tx:SetColorTexture( 1, 1, 1, 0.5 )
 			-- fixed offset above the icon (border is +1); incrementing climbed on every refresh
@@ -788,7 +790,9 @@ function CDTL3:RefreshIcon(cd)
 			local style = readyFlash and "FLASH" or s["icons"]["highlight"]["style"]
 			-- The action-button glow isn't available on every client (e.g. Forever):
 			-- fall back to the plain border highlight there.
+			---@diagnostic disable-next-line: deprecated
 			if style == "GLOW" and ActionButton_ShowOverlayGlow then
+				---@diagnostic disable-next-line: deprecated
 				ActionButton_ShowOverlayGlow(f)
 			elseif style == "BORDER" or style == "GLOW" then
 				f.hl:SetBackdropBorderColor(
@@ -1873,7 +1877,7 @@ private.IconUpdate = function(f, elapsed)
 
 	if CDTL3.db.profile.global["notUsableTint"] then
 		if f.data["type"] == "spells" or f.data["type"] == "petspells" then
-			local usable, noPower = CDTL3:IsUsableSpell(f.data["id"])
+			local _, noPower = CDTL3:IsUsableSpell(f.data["id"])
 			if noPower then
 				if CDTL3.db.profile.global["notUsableDesaturate"] then
 					ic.tx:SetDesaturated(1)
@@ -2103,7 +2107,7 @@ private.ReadyAlert = function(f, s)
 		sound = s["nSound"]
 	end
 	if sound and sound ~= "None" then
-		PlaySoundFile(CDTL3.LSM:Fetch("sound", sound), "SFX")
+		PlaySoundFile(CDTL3.LSM:Fetch("sound", sound) --[[@as string|number]], "SFX")
 	end
 
 	if e and e["sayName"] then
@@ -2115,6 +2119,8 @@ end
 -- arriving is shown: one hidden on its lane for being over Max Time (Hide time surplus) used to stay
 -- hidden in the Ready frame after an early reset (Cold Snap, Preparation, Readiness). A highlighted
 -- icon stays the Highlight Duration.
+-- ReadyBoard.lua wraps this ("Stay until used" slots).
+---@diagnostic disable-next-line: duplicate-set-field
 function CDTL3:SendToReady(f)
 	local ic = f.icon
 	local s = nil
