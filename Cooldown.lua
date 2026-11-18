@@ -140,6 +140,17 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 	return f
 end
 
+-- An icon's or a bar's unlock box (frameName_DB): shown while frames are unlocked, and in debug mode
+private.CreateUnlockBox = function(f, frameName)
+	f.db = CreateFrame("Frame", frameName.."_DB", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+	f.db:SetParent(f --[[@as Frame]])
+	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
+	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
+	if not CDTL3.db.profile.global["unlockFrames"] then
+		f.db:Hide()
+	end
+end
+
 function CDTL3:CreateIcon(fName, cd)
 	local frameName = fName.."_Icon"
 	local f = CreateFrame("Frame", frameName, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
@@ -153,13 +164,7 @@ function CDTL3:CreateIcon(fName, cd)
 
 	f.tx = f:CreateTexture()
 
-	f.db = CreateFrame("Frame", frameName.."_DB", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	f.db:SetParent(f --[[@as Frame]])
-	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
-	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
-	if not CDTL3.db.profile.global["unlockFrames"] then
-		f.db:Hide()
-	end
+	private.CreateUnlockBox(f, frameName)
 
 	f:SetFrameLevel(20)
 	return f
@@ -180,13 +185,7 @@ function CDTL3:CreateBar(fName, cd)
 	f.icon:SetParent(f --[[@as Frame]])
 	f.icon.tx = f.icon:CreateTexture(nil, "BACKGROUND")
 
-	f.db = CreateFrame("Frame", frameName.."_DB", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	f.db:SetParent(f --[[@as Frame]])
-	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
-	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
-	if not CDTL3.db.profile.global["unlockFrames"] then
-		f.db:Hide()
-	end
+	private.CreateUnlockBox(f, frameName)
 
 	f:SetFrameLevel(20)
 	return f
@@ -201,6 +200,70 @@ end
 function CDTL3:RefreshAllIcons()
 	for _, cd in pairs(CDTL3.cooldowns) do
 		CDTL3:RefreshIcon(cd)
+	end
+end
+
+-- an icon's or a bar's texts 1 to 3, by number
+private.TEXT_KEYS = { "text1", "text2", "text3" }
+
+-- An icon's or a bar's texts (ss = its icons or bar settings), anchored to f. nudge2 is added to text 2's
+-- y offset (nil: none).
+private.RefreshTexts = function(f, cd, ss, nudge2)
+	if ss["text1"]["enabled"] or ss["text2"]["enabled"] or ss["text3"]["enabled"] then
+		if not f.txt then
+			f.txt = CreateFrame("Frame", f:GetName().."_TEXT", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+			f.txt:SetParent(f)
+			f.txt.bg = f.txt:CreateTexture(nil, "BACKGROUND")
+		end
+
+		for i = 1, 3 do
+			local key = private.TEXT_KEYS[i]
+			local ts = ss[key]
+			local t = f.txt[key]
+			if ts["enabled"] then
+				if not t then
+					t = f.txt:CreateFontString(nil, "ARTWORK")
+					f.txt[key] = t
+				end
+
+				local offY = ts["offY"]
+				if i == 2 and nudge2 then
+					offY = offY + nudge2
+				end
+				t:ClearAllPoints()
+				t:SetPoint(ts["align"], f, ts["anchor"], ts["offX"], offY)
+				local outline = ts["outline"]
+				if type(outline) ~= "string" or outline == "NONE" or outline == "" then outline = nil end
+				local font, size = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
+				if font and size > 0 then t:SetFont(font, size, outline) end
+				t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
+				t:SetTextColor(
+					ts["color"]["r"],
+					ts["color"]["g"],
+					ts["color"]["b"],
+					ts["color"]["a"]
+				)
+				t:SetShadowColor(
+					ts["shadColor"]["r"],
+					ts["shadColor"]["g"],
+					ts["shadColor"]["b"],
+					ts["shadColor"]["a"]
+				)
+				t:SetShadowOffset(ts["shadX"], ts["shadY"])
+				t:SetNonSpaceWrap(false)
+				t:Show()
+			elseif t then
+				t:Hide()
+			end
+		end
+	elseif f.txt then
+		-- all texts off: f.txt only exists if one was enabled before
+		for i = 1, 3 do
+			local t = f.txt[private.TEXT_KEYS[i]]
+			if t then
+				t:Hide()
+			end
+		end
 	end
 end
 
@@ -323,150 +386,7 @@ function CDTL3:RefreshBar(cd)
 	)
 
 	-- TEXT
-	if s["bar"]["text1"]["enabled"] or s["bar"]["text2"]["enabled"] or s["bar"]["text3"]["enabled"] then
-		if not f.txt then
-			f.txt = CreateFrame("Frame", f:GetName().."_TEXT", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-			f.txt:SetParent(f)
-			f.txt.bg = f.txt:CreateTexture(nil, "BACKGROUND")
-		end
-
-		-- TEXT1
-		if s["bar"]["text1"]["enabled"] then
-			if not f.txt.text1 then
-				f.txt.text1 = f.txt:CreateFontString(nil, "ARTWORK")
-			end
-
-			local ts = s["bar"]["text1"]
-			local t = f.txt.text1
-			t:ClearAllPoints()
-			t:SetPoint(
-					ts["align"],
-					f,
-					ts["anchor"],
-					ts["offX"],
-					ts["offY"]
-				)
-			local _ol = ts["outline"]
-			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
-			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
-			t:SetTextColor(
-					ts["color"]["r"],
-					ts["color"]["g"],
-					ts["color"]["b"],
-					ts["color"]["a"]
-				)
-			t:SetShadowColor(
-					ts["shadColor"]["r"],
-					ts["shadColor"]["g"],
-					ts["shadColor"]["b"],
-					ts["shadColor"]["a"]
-				)
-			t:SetShadowOffset(ts["shadX"], ts["shadY"])
-			t:SetNonSpaceWrap(false)
-			t:Show()
-		else
-			if f.txt.text1 then
-				f.txt.text1:Hide()
-			end
-		end
-		-- TEXT2
-		if s["bar"]["text2"]["enabled"] then
-			if not f.txt.text2 then
-				f.txt.text2 = f.txt:CreateFontString(nil, "ARTWORK")
-			end
-
-			local t = f.txt.text2
-			local ts = s["bar"]["text2"]
-			t:ClearAllPoints()
-			t:SetPoint(
-					ts["align"],
-					f,
-					ts["anchor"],
-					ts["offX"],
-					ts["offY"]
-				)
-			local _ol = ts["outline"]
-			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
-			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
-			t:SetTextColor(
-					ts["color"]["r"],
-					ts["color"]["g"],
-					ts["color"]["b"],
-					ts["color"]["a"]
-				)
-			t:SetShadowColor(
-					ts["shadColor"]["r"],
-					ts["shadColor"]["g"],
-					ts["shadColor"]["b"],
-					ts["shadColor"]["a"]
-				)
-			t:SetShadowOffset(ts["shadX"], ts["shadY"])
-			t:SetNonSpaceWrap(false)
-			t:Show()
-		else
-			if f.txt.text2 then
-				f.txt.text2:Hide()
-			end
-		end
-		-- TEXT3
-		if s["bar"]["text3"]["enabled"] then
-			if not f.txt.text3 then
-				f.txt.text3 = f.txt:CreateFontString(nil, "ARTWORK")
-			end
-
-			local t = f.txt.text3
-			local ts = s["bar"]["text3"]
-			t:ClearAllPoints()
-			t:SetPoint(
-					ts["align"],
-					f,
-					ts["anchor"],
-					ts["offX"],
-					ts["offY"]
-				)
-			local _ol = ts["outline"]
-			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
-			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
-			t:SetTextColor(
-					ts["color"]["r"],
-					ts["color"]["g"],
-					ts["color"]["b"],
-					ts["color"]["a"]
-				)
-			t:SetShadowColor(
-					ts["shadColor"]["r"],
-					ts["shadColor"]["g"],
-					ts["shadColor"]["b"],
-					ts["shadColor"]["a"]
-				)
-			t:SetShadowOffset(ts["shadX"], ts["shadY"])
-			t:SetNonSpaceWrap(false)
-			t:Show()
-		else
-			if f.txt.text3 then
-				f.txt.text3:Hide()
-			end
-		end
-	elseif f.txt then
-		-- all texts off: f.txt only exists if one was enabled before
-		if f.txt.text1 then
-			f.txt.text1:Hide()
-		end
-
-		if f.txt.text2 then
-			f.txt.text2:Hide()
-		end
-
-		if f.txt.text3 then
-			f.txt.text3:Hide()
-		end
-	end
+	private.RefreshTexts(f, cd, s["bar"])
 
 	-- TRANSITION
 	if s["transition"]["showTI"] then
@@ -593,151 +513,8 @@ function CDTL3:RefreshIcon(cd)
 	CDTL3:MasqueSkin(f, f.tx, cd.data["type"])
 
 	-- TEXT
-	if s["icons"]["text1"]["enabled"] or s["icons"]["text2"]["enabled"] or s["icons"]["text3"]["enabled"] then
-		if not f.txt then
-			f.txt = CreateFrame("Frame", f:GetName().."_TEXT", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-			f.txt:SetParent(f)
-			f.txt.bg = f.txt:CreateTexture(nil, "BACKGROUND")
-		end
-
-		-- TEXT1
-		if s["icons"]["text1"]["enabled"] then
-			if not f.txt.text1 then
-				f.txt.text1 = f.txt:CreateFontString(nil, "ARTWORK")
-			end
-
-			local ts = s["icons"]["text1"]
-			local t = f.txt.text1
-			t:ClearAllPoints()
-			t:SetPoint(
-					ts["align"],
-					f,
-					ts["anchor"],
-					ts["offX"],
-					ts["offY"]
-				)
-			local _ol = ts["outline"]
-			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
-			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
-			t:SetTextColor(
-					ts["color"]["r"],
-					ts["color"]["g"],
-					ts["color"]["b"],
-					ts["color"]["a"]
-				)
-			t:SetShadowColor(
-					ts["shadColor"]["r"],
-					ts["shadColor"]["g"],
-					ts["shadColor"]["b"],
-					ts["shadColor"]["a"]
-				)
-			t:SetShadowOffset(ts["shadX"], ts["shadY"])
-			t:SetNonSpaceWrap(false)
-			t:Show()
-		else
-			if f.txt.text1 then
-				f.txt.text1:Hide()
-			end
-		end
-		-- TEXT2
-		if s["icons"]["text2"]["enabled"] then
-			if not f.txt.text2 then
-				f.txt.text2 = f.txt:CreateFontString(nil, "ARTWORK")
-			end
-
-			local t = f.txt.text2
-			local ts = s["icons"]["text2"]
-			t:ClearAllPoints()
-			t:SetPoint(
-					ts["align"],
-					f,
-					ts["anchor"],
-					ts["offX"],
-					ts["offY"] + (f.fxNudge and 4 or 0)	-- charge pips stand under it (IconFx.lua)
-				)
-			local _ol = ts["outline"]
-			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
-			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
-			t:SetTextColor(
-					ts["color"]["r"],
-					ts["color"]["g"],
-					ts["color"]["b"],
-					ts["color"]["a"]
-				)
-			t:SetShadowColor(
-					ts["shadColor"]["r"],
-					ts["shadColor"]["g"],
-					ts["shadColor"]["b"],
-					ts["shadColor"]["a"]
-				)
-			t:SetShadowOffset(ts["shadX"], ts["shadY"])
-			t:SetNonSpaceWrap(false)
-			t:Show()
-		else
-			if f.txt.text2 then
-				f.txt.text2:Hide()
-			end
-		end
-		-- TEXT3
-		if s["icons"]["text3"]["enabled"] then
-			if not f.txt.text3 then
-				f.txt.text3 = f.txt:CreateFontString(nil, "ARTWORK")
-			end
-
-			local t = f.txt.text3
-			local ts = s["icons"]["text3"]
-			t:ClearAllPoints()
-			t:SetPoint(
-					ts["align"],
-					f,
-					ts["anchor"],
-					ts["offX"],
-					ts["offY"]
-				)
-			local _ol = ts["outline"]
-			if type(_ol) ~= "string" or _ol == "NONE" or _ol == "" then _ol = nil end
-			local _fnt, _sz = CDTL3.LSM:Fetch("font", ts["font"]), tonumber(ts["size"]) or 0
-			if _fnt and _sz > 0 then t:SetFont(_fnt, _sz, _ol) end
-			t:SetText(CDTL3:ConvertAllTextTags(ts["text"], cd))
-			t:SetTextColor(
-					ts["color"]["r"],
-					ts["color"]["g"],
-					ts["color"]["b"],
-					ts["color"]["a"]
-				)
-			t:SetShadowColor(
-					ts["shadColor"]["r"],
-					ts["shadColor"]["g"],
-					ts["shadColor"]["b"],
-					ts["shadColor"]["a"]
-				)
-			t:SetShadowOffset(ts["shadX"], ts["shadY"])
-			t:SetNonSpaceWrap(false)
-			t:Show()
-		else
-			if f.txt.text3 then
-				f.txt.text3:Hide()
-			end
-		end
-	else
-		if f.txt then
-			if f.txt.text1 then
-				f.txt.text1:Hide()
-			end
-
-			if f.txt.text2 then
-				f.txt.text2:Hide()
-			end
-
-			if f.txt.text3 then
-				f.txt.text3:Hide()
-			end
-		end
-	end
+	-- text 2 stands 4 px higher while charge pips show under it (IconFx.lua)
+	private.RefreshTexts(f, cd, s["icons"], f.fxNudge and 4 or 0)
 
 	-- BORDER
 	if s["icons"]["border"]["style"] ~= "None" then
@@ -1109,6 +886,10 @@ private.CalcLinearPosition = function(current, total, s)
 	return p
 end
 
+-- a split lane's marks by number: the value and the position of each (mode.split / mode.splitAbs)
+private.SPLIT_VALUES = { "s1v", "s2v", "s3v" }
+private.SPLIT_POSITIONS = { "s1p", "s2p", "s3p" }
+
 private.CalcSplitPosition = function(current, total, s)
 	local p = 1
 	local max = 100
@@ -1139,81 +920,28 @@ private.CalcSplitPosition = function(current, total, s)
 		if abs and splits == 0 then
 			-- Split (Time) with no mark inside Max Time: a straight line to it
 			p = current / total
-		elseif splits == 1 then
-			local s1v = ss["s1v"]
-			local s1p = ss["s1p"]
-
-			if value > s1v then
-				local rPercent = max - s1v
-				local rSize = 1 - s1p
-				local cPercent = value - s1v
-				local aPercent = cPercent / rPercent
-				p = s1p + (rSize * aPercent)
-			else
-				local rPercent = s1v
-				local rSize = s1p
-				local cPercent = value - s1v
-				local aPercent = cPercent / rPercent
-				p = s1p + (rSize * aPercent)
+		elseif splits == 1 or splits == 2 or splits == 3 then
+			-- the stretch from the highest mark value is past to the next mark (past the last mark: to
+			-- max, at 1); under the first mark, the stretch up to it. Checked from the last mark down.
+			local k = splits
+			local toV, toP = max, 1
+			while k > 1 and not (value > ss[private.SPLIT_VALUES[k]]) do
+				toV, toP = ss[private.SPLIT_VALUES[k]], ss[private.SPLIT_POSITIONS[k]]
+				k = k - 1
 			end
-		elseif splits == 2 then
-			local s1v = ss["s1v"]
-			local s1p = ss["s1p"]
-			local s2v = ss["s2v"]
-			local s2p = ss["s2p"]
+			local markV, markP = ss[private.SPLIT_VALUES[k]], ss[private.SPLIT_POSITIONS[k]]
 
-			if value > s2v then
-				local rPercent = max - s2v
-				local rSize = 1 - s2p
-				local cPercent = value - s2v
-				local aPercent = cPercent / rPercent
-				p = s2p + (rSize * aPercent)
-			elseif value > s1v then
-				local rPercent = s2v - s1v
-				local rSize = s2p - s1p
-				local cPercent = value - s1v
-				local aPercent = cPercent / rPercent
-				p = s1p + (rSize * aPercent)
+			local rPercent, rSize
+			if value > markV then
+				rPercent = toV - markV
+				rSize = toP - markP
 			else
-				local rPercent = s1v
-				local rSize = s1p
-				local cPercent = value - s1v
-				local aPercent = cPercent / rPercent
-				p = s1p + (rSize * aPercent)
+				rPercent = markV
+				rSize = markP
 			end
-		elseif splits == 3 then
-			local s1v = ss["s1v"]
-			local s1p = ss["s1p"]
-			local s2v = ss["s2v"]
-			local s2p = ss["s2p"]
-			local s3v = ss["s3v"]
-			local s3p = ss["s3p"]
-
-			if value > s3v then
-				local rPercent = max - s3v
-				local rSize = 1 - s3p
-				local cPercent = value - s3v
-				local aPercent = cPercent / rPercent
-				p = s3p + (rSize * aPercent)
-			elseif value > s2v then
-				local rPercent = s3v - s2v
-				local rSize = s3p - s2p
-				local cPercent = value - s2v
-				local aPercent = cPercent / rPercent
-				p = s2p + (rSize * aPercent)
-			elseif value > s1v then
-				local rPercent = s2v - s1v
-				local rSize = s2p - s1p
-				local cPercent = value - s1v
-				local aPercent = cPercent / rPercent
-				p = s1p + (rSize * aPercent)
-			else
-				local rPercent = s1v
-				local rSize = s1p
-				local cPercent = value - s1v
-				local aPercent = cPercent / rPercent
-				p = s1p + (rSize * aPercent)
-			end
+			local cPercent = value - markV
+			local aPercent = cPercent / rPercent
+			p = markP + (rSize * aPercent)
 		end
 	end
 
@@ -1311,6 +1039,36 @@ private.CustomCDStart = function(d, start)
 	return start
 end
 
+-- A spell counting down: every frame, and re-read from the game on the first frame and every 50th
+-- (not while overridden). True on the frames it was re-read.
+private.SpellCountdown = function(f, d, elapsed)
+	if d["currentCD"] >= 0 then
+		d["currentCD"] = d["currentCD"] - elapsed
+
+		if not d["overrideCD"] then
+			if f.updateCount == 0 or f.updateCount % 50 == 0 then
+				if d["setCustomCD"] then
+					if d["customCDTime"] then
+						d["baseCD"] = d["customCDTime"] / 1000
+					end
+				end
+
+				local start, duration = CDTL3:GetSpellCooldown(d["id"])
+				-- Manual override wins: the live Midnight duration is the talent-blind base
+				-- CD, so when a custom CD is set, drive the countdown from that instead.
+				if d["setCustomCD"] and d["customCDTime"] then
+					d["baseCD"] = d["customCDTime"] / 1000
+					duration = d["baseCD"]
+					start = private.CustomCDStart(d, start)
+				end
+				d["currentCD"] = start + duration - GetTime()
+				return true
+			end
+		end
+	end
+	return false
+end
+
 private.CooldownUpdate = function(f, elapsed)
 	local d = f.data
 	local ic = f.icon
@@ -1358,80 +1116,14 @@ private.CooldownUpdate = function(f, elapsed)
 				end
 
 				if not d["oafHeld"] then
-					if d["currentCD"] >= 0 then
-						d["currentCD"] = d["currentCD"] - elapsed
-
-
-						if not d["overrideCD"] then
-							if f.updateCount == 0 or f.updateCount % 50 == 0 then
-								if d["setCustomCD"] then
-									if d["customCDTime"] then
-										d["baseCD"] = d["customCDTime"] / 1000
-									end
-								end
-
-
-								--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
-								local start, duration = CDTL3:GetSpellCooldown(d["id"])
-								-- Manual override wins: the live Midnight duration is the talent-blind base
-								-- CD, so when a custom CD is set, drive the countdown from that instead.
-								if d["setCustomCD"] and d["customCDTime"] then
-									d["baseCD"] = d["customCDTime"] / 1000
-									duration = d["baseCD"]
-									start = private.CustomCDStart(d, start)
-								end
-								d["currentCD"] = start + duration - GetTime()
-							end
-						end
-					end
+					private.SpellCountdown(f, d, elapsed)
 				end
 			else
-				if d["currentCD"] >= 0 then
-					d["currentCD"] = d["currentCD"] - elapsed
+				if private.SpellCountdown(f, d, elapsed) then
+					CDTL3.IconFx:PollCharges(f)	-- charge pips: the icon rides the recharge (IconFx.lua)
 
-					if not d["overrideCD"] then
-						if f.updateCount == 0 or f.updateCount % 50 == 0 then
-							if d["setCustomCD"] then
-								if d["customCDTime"] then
-									d["baseCD"] = d["customCDTime"] / 1000
-								end
-							end
-
-							--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
-							--local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
-							--d["currentCD"] = start + duration - GetTime()
-
-							--if d["charges"] ~= 0 then
-								--local currentCharges, maxCharges, cooldownStart, cooldownDuration = CDTL3:GetSpellCharges(d["id"])
-
-								--if currentCharges < maxCharges then
-									--CDTL3:Print("CHARGES")
-								--end
-							--else
-								--CDTL3:Print("NO CHARGES")
-
-
-								local start, duration = CDTL3:GetSpellCooldown(d["id"])
-								-- Manual override wins: Midnight's live duration is the talent-blind base
-								-- CD, so when a custom CD is set, drive the countdown from that instead.
-								if d["setCustomCD"] and d["customCDTime"] then
-									d["baseCD"] = d["customCDTime"] / 1000
-									duration = d["baseCD"]
-									start = private.CustomCDStart(d, start)
-								end
-								d["currentCD"] = start + duration - GetTime()
-
-								CDTL3.IconFx:PollCharges(f)	-- charge pips: the icon rides the recharge (IconFx.lua)
-
-								--if d["name"] == "Primal Rage" or d["name"] == "Implosive Trap" then
-									--CDTL3:Print(d["name"].." - "..d["currentCD"].." : "..tostring(duration))
-								--end
-							--end
-
-							if f.updateCount == 0 and CDTL3.db.profile.global["detectSharedCD"] then
-								CDTL3:ScanSharedSpellCooldown(d["name"], d["currentCD"])
-							end
-						end
+					if f.updateCount == 0 and CDTL3.db.profile.global["detectSharedCD"] then
+						CDTL3:ScanSharedSpellCooldown(d["name"], d["currentCD"])
 					end
 				end
 			end
