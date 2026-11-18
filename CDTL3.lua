@@ -1670,14 +1670,14 @@ private.CreateFirstRunFrame = function()
 	f:SetScript("OnDragStop", f.StopMovingOrSizing)
 
 	-- SCROLL FRAME
-	local sf = CreateFrame("ScrollFrame", "CDTL3_Firstrun_Scroll", CDTL3_Firstrun, "UIPanelScrollFrameTemplate")
+	local sf = CreateFrame("ScrollFrame", "CDTL3_Firstrun_Scroll", f, "UIPanelScrollFrameTemplate")
 	sf:SetPoint("LEFT", 16, 0)
 	sf:SetPoint("RIGHT", -32, 0)
 	sf:SetPoint("TOP", 0, -55)
 	sf:SetPoint("BOTTOM", 0, 70)
 
 	-- EDIT BOX
-	local ef = CreateFrame("EditBox", name.."_Edit", CDTL3_Firstrun_Scroll)
+	local ef = CreateFrame("EditBox", name.."_Edit", sf)
 	ef:SetSize(sf:GetSize())
 	ef:SetMultiLine(true)
 	ef:SetAutoFocus(false)
@@ -1711,7 +1711,7 @@ private.CreateFirstRunFrame = function()
 
 	-- RESIZABLE
 	f:SetResizable(true)
-	local rb = CreateFrame("Button", name.."_Resize", CDTL3_Firstrun)
+	local rb = CreateFrame("Button", name.."_Resize", f)
 	rb:SetPoint("BOTTOMRIGHT", -6, 7)
 	rb:SetSize(16, 16)
 	rb:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
@@ -2465,7 +2465,7 @@ function CDTL3:COMBAT_LOG_EVENT_UNFILTERED()
 						end
 					end
 				else
-					local infoName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
+					local infoName, icon = CDTL3:GetSpellInfo(spellID)
 
 					-- no ignore check: an offensive's length is only known once it lands
 					local entry = CDTL3:ApplyEntryDefaults({
@@ -2646,7 +2646,7 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 			if ms and ms > 0 then CDTL3.spellBaseCDs[spellID] = ms / 1000 end
 		end
 
-		local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
+		local spellName, icon = CDTL3:GetSpellInfo(spellID)
 
 		local isKnown = CDTL3.Compat.IsSpellKnown(spellID)
 		local isKnownOrOverridesKnown = CDTL3.Compat.IsSpellKnownOrOverridesKnown(spellID)
@@ -2745,7 +2745,7 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 								--if CDTL3.db.profile.global["customDetection"] then
 									--local currentCharges, maxCharges, _, cooldownDuration, _ = GetSpellCharges(spellID)
 									local _, maxCharges, _, cooldownDuration = CDTL3:GetSpellCharges(spellID)
-									local cooldownMS, gcdMS = GetSpellBaseCooldown(spellID)
+									local cooldownMS = GetSpellBaseCooldown(spellID)
 
 									if cooldownDuration ~= nil and cooldownDuration ~= 0 then
 										cooldownMS = cooldownDuration * 1000
@@ -2777,7 +2777,7 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 									table.insert(CDTL3.db.profile.tables["detected"], entry)
 							end
 						else
-							local cooldownMS, gcdMS = GetSpellBaseCooldown(spellID)
+							local cooldownMS = GetSpellBaseCooldown(spellID)
 
 							if CDTL3.db.profile.global["debugMode"] then
 								CDTL3:Print("OTHER_SKIPPED: "..tostring(spellName).." - "..tostring(spellID).." - "..tostring(cooldownMS).." - "..tostring(CDTL3.player["guid"]))
@@ -2793,7 +2793,7 @@ function CDTL3:UNIT_SPELLCAST_SUCCEEDED(...)
 		if not CDTL3.spellCastTimes then CDTL3.spellCastTimes = {} end
 		CDTL3.spellCastTimes[spellID] = GetTime()
 
-		local spellName, icon, originalIcon = CDTL3:GetSpellInfo(spellID)
+		local spellName, icon = CDTL3:GetSpellInfo(spellID)
 
 		local isKnown = CDTL3.Compat.IsSpellKnown(spellID, true)
 		local isKnownOrOverridesKnown = CDTL3.Compat.IsSpellKnownOrOverridesKnown(spellID, true)
@@ -3007,7 +3007,6 @@ function CDTL3:UNIT_POWER_UPDATE(...)
 		if CDTL3:AnyLaneTracks("ENERGY_TICK") then
 			-- energy can be SECRET (Midnight / WoW: Forever): skip the tick estimate then
 			pcall(function()
-				local currentTime = GetTime()
 				local maxenergy = UnitPowerMax("player", Enum.PowerType.Energy)
 				local currentEnergy = UnitPower("player", Enum.PowerType.Energy)
 
@@ -3165,7 +3164,7 @@ function CDTL3:DetermineOnOff()
 	if CDTL3.db.profile.global["enabledAlways"] then
 		turnOn = true
 	else
-		local inInstance, instanceType = IsInInstance()
+		local inInstance = IsInInstance()
 		local inGroup = IsInGroup()
 
 		if inInstance or inGroup then

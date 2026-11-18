@@ -102,7 +102,7 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 		if cdData["itemIcon"] then
 			f.data["itemIcon"] = cdData["itemIcon"]
 		else
-			local spellName, icon, originalIcon = CDTL3:GetSpellInfo(f.data["id"])
+			local _, icon = CDTL3:GetSpellInfo(f.data["id"])
 			f.data["icon"] = icon
 
 			local item = Item:CreateFromItemID(f.data["itemID"])
@@ -1390,7 +1390,7 @@ private.CooldownUpdate = function(f, elapsed)
 
 
 								--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
-								local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
+								local start, duration = CDTL3:GetSpellCooldown(d["id"])
 								-- Manual override wins: the live Midnight duration is the talent-blind base
 								-- CD, so when a custom CD is set, drive the countdown from that instead.
 								if d["setCustomCD"] and d["customCDTime"] then
@@ -1429,7 +1429,7 @@ private.CooldownUpdate = function(f, elapsed)
 								--CDTL3:Print("NO CHARGES")
 
 
-								local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
+								local start, duration = CDTL3:GetSpellCooldown(d["id"])
 								-- Manual override wins: Midnight's live duration is the talent-blind base
 								-- CD, so when a custom CD is set, drive the countdown from that instead.
 								if d["setCustomCD"] and d["customCDTime"] then
@@ -1526,7 +1526,7 @@ private.CooldownUpdate = function(f, elapsed)
 							--d["baseCD"] = duration
 							--d["currentCD"] = start + duration - GetTime()
 
-							local start, duration, enabled = CDTL3:GetInventoryItemCooldown(slot)
+							local start, duration = CDTL3:GetInventoryItemCooldown(slot)
 							if start and duration then
 								-- a 0 read means ready: it ends the countdown but doesn't unlearn the cooldown
 								if duration > 0 then
@@ -1536,7 +1536,7 @@ private.CooldownUpdate = function(f, elapsed)
 							end
 						end
 					else
-						local start, duration, enabled = CDTL3:GetItemCooldown(d["itemID"])
+						local start, duration = CDTL3:GetItemCooldown(d["itemID"])
 						if duration and start then
 							if duration > 0 then
 								d["baseCD"] = duration
@@ -1932,15 +1932,16 @@ function CDTL3:SendToBarFrame(f)
 	CDTL3:RefreshBar(f)
 end
 
+-- the holding frames are made by name in Holders.lua (CreateHolders)
 function CDTL3:SendToBarHolding(f)
 	local ba = f.bar
 
 	if f.data["type"] == "offensives" then
 		ba:GetParent().triggerUpdate = true
-		ba:SetParent(CDTL3_Offensive_Bar_Holding)
+		ba:SetParent(_G["CDTL3_Offensive_Bar_Holding"])
 	else
 		ba:GetParent().triggerUpdate = true
-		ba:SetParent(CDTL3_Bar_Holding)
+		ba:SetParent(_G["CDTL3_Bar_Holding"])
 	end
 
 	CDTL3:RefreshBar(f)
@@ -1951,11 +1952,11 @@ function CDTL3:SendToHolding(f)
 
 	if f.data["type"] == "offensives" then
 		ic:GetParent().triggerUpdate = true
-		ic:SetParent(CDTL3_Offensive_Icon_Holding)
+		ic:SetParent(_G["CDTL3_Offensive_Icon_Holding"])
 		f.data["overrideCD"] = false
 	else
 		ic:GetParent().triggerUpdate = true
-		ic:SetParent(CDTL3_Active_Icon_Holding)
+		ic:SetParent(_G["CDTL3_Active_Icon_Holding"])
 		f.data["overrideCD"] = false
 		--ic:Hide()
 	end
