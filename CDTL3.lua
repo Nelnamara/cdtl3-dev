@@ -88,16 +88,27 @@ local SLOTS = {
 	lanes = {
 		keys = { "lane1", "lane2", "lane3" },
 		frames = { "CDTL3_Lane_1", "CDTL3_Lane_2", "CDTL3_Lane_3" },
+		parents = { "CDTL3_Lane_1", "CDTL3_Lane_2", "CDTL3_Lane_3" },
 	},
 	barFrames = {
 		keys = { "frame1", "frame2", "frame3" },
 		frames = { "CDTL3_BarFrame_1", "CDTL3_BarFrame_2", "CDTL3_BarFrame_3" },
+		parents = { "CDTL3_BarFrame_1_MF", "CDTL3_BarFrame_2_MF", "CDTL3_BarFrame_3_MF" },
 	},
 	ready = {
 		keys = { "ready1", "ready2", "ready3" },
 		frames = { "CDTL3_Ready_1", "CDTL3_Ready_2", "CDTL3_Ready_3" },
+		parents = { "CDTL3_Ready_1_MF", "CDTL3_Ready_2_MF", "CDTL3_Ready_3_MF" },
 	},
 }
+-- parents: the frame a timer's icon or bar is parented to. Icons sit in the lane itself; bars and
+-- ready icons sit in the bar frame's or ready frame's mover ("_MF") frame.
+local SLOT_OF_PARENT = {}
+for group, slot in pairs(SLOTS) do
+	for n, name in ipairs(slot.parents) do
+		SLOT_OF_PARENT[name] = { group, n }
+	end
+end
 
 -- the saved settings of slot n: CDTL3.db.profile[group]["lane1"] and so on. Every caller passes 1-3
 -- (RefreshBar turns bar frame 0 into 1 first), so the type says table; anything else gives nil.
@@ -117,6 +128,19 @@ end
 function CDTL3:SlotFrame(group, n)
 	local name = SLOTS[group].frames[n]
 	return name and _G[name]
+end
+
+-- which slot holds a timer, from the name of its icon's or bar's parent frame (see SLOTS.parents):
+-- "lanes", "barFrames" or "ready" and 1-3, or nil for any other name
+---@param name string?
+---@return ("lanes"|"barFrames"|"ready")? group
+---@return integer? n
+function CDTL3:SlotOfParent(name)
+	local slot = name and SLOT_OF_PARENT[name]
+	if slot then
+		return slot[1], slot[2]
+	end
+	return nil
 end
 
 CDTL3.version = "3.2.2"

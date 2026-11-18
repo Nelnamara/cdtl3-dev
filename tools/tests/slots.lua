@@ -47,6 +47,21 @@ for _, g in ipairs(groups) do
 	check(g.group .. " \"1\": no settings, no frame", CDTL3:SlotSettings(g.group, "1") == nil and CDTL3:SlotFrame(g.group, "1") == nil)
 end
 
+-- SlotOfParent: the name of an icon's or bar's parent frame -> its slot
+local parents = {
+	{ "CDTL3_Lane_1", "lanes", 1 }, { "CDTL3_Lane_2", "lanes", 2 }, { "CDTL3_Lane_3", "lanes", 3 },
+	{ "CDTL3_BarFrame_1_MF", "barFrames", 1 }, { "CDTL3_BarFrame_2_MF", "barFrames", 2 }, { "CDTL3_BarFrame_3_MF", "barFrames", 3 },
+	{ "CDTL3_Ready_1_MF", "ready", 1 }, { "CDTL3_Ready_2_MF", "ready", 2 }, { "CDTL3_Ready_3_MF", "ready", 3 },
+}
+for _, c in ipairs(parents) do
+	local group, n = CDTL3:SlotOfParent(c[1])
+	check("parent " .. c[1] .. " is " .. c[2] .. " " .. c[3], group == c[2] and n == c[3], tostring(group) .. " " .. tostring(n))
+end
+for _, name in ipairs({ "CDTL3_Lane_1_MF", "CDTL3_BarFrame_1", "CDTL3_Ready_1", "CDTL3_Ready_4_MF", "UIParent", "" }) do
+	check("parent " .. name .. " is no slot", CDTL3:SlotOfParent(name) == nil)
+end
+check("parent nil is no slot", CDTL3:SlotOfParent(nil) == nil)
+
 -- a profile switch: the next call reads the new profile's tables
 local before = CDTL3:SlotSettings("lanes", 2)
 CDTL3.db:SetProfile("Other")
