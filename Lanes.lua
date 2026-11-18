@@ -9,35 +9,19 @@ private.dynamicTextPollRate = 10
 private.timeTextPollRate = 2
 
 function CDTL3:CreateLanes()
-	local lane1Enabled = CDTL3.db.profile.lanes["lane1"]["enabled"]
-	local lane2Enabled = CDTL3.db.profile.lanes["lane2"]["enabled"]
-	local lane3Enabled = CDTL3.db.profile.lanes["lane3"]["enabled"]
-
-	if lane1Enabled then
-		if CDTL3_Lane_1 then
-			CDTL3:RefreshLane(1)
-		else
-			private.CreateLane(1)
-		end
-	end
-
-	if lane2Enabled then
-		if CDTL3_Lane_2 then
-			CDTL3:RefreshLane(2)
-		else
-			private.CreateLane(2)
-		end
-	end
-
-	if lane3Enabled then
-		if CDTL3_Lane_3 then
-			CDTL3:RefreshLane(3)
-		else
-			private.CreateLane(3)
+	for i = 1, 3 do
+		if CDTL3:SlotSettings("lanes", i)["enabled"] then
+			if CDTL3:SlotFrame("lanes", i) then
+				CDTL3:RefreshLane(i)
+			else
+				private.CreateLane(i)
+			end
 		end
 	end
 end
 
+-- ResourceBars.lua wraps this on purpose: its version calls this one first
+---@diagnostic disable-next-line: duplicate-set-field
 function CDTL3:RefreshLane(i)
 	local f = CDTL3:SlotFrame("lanes", i)
 	local s = CDTL3:SlotSettings("lanes", i)
@@ -124,6 +108,8 @@ function CDTL3:RefreshLane(i)
 			f.st:SetSize(s["tracking"]["stWidth"], s["tracking"]["stHeight"])
 		end
 		CDTL3:SetBarTexture(f.st.bg, s["tracking"]["stTexture"])
+		-- SetAllPoints(true) is the old "fill the parent" form; the definitions only list a region
+		---@diagnostic disable-next-line: param-type-mismatch
 		f.st.bg:SetAllPoints(true)
 		f.st.bg:SetVertexColor(
 			s["tracking"]["stTextureColor"]["r"],
@@ -230,7 +216,7 @@ private.RefreshText = function(f, s)
 
 		local anchor = ""
 		local align = ""
-		local position = ""
+		local position = 0
 		local xOffset = 0
 
 		if i == 1 then
@@ -453,8 +439,6 @@ end
 
 private.CalcStacking = function(f, s, count)
 	local baseLevel = 5
-	local levelMultiplier = 5
-
 	if count >= 2 and s["stacking"]["enabled"] then
 		local style = s["stacking"]["style"]
 
@@ -572,14 +556,14 @@ private.CalcStacking = function(f, s, count)
 					icon.sOffset = iconOffset
 
 					local levelMultiplier = 5
-					local baseLevel = k * levelMultiplier
+					local iconLevel = k * levelMultiplier
 
-					icon:SetFrameLevel(baseLevel)
+					icon:SetFrameLevel(iconLevel)
 					if icon.bd then
-						icon.bd:SetFrameLevel(baseLevel + 1)
+						icon.bd:SetFrameLevel(iconLevel + 1)
 					end
 					if icon.hl then
-						icon.hl:SetFrameLevel(baseLevel + 2)
+						icon.hl:SetFrameLevel(iconLevel + 2)
 					end
 				end
 			end
@@ -818,8 +802,8 @@ private.CalcTracking = function(f, s, t, elapsed)
 	local position = 0
 
 	if t == "GCD" then
-		local start, duration, enabled = CDTL3:GetSpellCooldown(private.GCD_READ_SPELL)
-		local cooldownMS, gcdMS = GetSpellBaseCooldown(private.GCD_READ_SPELL)
+		local start, duration = CDTL3:GetSpellCooldown(private.GCD_READ_SPELL)
+		local _, gcdMS = GetSpellBaseCooldown(private.GCD_READ_SPELL)
 
 		local timeLeft = (start + duration) - GetTime()
 		position = ( timeLeft / (gcdMS / 1000))
@@ -1000,6 +984,8 @@ private.CreateLane = function(laneNumber)
 	--f.bd:SetParent(f)
 
 	f.db = CreateFrame("Frame", frameName.."_DB", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+	-- f is a Frame; the optional template argument makes the definitions give a union
+	---@diagnostic disable-next-line: param-type-mismatch
 	f.db:SetParent(f)
 	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
 	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
@@ -1271,25 +1257,11 @@ end
 
 private.UpdateText = function(f, s)
 	for i = 1, 5, 1 do
-		local tSettings = nil
-		local tObject = nil
-
-		if i == 1 then
-			tSettings = s["customText"]["text1"]
-			tObject = f.c1
-		elseif i == 2 then
-			tSettings = s["customText"]["text2"]
-			tObject = f.c2
-		elseif i == 3 then
-			tSettings = s["customText"]["text3"]
-			tObject = f.c3
-		elseif i == 4 then
-			tSettings = s["customText"]["text4"]
-			tObject = f.c4
-		elseif i == 5 then
-			tSettings = s["customText"]["text5"]
-			tObject = f.c5
-		end
+		-- custom text slot i: its settings and its text object
+		---@type table
+		local tSettings = s["customText"]["text"..i]
+		---@type table
+		local tObject = f["c"..i]
 
 		if tSettings["enabled"] then
 			-- whenever a tag family is due, convert the whole text in one pass
