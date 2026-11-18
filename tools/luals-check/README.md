@@ -56,6 +56,15 @@ Ketho's definitions follow Retail, so these warnings are expected and are not bu
   `RefreshConfig`, ResourceBars.lua `RefreshLane`, ReadyBoard.lua `RefreshReady`, …).
 - `param-type-mismatch` on `SetAllPoints(true)`, `SetParent` of a BackdropTemplate frame and
   `LSM:Fetch` results: typing quirks, not wrong calls.
+- `need-check-nil` where the checker can't see a table is always there: AceDB fills
+  `CDTL3.db.global` and `.profile` from the defaults, `Profiles.lua` `P.Store(true)` always
+  returns a table, and the combat log always gives an aura type. About 20 more come from the
+  per-mode `if` chains left in Cooldown.lua (bar settings) and Lanes.lua (text settings).
+- `redundant-parameter` on `TaxiGetNodeSlot` (Flights.lua) and `missing-parameter` on
+  `IsSpellKnown`: the definitions list the wrong argument count (the game's taxi call takes
+  three, and `IsSpellKnown`'s pet-spell flag is optional).
+- `cast-local-type`: a local reused for another type (a string that becomes a number). Style,
+  not a bug.
 
 To check whether a function exists on a client, look in the per-client dumps in
 Ketho/BlizzardInterfaceResources (branches `live`, `forever`, `classic` = MoP,
