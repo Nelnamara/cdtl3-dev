@@ -40,19 +40,13 @@ private.Clock = function(t)
 end
 
 -- seconds left. A cooldown riding the game's own timer is never read: its time is the cast plus its
--- base cooldown (an estimate, true as the second value).
+-- base cooldown (an estimate, true as the second value; FightTimeline.lua).
 private.Left = function(cd)
-	local d = cd.data
-	local ct = cd.ct
-	if ct and ct.riding then
-		local base = d["baseCD"] or 0
-		local cast = CDTL3.spellCastTimes and CDTL3.spellCastTimes[d["id"]]
-		if cast and base > 0 then
-			return math.max(cast + base - GetTime(), 0), true
-		end
-		return base, true
+	local riding = CDTL3:RidingTimeLeft(cd)
+	if riding then
+		return riding, true
 	end
-	return d["currentCD"], false
+	return cd.data["currentCD"], false
 end
 
 -- running now? One that hasn't been used yet has no frame; one that isn't on a lane or bar frame
