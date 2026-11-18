@@ -8,7 +8,9 @@ private.dynamicTextPollRate = 10
 private.timeTextPollRate = 2
 -- seconds after an item's use in which a readable 0 cooldown read means "no cooldown"
 private.itemNoCooldownWindow = 2
-private.laneKeys = { "lane1", "lane2", "lane3" }
+-- a lane mode's settings table in lane.mode, by mode type
+private.modeKeys = { LINEAR = "linear", LINEAR_ABS = "linearAbs", SPLIT = "split", SPLIT_ABS = "splitAbs" }
+private.splitModeKeys = { SPLIT = "split", SPLIT_ABS = "splitAbs" }
 
 function CDTL3:CreateCooldown(UID, cdType, cdData)
 	local fName = "CDTL3_CD_"..UID
@@ -102,7 +104,7 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 		if cdData["itemIcon"] then
 			f.data["itemIcon"] = cdData["itemIcon"]
 		else
-			local spellName, icon, originalIcon = CDTL3:GetSpellInfo(f.data["id"])
+			local _, icon = CDTL3:GetSpellInfo(f.data["id"])
 			f.data["icon"] = icon
 
 			local item = Item:CreateFromItemID(f.data["itemID"])
@@ -120,8 +122,8 @@ function CDTL3:CreateCooldown(UID, cdType, cdData)
 	end
 
 	-- ON UPDATE
-	f:HookScript("OnUpdate", function(self, elapsed)
-		private.CooldownUpdate(self, elapsed)
+	f:HookScript("OnUpdate", function(frame, elapsed)
+		private.CooldownUpdate(frame, elapsed)
 	end)
 
 	f.icon = CDTL3:CreateIcon(fName, f)
@@ -152,7 +154,7 @@ function CDTL3:CreateIcon(fName, cd)
 	f.tx = f:CreateTexture()
 
 	f.db = CreateFrame("Frame", frameName.."_DB", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	f.db:SetParent(f)
+	f.db:SetParent(f --[[@as Frame]])
 	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
 	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
 	if not CDTL3.db.profile.global["unlockFrames"] then
@@ -170,16 +172,16 @@ function CDTL3:CreateBar(fName, cd)
 	f.valid = cd.data["enabled"]
 
 	f.bar = CreateFrame("StatusBar", frameName.."_BA", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	f.bar:SetParent(f)
+	f.bar:SetParent(f --[[@as Frame]])
 	f.bar.transitionThreshold = 0
 	f.bar.bg = f:CreateTexture(nil, "BACKGROUND")
 
 	f.icon = CreateFrame("Frame", frameName.."_IC", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	f.icon:SetParent(f)
+	f.icon:SetParent(f --[[@as Frame]])
 	f.icon.tx = f.icon:CreateTexture(nil, "BACKGROUND")
 
 	f.db = CreateFrame("Frame", frameName.."_DB", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	f.db:SetParent(f)
+	f.db:SetParent(f --[[@as Frame]])
 	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
 	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
 	if not CDTL3.db.profile.global["unlockFrames"] then
@@ -207,7 +209,7 @@ function CDTL3:RefreshBar(cd)
 	local s
 	local p = f:GetParent():GetName()
 
-	if p == "CDTL3_BarFrame_1_MF" or p == "CDTL3_BarFrame_2_MF" or p == "CDTL3_BarFrame_3_MF" then
+	if CDTL3:SlotOfParent(p) == "barFrames" then
 		-- bar frame 0 shows as frame 1
 		local n = cd.data["barFrame"]
 		s = CDTL3:SlotSettings("barFrames", n == 0 and 1 or n)
@@ -523,25 +525,17 @@ end
 
 function CDTL3:RefreshIcon(cd)
 	local f = cd.icon
-	local s = CDTL3.db.profile.lanes["lane1"]
+	local s = CDTL3:SlotSettings("lanes", 1)
 	local p = f:GetParent():GetName()
+	local group = CDTL3:SlotOfParent(p)
 
-	if p == "CDTL3_Lane_1" or p == "CDTL3_Lane_2" or p == "CDTL3_Lane_3" then
-		if cd.data["lane"] == 0 or cd.data["lane"] == 1 then
-			s = CDTL3.db.profile.lanes["lane1"]
-		elseif cd.data["lane"] == 2 then
-			s = CDTL3.db.profile.lanes["lane2"]
-		elseif cd.data["lane"] == 3 then
-			s = CDTL3.db.profile.lanes["lane3"]
-		end
-	elseif p == "CDTL3_Ready_1_MF" or p == "CDTL3_Ready_2_MF" or p == "CDTL3_Ready_3_MF" then
-		if cd.data["readyFrame"] == 0 or cd.data["readyFrame"] == 1 then
-			s = CDTL3.db.profile.ready["ready1"]
-		elseif cd.data["readyFrame"] == 2 then
-			s = CDTL3.db.profile.ready["ready2"]
-		elseif cd.data["readyFrame"] == 3 then
-			s = CDTL3.db.profile.ready["ready3"]
-		end
+	-- on a lane or in a Ready frame: that slot's settings (0 counts as 1); anything else keeps lane 1's
+	if group == "lanes" then
+		local n = cd.data["lane"]
+		s = CDTL3:SlotSettings("lanes", n == 0 and 1 or n) or s
+	elseif group == "ready" then
+		local n = cd.data["readyFrame"]
+		s = CDTL3:SlotSettings("ready", n == 0 and 1 or n) or s
 	end
 
 	if cd.data["setCustomCD"] then
@@ -764,8 +758,7 @@ function CDTL3:RefreshIcon(cd)
 	-- HIGHLIGHT BORDER
 	-- Flash when ready (Filters): while it waits in a Ready frame the icon flashes with the Flash
 	-- Icon highlight, whatever that frame's own highlight settings are
-	local readyFlash = cd.data["readyLit"] and not cd.data["highlight"]
-		and (p == "CDTL3_Ready_1_MF" or p == "CDTL3_Ready_2_MF" or p == "CDTL3_Ready_3_MF")
+	local readyFlash = cd.data["readyLit"] and not cd.data["highlight"] and group == "ready"
 	if cd.data["highlight"] or readyFlash then
 		if readyFlash or s["icons"]["highlight"]["border"]["style"] ~= "None" then
 			if not f.hl then
@@ -778,6 +771,8 @@ function CDTL3:RefreshIcon(cd)
 			f.hl:ClearAllPoints()
 			f.hl:SetPoint("CENTER", 0, 0)
 			f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
+			-- SetAllPoints(true) fills the parent; the definitions only take a region there
+			---@diagnostic disable-next-line: param-type-mismatch
 			f.hl.tx:SetAllPoints(true)
 			f.hl.tx:SetColorTexture( 1, 1, 1, 0.5 )
 			-- fixed offset above the icon (border is +1); incrementing climbed on every refresh
@@ -788,7 +783,9 @@ function CDTL3:RefreshIcon(cd)
 			local style = readyFlash and "FLASH" or s["icons"]["highlight"]["style"]
 			-- The action-button glow isn't available on every client (e.g. Forever):
 			-- fall back to the plain border highlight there.
+			---@diagnostic disable-next-line: deprecated
 			if style == "GLOW" and ActionButton_ShowOverlayGlow then
+				---@diagnostic disable-next-line: deprecated
 				ActionButton_ShowOverlayGlow(f)
 			elseif style == "BORDER" or style == "GLOW" then
 				f.hl:SetBackdropBorderColor(
@@ -1026,7 +1023,7 @@ private.BarUpdate = function(f, elapsed)
 	ba.currentCD = d["currentCD"]
 
 	local p = ba:GetParent():GetName()
-	if p == "CDTL3_BarFrame_1_MF" or p == "CDTL3_BarFrame_2_MF" or p == "CDTL3_BarFrame_3_MF" then
+	if CDTL3:SlotOfParent(p) == "barFrames" then
 		if d["currentCD"] > 0 then
 			local s = CDTL3:SlotSettings("barFrames", d["barFrame"])
 
@@ -1049,8 +1046,8 @@ private.BarUpdate = function(f, elapsed)
 			-- option off (or no lane), a bar it hid earlier comes back: it used to stay hidden until
 			-- a /reload, so unticking the option looked like it did nothing. A lane that's switched
 			-- off counts as no lane: its icons have nowhere to show, so its bars stay.
-			local laneKey = private.laneKeys[d["lane"]]
-			local laneOn = laneKey and CDTL3.db.profile.lanes[laneKey]["enabled"]
+			local lane = CDTL3:SlotSettings("lanes", d["lane"])
+			local laneOn = lane and lane["enabled"]
 			if (not laneOn or not s["transition"]["hideTransitioned"]) and not ba.valid
 				and d["enabled"] and not d["ignored"] then
 				ba.valid = true
@@ -1117,15 +1114,14 @@ private.CalcSplitPosition = function(current, total, s)
 	local max = 100
 	local value = (current / total) * 100
 
-	local ss = nil
+	-- the lane's split settings: mode.split or mode.splitAbs (nil in any other mode; only Split lanes call this)
+	local ss = s["mode"][private.splitModeKeys[s["mode"]["type"]] or ""]
 	local abs = s["mode"]["type"] == "SPLIT_ABS"
 	if s["mode"]["type"] == "SPLIT" then
-		ss = s["mode"]["split"]
 		if total > ss["max"] then
 			total = ss["max"]
 		end
 	elseif abs then
-		ss = s["mode"]["splitAbs"]
 		max = ss["max"]
 		value = current
 		total = ss["max"]
@@ -1230,18 +1226,8 @@ private.CalcTransitionIndicator = function(f, s)
 	local ls = CDTL3:SlotSettings("lanes", f.data["lane"])
 
 	if ls then
-		local mode = ls["mode"]["type"]
-
-		local ms = nil
-		if mode == "LINEAR" then
-			ms = ls["mode"]["linear"]
-		elseif mode == "LINEAR_ABS" then
-			ms = ls["mode"]["linearAbs"]
-		elseif mode == "SPLIT" then
-			ms = ls["mode"]["split"]
-		elseif mode == "SPLIT_ABS" then
-			ms = ls["mode"]["splitAbs"]
-		end
+		-- the lane's settings for its mode (mode.linear, mode.linearAbs, ...)
+		local ms = ls["mode"][private.modeKeys[ls["mode"]["type"]] or ""]
 
 		f.bar.transitionThreshold = ms["max"]
 
@@ -1386,7 +1372,7 @@ private.CooldownUpdate = function(f, elapsed)
 
 
 								--local start, duration, enabled, _ = GetSpellCooldown(d["id"])
-								local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
+								local start, duration = CDTL3:GetSpellCooldown(d["id"])
 								-- Manual override wins: the live Midnight duration is the talent-blind base
 								-- CD, so when a custom CD is set, drive the countdown from that instead.
 								if d["setCustomCD"] and d["customCDTime"] then
@@ -1425,7 +1411,7 @@ private.CooldownUpdate = function(f, elapsed)
 								--CDTL3:Print("NO CHARGES")
 
 
-								local start, duration, enabled = CDTL3:GetSpellCooldown(d["id"])
+								local start, duration = CDTL3:GetSpellCooldown(d["id"])
 								-- Manual override wins: Midnight's live duration is the talent-blind base
 								-- CD, so when a custom CD is set, drive the countdown from that instead.
 								if d["setCustomCD"] and d["customCDTime"] then
@@ -1522,7 +1508,7 @@ private.CooldownUpdate = function(f, elapsed)
 							--d["baseCD"] = duration
 							--d["currentCD"] = start + duration - GetTime()
 
-							local start, duration, enabled = CDTL3:GetInventoryItemCooldown(slot)
+							local start, duration = CDTL3:GetInventoryItemCooldown(slot)
 							if start and duration then
 								-- a 0 read means ready: it ends the countdown but doesn't unlearn the cooldown
 								if duration > 0 then
@@ -1532,7 +1518,7 @@ private.CooldownUpdate = function(f, elapsed)
 							end
 						end
 					else
-						local start, duration, enabled = CDTL3:GetItemCooldown(d["itemID"])
+						local start, duration = CDTL3:GetItemCooldown(d["itemID"])
 						if duration and start then
 							if duration > 0 then
 								d["baseCD"] = duration
@@ -1677,8 +1663,8 @@ private.IconUpdate = function(f, elapsed)
 		CDTL3:EffectStripTick(f)
 	end
 
-	local p = ic:GetParent():GetName()
-	if p == "CDTL3_Lane_1" or p == "CDTL3_Lane_2" or p == "CDTL3_Lane_3" then
+	local group = CDTL3:SlotOfParent(ic:GetParent():GetName())
+	if group == "lanes" then
 		if d["currentCD"] > 0 then
 			local s = CDTL3:SlotSettings("lanes", d["lane"])
 
@@ -1828,7 +1814,7 @@ private.IconUpdate = function(f, elapsed)
 				end
 			end
 		end
-	elseif p == "CDTL3_Ready_1_MF" or p == "CDTL3_Ready_2_MF" or p == "CDTL3_Ready_3_MF" then
+	elseif group == "ready" then
 		-- a GCD wait ends here, and the lane's pips and pulse go (IconFx.lua)
 		CDTL3.IconFx:ReadyFrame(f, ic)
 
@@ -1873,7 +1859,7 @@ private.IconUpdate = function(f, elapsed)
 
 	if CDTL3.db.profile.global["notUsableTint"] then
 		if f.data["type"] == "spells" or f.data["type"] == "petspells" then
-			local usable, noPower = CDTL3:IsUsableSpell(f.data["id"])
+			local _, noPower = CDTL3:IsUsableSpell(f.data["id"])
 			if noPower then
 				if CDTL3.db.profile.global["notUsableDesaturate"] then
 					ic.tx:SetDesaturated(1)
@@ -1897,30 +1883,12 @@ end
 function CDTL3:SendToBarFrame(f)
 	local ba = f.bar
 
-	if f.data["barFrame"] == 1 then
-		if CDTL3_BarFrame_1_MF then
-			ba:GetParent().triggerUpdate = true
-			ba:SetParent(CDTL3_BarFrame_1_MF)
-			CDTL3_BarFrame_1_MF.triggerUpdate = true
-		else
-			CDTL3:SendToBarHolding(f)
-		end
-	elseif f.data["barFrame"] == 2 then
-		if CDTL3_BarFrame_2_MF then
-			ba:GetParent().triggerUpdate = true
-			ba:SetParent(CDTL3_BarFrame_2_MF)
-			CDTL3_BarFrame_2_MF.triggerUpdate = true
-		else
-			CDTL3:SendToBarHolding(f)
-		end
-	elseif f.data["barFrame"] == 3 then
-		if CDTL3_BarFrame_3_MF then
-			ba:GetParent().triggerUpdate = true
-			ba:SetParent(CDTL3_BarFrame_3_MF)
-			CDTL3_BarFrame_3_MF.triggerUpdate = true
-		else
-			CDTL3:SendToBarHolding(f)
-		end
+	-- bar frame 1-3, while it exists: its mover frame (CDTL3_BarFrame_n_MF); anything else: holding
+	local mf = CDTL3:SlotParent("barFrames", f.data["barFrame"])
+	if mf then
+		ba:GetParent().triggerUpdate = true
+		ba:SetParent(mf)
+		mf.triggerUpdate = true
 	else
 		CDTL3:SendToBarHolding(f)
 	end
@@ -1928,15 +1896,16 @@ function CDTL3:SendToBarFrame(f)
 	CDTL3:RefreshBar(f)
 end
 
+-- the holding frames are made by name in Holders.lua (CreateHolders)
 function CDTL3:SendToBarHolding(f)
 	local ba = f.bar
 
 	if f.data["type"] == "offensives" then
 		ba:GetParent().triggerUpdate = true
-		ba:SetParent(CDTL3_Offensive_Bar_Holding)
+		ba:SetParent(_G["CDTL3_Offensive_Bar_Holding"])
 	else
 		ba:GetParent().triggerUpdate = true
-		ba:SetParent(CDTL3_Bar_Holding)
+		ba:SetParent(_G["CDTL3_Bar_Holding"])
 	end
 
 	CDTL3:RefreshBar(f)
@@ -1947,11 +1916,11 @@ function CDTL3:SendToHolding(f)
 
 	if f.data["type"] == "offensives" then
 		ic:GetParent().triggerUpdate = true
-		ic:SetParent(CDTL3_Offensive_Icon_Holding)
+		ic:SetParent(_G["CDTL3_Offensive_Icon_Holding"])
 		f.data["overrideCD"] = false
 	else
 		ic:GetParent().triggerUpdate = true
-		ic:SetParent(CDTL3_Active_Icon_Holding)
+		ic:SetParent(_G["CDTL3_Active_Icon_Holding"])
 		f.data["overrideCD"] = false
 		--ic:Hide()
 	end
@@ -1966,30 +1935,12 @@ end
 function CDTL3:SendToLane(f)
 	local ic = f.icon
 
-	if f.data["lane"] == 1 then
-		if CDTL3_Lane_1 then
-			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL3_Lane_1)
-			CDTL3_Lane_1.triggerUpdate = true
-		else
-			CDTL3:SendToHolding(f)
-		end
-	elseif f.data["lane"] == 2 then
-		if CDTL3_Lane_2 then
-			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL3_Lane_2)
-			CDTL3_Lane_2.triggerUpdate = true
-		else
-			CDTL3:SendToHolding(f)
-		end
-	elseif f.data["lane"] == 3 then
-		if CDTL3_Lane_3 then
-			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL3_Lane_3)
-			CDTL3_Lane_3.triggerUpdate = true
-		else
-			CDTL3:SendToHolding(f)
-		end
+	-- lane 1-3, while it exists: the lane itself (CDTL3_Lane_n); anything else: holding
+	local lane = CDTL3:SlotParent("lanes", f.data["lane"])
+	if lane then
+		ic:GetParent().triggerUpdate = true
+		ic:SetParent(lane)
+		lane.triggerUpdate = true
 	else
 		CDTL3:SendToHolding(f)
 	end
@@ -2103,7 +2054,7 @@ private.ReadyAlert = function(f, s)
 		sound = s["nSound"]
 	end
 	if sound and sound ~= "None" then
-		PlaySoundFile(CDTL3.LSM:Fetch("sound", sound), "SFX")
+		PlaySoundFile(CDTL3.LSM:Fetch("sound", sound) --[[@as string|number]], "SFX")
 	end
 
 	if e and e["sayName"] then
@@ -2115,58 +2066,28 @@ end
 -- arriving is shown: one hidden on its lane for being over Max Time (Hide time surplus) used to stay
 -- hidden in the Ready frame after an early reset (Cold Snap, Preparation, Readiness). A highlighted
 -- icon stays the Highlight Duration.
+-- ReadyBoard.lua wraps this ("Stay until used" slots).
+---@diagnostic disable-next-line: duplicate-set-field
 function CDTL3:SendToReady(f)
 	local ic = f.icon
-	local s = nil
 
-	if f.data["readyFrame"] == 1 then
-		if CDTL3_Ready_1_MF and CDTL3.db.profile.ready["ready1"]["enabled"] then
-			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL3_Ready_1_MF)
-			ic.valid = true
-			s = CDTL3.db.profile.ready["ready1"]
-			ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
+	-- Ready frame 1-3, while it exists and is switched on: its mover frame (CDTL3_Ready_n_MF)
+	local n = f.data["readyFrame"]
+	local mf = CDTL3:SlotParent("ready", n)
+	local s = CDTL3:SlotSettings("ready", n)
+	if mf and s["enabled"] then
+		ic:GetParent().triggerUpdate = true
+		ic:SetParent(mf)
+		ic.valid = true
+		ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
 
-			private.ReadyAlert(f, s)
+		private.ReadyAlert(f, s)
 
-			CDTL3_Ready_1.combatTimer = 0
-			CDTL3_Ready_1_MF.triggerUpdate = true
-			f.data["overrideCD"] = false
-		else
-			CDTL3:SendToHolding(f)
-		end
-	elseif f.data["readyFrame"] == 2 then
-		if CDTL3_Ready_2_MF and CDTL3.db.profile.ready["ready2"]["enabled"] then
-			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL3_Ready_2_MF)
-			ic.valid = true
-			s = CDTL3.db.profile.ready["ready2"]
-			ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
-
-			private.ReadyAlert(f, s)
-
-			CDTL3_Ready_2.combatTimer = 0
-			CDTL3_Ready_2_MF.triggerUpdate = true
-			f.data["overrideCD"] = false
-		else
-			CDTL3:SendToHolding(f)
-		end
-	elseif f.data["readyFrame"] == 3 then
-		if CDTL3_Ready_3_MF and CDTL3.db.profile.ready["ready3"]["enabled"] then
-			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL3_Ready_3_MF)
-			ic.valid = true
-			s = CDTL3.db.profile.ready["ready3"]
-			ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
-
-			private.ReadyAlert(f, s)
-
-			CDTL3_Ready_3.combatTimer = 0
-			CDTL3_Ready_3_MF.triggerUpdate = true
-			f.data["overrideCD"] = false
-		else
-			CDTL3:SendToHolding(f)
-		end
+		-- CDTL3_Ready_n is made together with its mover frame (Ready.lua)
+		local ready = CDTL3:SlotFrame("ready", n) --[[@as table]]
+		ready.combatTimer = 0
+		mf.triggerUpdate = true
+		f.data["overrideCD"] = false
 	else
 		CDTL3:SendToHolding(f)
 	end
