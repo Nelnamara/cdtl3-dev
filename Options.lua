@@ -83,6 +83,8 @@ private.AddBorderArgs = function(args, base, border, refresh, first)
 		order = first,
 		type = "select",
 		dialogControl = 'LSM30_Border',
+		-- AceGUIWidgetLSMlists comes from the bundled AceGUI-3.0-SharedMediaWidgets (Libs)
+		---@diagnostic disable-next-line: undefined-global
 		values = AceGUIWidgetLSMlists.border,
 		get = function(info) return border()["style"] end,
 		set = function(info, val)
@@ -393,6 +395,8 @@ private.SplitBlizzardSound = function(args, key, option)
 		if type(list) == "function" then
 			list = list(info)
 		end
+		-- AceGUIWidgetLSMlists comes from the bundled AceGUI-3.0-SharedMediaWidgets (Libs)
+		---@diagnostic disable-next-line: undefined-global
 		return list or (AceGUIWidgetLSMlists and AceGUIWidgetLSMlists.sound) or {}
 	end
 	local function listOf(blizzard)
@@ -1683,9 +1687,9 @@ function CDTL3:GetMainOptions()
 					},
 					spacer300 = {
 						name = function(info)
-							local info = ""
-							info = info..CDTL3:GetChangeLog()
-							return info
+							local text = ""
+							text = text..CDTL3:GetChangeLog()
+							return text
 						end,
 						type = "description",
 						order = 300,
@@ -1844,8 +1848,8 @@ private.BuildFilterOptions = function()
 						func = function(info)
 								local cleanTable = {}
 
-								for k, v in pairs(CDTL3.db.profile.tables["items"]) do
-									local _, _, _, _, _, classID, subclassID = CDTL3.Compat.GetItemInfoInstant(v["itemID"])
+								for _, v in pairs(CDTL3.db.profile.tables["items"]) do
+									local _, _, _, _, _, classID = CDTL3.Compat.GetItemInfoInstant(v["itemID"])
 
 									if classID ~= 12 or private.KeepAfterClear(v) then
 										table.insert(cleanTable, v)
@@ -1895,7 +1899,6 @@ private.BuildFilterOptions = function()
 					onlyPlayer = {
 						name = L["Player Only"],
 						desc = function(info)
-								local default = string.lower(CDTL3.currentFilter["default"])
 								return string.format(L["If selected only %s applied by the player will be tracked"], private.TypeNoun())
 							end,
 						order = 201.2,
@@ -3305,7 +3308,7 @@ private.GetFilterSet = function(t, o)
 					end,
 				set = function(info, val)
 						if CDTL3.currentFilter[t] == "<< Add New >>" then
-							local spellName, icon, originalIcon = CDTL3:GetSpellInfo(val)
+							local spellName, icon = CDTL3:GetSpellInfo(val)
 
 							-- Retail and Forever give "" (not nil) for an ID that isn't a spell
 							if spellName and spellName ~= "" then
@@ -3552,7 +3555,7 @@ private.GetFilterSet = function(t, o)
 						local n = " "
 
 						if t == "customs" and CDTL3.currentFilter[t] == "<< Add New >>" then
-							n = 0
+							return 0
 						else
 							local specialCase = false
 							if t == "items" then
@@ -3750,12 +3753,6 @@ private.GetFilterSet = function(t, o)
 						return false
 					end,
 				set = function(info, val)
-						local specialCase = false
-						if t == "items" then
-							specialCase = true
-						end
-						local s = CDTL3:GetSpellSettings(CDTL3.currentFilter[t], t, specialCase)
-
 						CDTL3:SetSpellData(CDTL3.currentFilter[t], t, "setCustomCD", val)
 
 						local e = CDTL3:GetExistingCooldown(CDTL3.currentFilter[t], t)
@@ -4428,7 +4425,8 @@ private.AddEntryReasonArgs = function(args, t)
 				return fix == nil
 			end,
 		func = function(info)
-				local s = private.ReasonEntry(t)
+				-- a fix comes back only for an entry that exists
+				local s = private.ReasonEntry(t) --[[@as table]]
 				local _, fix, n = CDTL3:WhyNotShowing(s, t)
 
 				-- the same change the entry's own control makes (live icons included)
@@ -4490,7 +4488,8 @@ private.AddSpellRuleArgs = function(args, t)
 
 	args["onlyThisSpec"] = {
 		name = function(info)
-				local s = private.ReasonEntry(t)
+				-- IsSpecLimited is true only for an entry that exists
+				local s = private.ReasonEntry(t) --[[@as table]]
 				if CDTL3:IsSpecLimited(s) then
 					return string.format(L["Only for %s"], CDTL3:SpecNames(s["onlySpecs"]))
 				end
@@ -4672,7 +4671,7 @@ private.GetCustomSet = function(t, o)
 						order = 102,
 						type = "execute",
 						func = function(info)
-								for k, v in pairs(CDTL3.db.profile.tables["detected"]) do
+								for k in pairs(CDTL3.db.profile.tables["detected"]) do
 									CDTL3.db.profile.tables["detected"][k] = nil
 								end
 
@@ -4824,7 +4823,6 @@ private.GetCustomSet = function(t, o)
 end
 
 private.GetLaneSet = function(i)
-	local frame = nil
 	local lane = CDTL3:SlotSettings("lanes", i)
 
 	local options = {
@@ -6148,6 +6146,8 @@ private.GetLaneSet = function(i)
 							end,
 						type = "select",
 						dialogControl = 'LSM30_Border',
+						-- AceGUIWidgetLSMlists comes from the bundled AceGUI-3.0-SharedMediaWidgets (Libs)
+						---@diagnostic disable-next-line: undefined-global
 						values = AceGUIWidgetLSMlists.border,
 						get = function(info) return lane["icons"]["highlight"]["border"]["style"] end,
 						set = function(info, val)
@@ -6682,6 +6682,8 @@ private.GetReadySet = function(i)
 						type = "select",
 						width = "double",
 						dialogControl = 'LSM30_Sound',
+						-- AceGUIWidgetLSMlists comes from the bundled AceGUI-3.0-SharedMediaWidgets (Libs)
+						---@diagnostic disable-next-line: undefined-global
 						values = AceGUIWidgetLSMlists.sound,
 						get = function(info, index)
 								return ready["nSound"]
@@ -6718,6 +6720,8 @@ private.GetReadySet = function(i)
 						type = "select",
 						width = "double",
 						dialogControl = 'LSM30_Sound',
+						-- AceGUIWidgetLSMlists comes from the bundled AceGUI-3.0-SharedMediaWidgets (Libs)
+						---@diagnostic disable-next-line: undefined-global
 						values = AceGUIWidgetLSMlists.sound,
 						get = function(info, index)
 								return ready["hSound"]
@@ -7203,6 +7207,8 @@ private.GetTextFont = function(s, o, i, r)
 			end,
 		type = "select",
 		dialogControl = 'LSM30_Font',
+		-- AceGUIWidgetLSMlists comes from the bundled AceGUI-3.0-SharedMediaWidgets (Libs)
+		---@diagnostic disable-next-line: undefined-global
 		values = AceGUIWidgetLSMlists.font,
 		get = function(info) return s["font"] end,
 		set = function(info, val)
@@ -7292,11 +7298,11 @@ private.GetTextColor = function(s, o, i, r)
 		get = function(info)
 				local t = s["color"]
 
-				local r = t["r"]
+				local red = t["r"]
 				local g = t["g"]
 				local b = t["b"]
 				local a = t["a"]
-				return r, g, b, a
+				return red, g, b, a
 			end,
 		set = function(info, red, green, blue, alpha)
 				s["color"] = { r = red, g = green, b = blue, a = alpha }
@@ -7326,11 +7332,11 @@ private.GetTextShadowColor = function(s, o, i, r)
 		get = function(info)
 				local t = s["shadColor"]
 
-				local r = t["r"]
+				local red = t["r"]
 				local g = t["g"]
 				local b = t["b"]
 				local a = t["a"]
-				return r, g, b, a
+				return red, g, b, a
 			end,
 		set = function(info, red, green, blue, alpha)
 				s["shadColor"] = { r = red, g = green, b = blue, a = alpha }
@@ -7605,6 +7611,8 @@ end
 -- Plays a picked sound once for a Play sound button (even while Mute ready sounds is on)
 private.PlayTestSound = function(sound)
 	if sound and sound ~= "None" then
+		-- LSM:Fetch gives a path, or nil for a name it doesn't know (the call then plays nothing)
+		---@diagnostic disable-next-line: param-type-mismatch
 		PlaySoundFile(CDTL3.LSM:Fetch("sound", sound), "SFX")
 	end
 end
@@ -7663,6 +7671,8 @@ private.AddEntryReadyArgs = function(args, t)
 		type = "select",
 		width = "double",
 		dialogControl = 'LSM30_Sound',
+		-- AceGUIWidgetLSMlists comes from the bundled AceGUI-3.0-SharedMediaWidgets (Libs)
+		---@diagnostic disable-next-line: undefined-global
 		values = AceGUIWidgetLSMlists.sound,
 		hidden = function(info)
 				return hidden() or not get("ownSound")
@@ -7713,7 +7723,7 @@ private.AddEntryReadyArgs = function(args, t)
 						if cd.data["type"] == t and (cd.data["name"] == name or cd.data["itemName"] == name) then
 							local p = cd.icon:GetParent()
 							local n = p and p:GetName()
-							if n == "CDTL3_Ready_1_MF" or n == "CDTL3_Ready_2_MF" or n == "CDTL3_Ready_3_MF" then
+							if CDTL3:SlotOfParent(n) == "ready" then
 								cd.data["readyLit"] = val and true or nil
 								CDTL3:RefreshIcon(cd)
 							end
@@ -7755,6 +7765,8 @@ private.AddReadyTestArgs = function(args, ready)
 	local function play(key)
 		local sound = ready[key]
 		if sound and sound ~= "None" then
+			-- LSM:Fetch gives a path, or nil for a name it doesn't know (the call then plays nothing)
+			---@diagnostic disable-next-line: param-type-mismatch
 			PlaySoundFile(CDTL3.LSM:Fetch("sound", sound), "SFX")
 		end
 	end

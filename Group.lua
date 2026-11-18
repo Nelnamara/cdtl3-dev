@@ -17,6 +17,8 @@ local L = LibStub("AceLocale-3.0"):GetLocale("CDTL3")
 local private = {}
 CDTL3.Group = private
 
+-- Classic fallback, used where C_CombatLog.GetCurrentEventInfo is missing
+---@diagnostic disable-next-line: undefined-global
 local GetInfo = (C_CombatLog and C_CombatLog.GetCurrentEventInfo) or CombatLogGetCurrentEventInfo
 
 local DEFAULTS = { raidCasts = false, burstLane = 3, strip = false, stripX = 0, stripY = -200 }
@@ -1047,6 +1049,8 @@ end
 -- chain behind the existing handler: a failure here never reaches it
 if CDTL3.COMBAT_LOG_EVENT_UNFILTERED and GetInfo then
 	local orig = CDTL3.COMBAT_LOG_EVENT_UNFILTERED
+	-- deliberate wrapper: chains to the handler that was there before
+	---@diagnostic disable-next-line: duplicate-set-field
 	function CDTL3:COMBAT_LOG_EVENT_UNFILTERED(...)
 		if private.raidOn or private.extOn then
 			pcall(private.OnLog)
@@ -1058,6 +1062,8 @@ end
 do
 	local origRefresh = CDTL3.RefreshConfig
 	if origRefresh then
+		-- deliberate wrapper: chains to the handler that was there before
+		---@diagnostic disable-next-line: duplicate-set-field
 		function CDTL3:RefreshConfig(...)
 			local r = origRefresh(self, ...)
 			pcall(private.Apply)
@@ -1067,6 +1073,8 @@ do
 
 	local origLock = CDTL3.ToggleFrameLock
 	if origLock then
+		-- deliberate wrapper: chains to the handler that was there before
+		---@diagnostic disable-next-line: duplicate-set-field
 		function CDTL3:ToggleFrameLock(...)
 			local r = origLock(self, ...)
 			pcall(private.PlaceStrip)

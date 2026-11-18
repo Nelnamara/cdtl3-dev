@@ -92,6 +92,8 @@ private.Build = function()
 	f.listAcc = 0
 
 	f.bg = f:CreateTexture(nil, "BACKGROUND")
+	-- SetAllPoints(true) anchors to the parent; the definitions only list a region
+	---@diagnostic disable-next-line: param-type-mismatch
 	f.bg:SetAllPoints(true)
 	f.bg:SetColorTexture(0.15, 0.15, 0.15, 0.62)
 
@@ -374,7 +376,7 @@ end
 ---------------------------------------------------------------- showing and placing
 function FT.Apply()
 	local s = private.S()
-	local f = CDTL3_FightTimeline
+	local f = _G["CDTL3_FightTimeline"]
 	if not s then
 		return
 	end

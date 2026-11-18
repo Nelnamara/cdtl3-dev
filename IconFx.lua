@@ -26,8 +26,6 @@ local private = {}
 
 private.FILL = [[Interface\Buttons\WHITE8X8]]
 private.STRIPES = [[Interface\AddOns\CooldownTimeline3\Media\zone-stripes.tga]]	-- tools/make-stripes.py
-private.LANE_KEYS = { "lane1", "lane2", "lane3" }
-private.READY_FRAMES = { CDTL3_Ready_1_MF = true, CDTL3_Ready_2_MF = true, CDTL3_Ready_3_MF = true }
 private.GCD_REF = 8921			-- the spell Lanes.lua reads the GCD from (any spell without a cooldown)
 private.GCD_MAX = 3				-- a wait longer than this is not a GCD
 private.PIP_MAX = 6
@@ -42,8 +40,7 @@ private.ENTRY_KEYS = { "warnSecs", "warnSound", "alertGain", "alertEnd", "gainSo
 
 -- the saved lane settings of lane n (nil for 0 = Hide, or anything else)
 private.LaneSettings = function(n)
-	local key = private.LANE_KEYS[n]
-	return key and CDTL3.db and CDTL3.db.profile.lanes[key] or nil
+	return CDTL3.db and CDTL3:SlotSettings("lanes", n) or nil
 end
 
 private.PlaySound = function(name)
@@ -117,6 +114,8 @@ private.Fetch = function(id)
 		end
 		return info["currentCharges"], info["maxCharges"], info["cooldownStartTime"], info["cooldownDuration"]
 	end
+	-- Classic clients only (this branch runs where retailAPI is false)
+	---@diagnostic disable-next-line: undefined-global
 	return GetSpellCharges(id)
 end
 
@@ -718,7 +717,7 @@ end
 function FX:GCDWait(f)
 	local d, ic = f.data, f.icon
 	local n = tonumber(d["readyFrame"])
-	local rs = n and n >= 1 and n <= 3 and CDTL3.db.profile.ready["ready" .. n] or nil
+	local rs = n and CDTL3:SlotSettings("ready", n) or nil
 	if not (rs and rs["enabled"] and _G["CDTL3_Ready_" .. n .. "_MF"]) then
 		return	-- no Ready frame to wait in: it stays on its lane
 	end
@@ -1276,6 +1275,8 @@ function FX:AddEntryArgs(args, t)
 		return {
 			name = name, desc = desc, order = order, type = "select", width = "double",
 			dialogControl = "LSM30_Sound",
+			-- AceGUIWidgetLSMlists comes from the bundled AceGUI-3.0-SharedMediaWidgets (Libs)
+			---@diagnostic disable-next-line: undefined-global
 			values = AceGUIWidgetLSMlists.sound,
 			hidden = function(info) return hidden() or not shown() end,
 			get = function(info) return get(key, default) end,

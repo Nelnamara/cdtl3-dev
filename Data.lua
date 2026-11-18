@@ -3444,6 +3444,7 @@ private.customTextDynamicTags = {
 		desc = "Show the time left of the next CD due",
 		tag = "%[cdtl.time.n%]",
 		func = function()
+					---@type string|number
 					local timeString = ""
 					local lowestTime = 10000
 
@@ -3468,6 +3469,7 @@ private.customTextDynamicTags = {
 		desc = "Show the time left of the last CD due",
 		tag = "%[cdtl.time.l%]",
 		func = function()
+					---@type string|number
 					local timeString = ""
 					local lowestTime = 0
 
@@ -3552,6 +3554,7 @@ private.customTextDynamicTags = {
 		desc = "Show the time left of the next highlighted CD due",
 		tag = "%[cdtl.time.nh%]",
 		func = function()
+					---@type string|number
 					local timeString = ""
 					local lowestTime = 10000
 
@@ -3578,6 +3581,7 @@ private.customTextDynamicTags = {
 		desc = "Show the time left of the last highlighted CD due",
 		tag = "%[cdtl.time.lh%]",
 		func = function()
+					---@type string|number
 					local timeString = ""
 					local lowestTime = 0
 
