@@ -84,32 +84,38 @@ CDTL3.Compat = {
 -- Lane, bar frame and ready frame 1 to 3 by number. Only the numbers 1, 2 and 3 have a slot:
 -- anything else (0, 4, nil, "1") gives nil. Settings are read from the live profile on every
 -- call, because profiles switch.
-local SLOT_KEYS = {
-	lanes = { "lane1", "lane2", "lane3" },
-	barFrames = { "frame1", "frame2", "frame3" },
-	ready = { "ready1", "ready2", "ready3" },
-}
-local SLOT_FRAMES = {
-	lanes = { "CDTL3_Lane_1", "CDTL3_Lane_2", "CDTL3_Lane_3" },
-	barFrames = { "CDTL3_BarFrame_1", "CDTL3_BarFrame_2", "CDTL3_BarFrame_3" },
-	ready = { "CDTL3_Ready_1", "CDTL3_Ready_2", "CDTL3_Ready_3" },
+local SLOTS = {
+	lanes = {
+		keys = { "lane1", "lane2", "lane3" },
+		frames = { "CDTL3_Lane_1", "CDTL3_Lane_2", "CDTL3_Lane_3" },
+	},
+	barFrames = {
+		keys = { "frame1", "frame2", "frame3" },
+		frames = { "CDTL3_BarFrame_1", "CDTL3_BarFrame_2", "CDTL3_BarFrame_3" },
+	},
+	ready = {
+		keys = { "ready1", "ready2", "ready3" },
+		frames = { "CDTL3_Ready_1", "CDTL3_Ready_2", "CDTL3_Ready_3" },
+	},
 }
 
--- the saved settings of slot n: CDTL3.db.profile[group]["lane1"] and so on
+-- the saved settings of slot n: CDTL3.db.profile[group]["lane1"] and so on. Every caller passes 1-3
+-- (RefreshBar turns bar frame 0 into 1 first), so the type says table; anything else gives nil.
 ---@param group "lanes"|"barFrames"|"ready"
 ---@param n integer?
 ---@return table
 function CDTL3:SlotSettings(group, n)
-	local key = SLOT_KEYS[group][n]
+	local key = SLOTS[group].keys[n]
 	return key and CDTL3.db.profile[group][key]
 end
 
--- the frame of slot n: CDTL3_Lane_n, CDTL3_BarFrame_n or CDTL3_Ready_n (nil until it is made)
+-- the frame of slot n: CDTL3_Lane_n, CDTL3_BarFrame_n or CDTL3_Ready_n (nil if n isn't 1-3,
+-- or until the frame is made)
 ---@param group "lanes"|"barFrames"|"ready"
 ---@param n integer?
----@return table
+---@return table?
 function CDTL3:SlotFrame(group, n)
-	local name = SLOT_FRAMES[group][n]
+	local name = SLOTS[group].frames[n]
 	return name and _G[name]
 end
 
