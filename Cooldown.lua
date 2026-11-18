@@ -8,7 +8,9 @@ private.dynamicTextPollRate = 10
 private.timeTextPollRate = 2
 -- seconds after an item's use in which a readable 0 cooldown read means "no cooldown"
 private.itemNoCooldownWindow = 2
-private.laneKeys = { "lane1", "lane2", "lane3" }
+-- a lane mode's settings table in lane.mode, by mode type
+private.modeKeys = { LINEAR = "linear", LINEAR_ABS = "linearAbs", SPLIT = "split", SPLIT_ABS = "splitAbs" }
+private.splitModeKeys = { SPLIT = "split", SPLIT_ABS = "splitAbs" }
 
 function CDTL3:CreateCooldown(UID, cdType, cdData)
 	local fName = "CDTL3_CD_"..UID
@@ -207,7 +209,7 @@ function CDTL3:RefreshBar(cd)
 	local s
 	local p = f:GetParent():GetName()
 
-	if p == "CDTL3_BarFrame_1_MF" or p == "CDTL3_BarFrame_2_MF" or p == "CDTL3_BarFrame_3_MF" then
+	if CDTL3:SlotOfParent(p) == "barFrames" then
 		-- bar frame 0 shows as frame 1
 		local n = cd.data["barFrame"]
 		s = CDTL3:SlotSettings("barFrames", n == 0 and 1 or n)
@@ -523,25 +525,17 @@ end
 
 function CDTL3:RefreshIcon(cd)
 	local f = cd.icon
-	local s = CDTL3.db.profile.lanes["lane1"]
+	local s = CDTL3:SlotSettings("lanes", 1)
 	local p = f:GetParent():GetName()
+	local group = CDTL3:SlotOfParent(p)
 
-	if p == "CDTL3_Lane_1" or p == "CDTL3_Lane_2" or p == "CDTL3_Lane_3" then
-		if cd.data["lane"] == 0 or cd.data["lane"] == 1 then
-			s = CDTL3.db.profile.lanes["lane1"]
-		elseif cd.data["lane"] == 2 then
-			s = CDTL3.db.profile.lanes["lane2"]
-		elseif cd.data["lane"] == 3 then
-			s = CDTL3.db.profile.lanes["lane3"]
-		end
-	elseif p == "CDTL3_Ready_1_MF" or p == "CDTL3_Ready_2_MF" or p == "CDTL3_Ready_3_MF" then
-		if cd.data["readyFrame"] == 0 or cd.data["readyFrame"] == 1 then
-			s = CDTL3.db.profile.ready["ready1"]
-		elseif cd.data["readyFrame"] == 2 then
-			s = CDTL3.db.profile.ready["ready2"]
-		elseif cd.data["readyFrame"] == 3 then
-			s = CDTL3.db.profile.ready["ready3"]
-		end
+	-- on a lane or in a Ready frame: that slot's settings (0 counts as 1); anything else keeps lane 1's
+	if group == "lanes" then
+		local n = cd.data["lane"]
+		s = CDTL3:SlotSettings("lanes", n == 0 and 1 or n) or s
+	elseif group == "ready" then
+		local n = cd.data["readyFrame"]
+		s = CDTL3:SlotSettings("ready", n == 0 and 1 or n) or s
 	end
 
 	if cd.data["setCustomCD"] then
@@ -764,8 +758,7 @@ function CDTL3:RefreshIcon(cd)
 	-- HIGHLIGHT BORDER
 	-- Flash when ready (Filters): while it waits in a Ready frame the icon flashes with the Flash
 	-- Icon highlight, whatever that frame's own highlight settings are
-	local readyFlash = cd.data["readyLit"] and not cd.data["highlight"]
-		and (p == "CDTL3_Ready_1_MF" or p == "CDTL3_Ready_2_MF" or p == "CDTL3_Ready_3_MF")
+	local readyFlash = cd.data["readyLit"] and not cd.data["highlight"] and group == "ready"
 	if cd.data["highlight"] or readyFlash then
 		if readyFlash or s["icons"]["highlight"]["border"]["style"] ~= "None" then
 			if not f.hl then
@@ -1030,7 +1023,7 @@ private.BarUpdate = function(f, elapsed)
 	ba.currentCD = d["currentCD"]
 
 	local p = ba:GetParent():GetName()
-	if p == "CDTL3_BarFrame_1_MF" or p == "CDTL3_BarFrame_2_MF" or p == "CDTL3_BarFrame_3_MF" then
+	if CDTL3:SlotOfParent(p) == "barFrames" then
 		if d["currentCD"] > 0 then
 			local s = CDTL3:SlotSettings("barFrames", d["barFrame"])
 
@@ -1053,8 +1046,8 @@ private.BarUpdate = function(f, elapsed)
 			-- option off (or no lane), a bar it hid earlier comes back: it used to stay hidden until
 			-- a /reload, so unticking the option looked like it did nothing. A lane that's switched
 			-- off counts as no lane: its icons have nowhere to show, so its bars stay.
-			local laneKey = private.laneKeys[d["lane"]]
-			local laneOn = laneKey and CDTL3.db.profile.lanes[laneKey]["enabled"]
+			local lane = CDTL3:SlotSettings("lanes", d["lane"])
+			local laneOn = lane and lane["enabled"]
 			if (not laneOn or not s["transition"]["hideTransitioned"]) and not ba.valid
 				and d["enabled"] and not d["ignored"] then
 				ba.valid = true
@@ -1121,15 +1114,14 @@ private.CalcSplitPosition = function(current, total, s)
 	local max = 100
 	local value = (current / total) * 100
 
-	local ss = nil
+	-- the lane's split settings: mode.split or mode.splitAbs (nil in any other mode; only Split lanes call this)
+	local ss = s["mode"][private.splitModeKeys[s["mode"]["type"]] or ""]
 	local abs = s["mode"]["type"] == "SPLIT_ABS"
 	if s["mode"]["type"] == "SPLIT" then
-		ss = s["mode"]["split"]
 		if total > ss["max"] then
 			total = ss["max"]
 		end
 	elseif abs then
-		ss = s["mode"]["splitAbs"]
 		max = ss["max"]
 		value = current
 		total = ss["max"]
@@ -1234,18 +1226,8 @@ private.CalcTransitionIndicator = function(f, s)
 	local ls = CDTL3:SlotSettings("lanes", f.data["lane"])
 
 	if ls then
-		local mode = ls["mode"]["type"]
-
-		local ms = nil
-		if mode == "LINEAR" then
-			ms = ls["mode"]["linear"]
-		elseif mode == "LINEAR_ABS" then
-			ms = ls["mode"]["linearAbs"]
-		elseif mode == "SPLIT" then
-			ms = ls["mode"]["split"]
-		elseif mode == "SPLIT_ABS" then
-			ms = ls["mode"]["splitAbs"]
-		end
+		-- the lane's settings for its mode (mode.linear, mode.linearAbs, ...)
+		local ms = ls["mode"][private.modeKeys[ls["mode"]["type"]] or ""]
 
 		f.bar.transitionThreshold = ms["max"]
 
@@ -1681,8 +1663,8 @@ private.IconUpdate = function(f, elapsed)
 		CDTL3:EffectStripTick(f)
 	end
 
-	local p = ic:GetParent():GetName()
-	if p == "CDTL3_Lane_1" or p == "CDTL3_Lane_2" or p == "CDTL3_Lane_3" then
+	local group = CDTL3:SlotOfParent(ic:GetParent():GetName())
+	if group == "lanes" then
 		if d["currentCD"] > 0 then
 			local s = CDTL3:SlotSettings("lanes", d["lane"])
 
@@ -1832,7 +1814,7 @@ private.IconUpdate = function(f, elapsed)
 				end
 			end
 		end
-	elseif p == "CDTL3_Ready_1_MF" or p == "CDTL3_Ready_2_MF" or p == "CDTL3_Ready_3_MF" then
+	elseif group == "ready" then
 		-- a GCD wait ends here, and the lane's pips and pulse go (IconFx.lua)
 		CDTL3.IconFx:ReadyFrame(f, ic)
 
@@ -1901,30 +1883,12 @@ end
 function CDTL3:SendToBarFrame(f)
 	local ba = f.bar
 
-	if f.data["barFrame"] == 1 then
-		if CDTL3_BarFrame_1_MF then
-			ba:GetParent().triggerUpdate = true
-			ba:SetParent(CDTL3_BarFrame_1_MF)
-			CDTL3_BarFrame_1_MF.triggerUpdate = true
-		else
-			CDTL3:SendToBarHolding(f)
-		end
-	elseif f.data["barFrame"] == 2 then
-		if CDTL3_BarFrame_2_MF then
-			ba:GetParent().triggerUpdate = true
-			ba:SetParent(CDTL3_BarFrame_2_MF)
-			CDTL3_BarFrame_2_MF.triggerUpdate = true
-		else
-			CDTL3:SendToBarHolding(f)
-		end
-	elseif f.data["barFrame"] == 3 then
-		if CDTL3_BarFrame_3_MF then
-			ba:GetParent().triggerUpdate = true
-			ba:SetParent(CDTL3_BarFrame_3_MF)
-			CDTL3_BarFrame_3_MF.triggerUpdate = true
-		else
-			CDTL3:SendToBarHolding(f)
-		end
+	-- bar frame 1-3, while it exists: its mover frame (CDTL3_BarFrame_n_MF); anything else: holding
+	local mf = CDTL3:SlotParent("barFrames", f.data["barFrame"])
+	if mf then
+		ba:GetParent().triggerUpdate = true
+		ba:SetParent(mf)
+		mf.triggerUpdate = true
 	else
 		CDTL3:SendToBarHolding(f)
 	end
@@ -1971,30 +1935,12 @@ end
 function CDTL3:SendToLane(f)
 	local ic = f.icon
 
-	if f.data["lane"] == 1 then
-		if CDTL3_Lane_1 then
-			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL3_Lane_1)
-			CDTL3_Lane_1.triggerUpdate = true
-		else
-			CDTL3:SendToHolding(f)
-		end
-	elseif f.data["lane"] == 2 then
-		if CDTL3_Lane_2 then
-			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL3_Lane_2)
-			CDTL3_Lane_2.triggerUpdate = true
-		else
-			CDTL3:SendToHolding(f)
-		end
-	elseif f.data["lane"] == 3 then
-		if CDTL3_Lane_3 then
-			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL3_Lane_3)
-			CDTL3_Lane_3.triggerUpdate = true
-		else
-			CDTL3:SendToHolding(f)
-		end
+	-- lane 1-3, while it exists: the lane itself (CDTL3_Lane_n); anything else: holding
+	local lane = CDTL3:SlotParent("lanes", f.data["lane"])
+	if lane then
+		ic:GetParent().triggerUpdate = true
+		ic:SetParent(lane)
+		lane.triggerUpdate = true
 	else
 		CDTL3:SendToHolding(f)
 	end
@@ -2124,56 +2070,24 @@ end
 ---@diagnostic disable-next-line: duplicate-set-field
 function CDTL3:SendToReady(f)
 	local ic = f.icon
-	local s = nil
 
-	if f.data["readyFrame"] == 1 then
-		if CDTL3_Ready_1_MF and CDTL3.db.profile.ready["ready1"]["enabled"] then
-			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL3_Ready_1_MF)
-			ic.valid = true
-			s = CDTL3.db.profile.ready["ready1"]
-			ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
+	-- Ready frame 1-3, while it exists and is switched on: its mover frame (CDTL3_Ready_n_MF)
+	local n = f.data["readyFrame"]
+	local mf = CDTL3:SlotParent("ready", n)
+	local s = CDTL3:SlotSettings("ready", n)
+	if mf and s["enabled"] then
+		ic:GetParent().triggerUpdate = true
+		ic:SetParent(mf)
+		ic.valid = true
+		ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
 
-			private.ReadyAlert(f, s)
+		private.ReadyAlert(f, s)
 
-			CDTL3_Ready_1.combatTimer = 0
-			CDTL3_Ready_1_MF.triggerUpdate = true
-			f.data["overrideCD"] = false
-		else
-			CDTL3:SendToHolding(f)
-		end
-	elseif f.data["readyFrame"] == 2 then
-		if CDTL3_Ready_2_MF and CDTL3.db.profile.ready["ready2"]["enabled"] then
-			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL3_Ready_2_MF)
-			ic.valid = true
-			s = CDTL3.db.profile.ready["ready2"]
-			ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
-
-			private.ReadyAlert(f, s)
-
-			CDTL3_Ready_2.combatTimer = 0
-			CDTL3_Ready_2_MF.triggerUpdate = true
-			f.data["overrideCD"] = false
-		else
-			CDTL3:SendToHolding(f)
-		end
-	elseif f.data["readyFrame"] == 3 then
-		if CDTL3_Ready_3_MF and CDTL3.db.profile.ready["ready3"]["enabled"] then
-			ic:GetParent().triggerUpdate = true
-			ic:SetParent(CDTL3_Ready_3_MF)
-			ic.valid = true
-			s = CDTL3.db.profile.ready["ready3"]
-			ic.readyTime = f.data["highlight"] and s["hTime"] or s["nTime"]
-
-			private.ReadyAlert(f, s)
-
-			CDTL3_Ready_3.combatTimer = 0
-			CDTL3_Ready_3_MF.triggerUpdate = true
-			f.data["overrideCD"] = false
-		else
-			CDTL3:SendToHolding(f)
-		end
+		-- CDTL3_Ready_n is made together with its mover frame (Ready.lua)
+		local ready = CDTL3:SlotFrame("ready", n) --[[@as table]]
+		ready.combatTimer = 0
+		mf.triggerUpdate = true
+		f.data["overrideCD"] = false
 	else
 		CDTL3:SendToHolding(f)
 	end

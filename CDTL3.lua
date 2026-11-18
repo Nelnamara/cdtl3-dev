@@ -151,6 +151,16 @@ function CDTL3:SlotOfParent(name)
 	return nil
 end
 
+-- the frame that holds slot n's timers (see SLOTS.parents): CDTL3_Lane_n, CDTL3_BarFrame_n_MF or
+-- CDTL3_Ready_n_MF (nil if n isn't 1-3, or until the frame is made)
+---@param group "lanes"|"barFrames"|"ready"
+---@param n integer?
+---@return table?
+function CDTL3:SlotParent(group, n)
+	local name = SLOTS[group].parents[n]
+	return name and _G[name]
+end
+
 CDTL3.version = "3.2.2"
 -- the welcome window (GetSpecialMessage + changelog) opens once for anyone whose last seen version is older
 CDTL3.noticeVersion = "3.2"
@@ -2901,16 +2911,11 @@ function CDTL3:PLAYER_REGEN_DISABLED()
 	CDTL3:ApplyCombatVisibility()
 
 
-	if CDTL3_Ready_1 then
-		CDTL3_Ready_1.combatTimer = CDTL3.db.profile.ready["ready1"]["pTime"]
-	end
-
-	if CDTL3_Ready_2 then
-		CDTL3_Ready_2.combatTimer = CDTL3.db.profile.ready["ready2"]["pTime"]
-	end
-
-	if CDTL3_Ready_3 then
-		CDTL3_Ready_3.combatTimer = CDTL3.db.profile.ready["ready3"]["pTime"]
+	for n = 1, 3 do
+		local ready = CDTL3:SlotFrame("ready", n)
+		if ready then
+			ready.combatTimer = CDTL3:SlotSettings("ready", n)["pTime"]
+		end
 	end
 end
 
@@ -2923,16 +2928,11 @@ function CDTL3:PLAYER_REGEN_ENABLED()
 		CDTL3:UNIT_AURA("UNIT_AURA", "player")
 	end
 
-	if CDTL3_Ready_1 then
-		CDTL3_Ready_1.combatTimer = 0
-	end
-
-	if CDTL3_Ready_2 then
-		CDTL3_Ready_2.combatTimer = 0
-	end
-
-	if CDTL3_Ready_3 then
-		CDTL3_Ready_3.combatTimer = 0
+	for n = 1, 3 do
+		local ready = CDTL3:SlotFrame("ready", n)
+		if ready then
+			ready.combatTimer = 0
+		end
 	end
 end
 
