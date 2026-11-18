@@ -6,31 +6,13 @@
 local private = {}
 
 function CDTL3:CreateBarFrames()
-	local frame1Enabled = CDTL3.db.profile.barFrames["frame1"]["enabled"]
-	local frame2Enabled = CDTL3.db.profile.barFrames["frame2"]["enabled"]
-	local frame3Enabled = CDTL3.db.profile.barFrames["frame3"]["enabled"]
-
-	if frame1Enabled then
-		if CDTL3_BarFrame_1 then
-			CDTL3:RefreshBarFrame(1)
-		else
-			private.CreateBarFrame(1)
-		end
-	end
-
-	if frame2Enabled then
-		if CDTL3_BarFrame_2 then
-			CDTL3:RefreshBarFrame(2)
-		else
-			private.CreateBarFrame(2)
-		end
-	end
-
-	if frame3Enabled then
-		if CDTL3_BarFrame_3 then
-			CDTL3:RefreshBarFrame(3)
-		else
-			private.CreateBarFrame(3)
+	for i = 1, 3 do
+		if CDTL3:SlotSettings("barFrames", i)["enabled"] then
+			if CDTL3:SlotFrame("barFrames", i) then
+				CDTL3:RefreshBarFrame(i)
+			else
+				private.CreateBarFrame(i)
+			end
 		end
 	end
 end
@@ -44,13 +26,6 @@ function CDTL3:RefreshBarFrame(i)
 	end
 
 	f.name = s["name"]
-
-	local anchor = "CENTER"
-	if s["grow"] == "DOWN" then
-		anchor = "TOP"
-	elseif  s["grow"] == "UP" then
-		anchor = "BOTTOM"
-	end
 
 	-- the screen position, or on the frame it is anchored to (Anchors.lua)
 	CDTL3:PlaceFrame(f, s, "barFrames")
@@ -159,6 +134,8 @@ private.CreateBarFrame = function(frameNumber)
 	f.overrideAutohide = false
 
 	f.mf = CreateFrame("Frame", frameName.."_MF", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+	-- f is a Frame; the optional template argument makes the definitions give a union
+	---@diagnostic disable-next-line: param-type-mismatch
 	f.mf:SetParent(f)
 	f.mf.bg = f.mf:CreateTexture(nil, "BACKGROUND")
 	--f.mf.bd = CreateFrame("Frame", frameName.."_BD", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
@@ -169,6 +146,8 @@ private.CreateBarFrame = function(frameNumber)
 	f.mf.triggerUpdate = false
 
 	f.db = CreateFrame("Frame", frameName.."_DB", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+	-- f is a Frame; the optional template argument makes the definitions give a union
+	---@diagnostic disable-next-line: param-type-mismatch
 	f.db:SetParent(f)
 	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
 	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
@@ -221,7 +200,6 @@ private.BarFrameUpdate = function(f, elapsed)
 		local yOffset = 0
 		local xMod = 0
 		local yMod = 0
-		local anchor = "TOP"
 		local mfAnchor = "CENTER"
 
 		if count == 1 then

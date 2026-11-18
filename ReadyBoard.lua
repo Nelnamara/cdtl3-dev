@@ -72,8 +72,11 @@ end
 private.NewSlot = function(b)
 	local slot = CreateFrame("Frame", nil, b)
 	slot.tx = slot:CreateTexture(nil, "BACKGROUND")
+	-- SetAllPoints(true) is the old "fill the parent" form; the definitions only list a region
+	---@diagnostic disable-next-line: param-type-mismatch
 	slot.tx:SetAllPoints(true)
 	slot.dim = slot:CreateTexture(nil, "ARTWORK")
+	---@diagnostic disable-next-line: param-type-mismatch
 	slot.dim:SetAllPoints(true)
 	slot.dim:SetColorTexture(10 / 255, 12 / 255, 14 / 255, 0.6)
 	slot.name = slot:CreateFontString(nil, "OVERLAY")
@@ -210,7 +213,7 @@ private.Slots = function(b)
 			end
 
 			if cooling then
-				if CT and cd.ct and cd.ct.riding and CT:OwnsText(cd, slot.state, private.TIME_TEXT) then
+				if CT and cd and cd.ct and cd.ct.riding and CT:OwnsText(cd, slot.state, private.TIME_TEXT) then
 					slot.last = nil	-- the game's own timer is writing it
 				else
 					local left, estimate = private.Left(cd)
@@ -236,7 +239,7 @@ private.BoardTick = function(b, elapsed)
 	b.acc = 0
 
 	local f = b.ready
-	local s = CDTL3.db and CDTL3.db.profile.ready["ready" .. f.number]
+	local s = CDTL3.db and CDTL3:SlotSettings("ready", f.number)
 	if not s then
 		return
 	end
@@ -263,6 +266,8 @@ private.Build = function(f)
 	b.count = 0
 	b.list, b.kinds, b.tmp, b.tmpKinds, b.slots = {}, {}, {}, {}, {}
 	b.bg = b:CreateTexture(nil, "BACKGROUND")
+	-- SetAllPoints(true) is the old "fill the parent" form; the definitions only list a region
+	---@diagnostic disable-next-line: param-type-mismatch
 	b.bg:SetAllPoints(true)
 	for k = 1, private.MAXSLOTS do
 		b.slots[k] = private.NewSlot(b)
@@ -274,7 +279,7 @@ end
 
 -- the pinned icons of this Ready frame: into holding while the board shows them, back into Ready when the mode ends
 private.Hand = function(f, toBoard)
-	local s = CDTL3.db.profile.ready["ready" .. f.number]
+	local s = CDTL3:SlotSettings("ready", f.number)
 	for _, cd in pairs(CDTL3.cooldowns) do
 		local d = cd.data
 		if d["pinned"] and d["readyFrame"] == f.number then
@@ -283,7 +288,7 @@ private.Hand = function(f, toBoard)
 				if ic:GetParent() == f.mf then
 					CDTL3:SendToHolding(cd)
 				end
-			elseif d["currentCD"] <= 0 and ic:GetParent() == CDTL3_Active_Icon_Holding and d["enabled"] and not d["ignored"] then
+			elseif d["currentCD"] <= 0 and ic:GetParent() == _G["CDTL3_Active_Icon_Holding"] and d["enabled"] and not d["ignored"] then
 				-- ready and waiting: back in the frame, without a second ready sound
 				ic:GetParent().triggerUpdate = true
 				ic:SetParent(f.mf)
@@ -298,8 +303,8 @@ private.Hand = function(f, toBoard)
 end
 
 function RD.Refresh(i)
-	local f = _G["CDTL3_Ready_" .. i]
-	local s = CDTL3.db and CDTL3.db.profile.ready["ready" .. i]
+	local f = CDTL3:SlotFrame("ready", i)
+	local s = CDTL3.db and CDTL3:SlotSettings("ready", i)
 	if not f or not s then
 		return
 	end
@@ -335,6 +340,8 @@ function RD.Refresh(i)
 end
 
 local refreshReady = CDTL3.RefreshReady
+-- wraps Ready.lua's version on purpose and calls it first
+---@diagnostic disable-next-line: duplicate-set-field
 function CDTL3:RefreshReady(i)
 	refreshReady(self, i)
 	RD.Refresh(i)
@@ -342,12 +349,14 @@ end
 
 -- a pinned icon that would wait in the Ready frame goes to holding instead (the sound has played)
 local sendToReady = CDTL3.SendToReady
+-- wraps Cooldown.lua's version on purpose and calls it first
+---@diagnostic disable-next-line: duplicate-set-field
 function CDTL3:SendToReady(cd)
 	sendToReady(self, cd)
 
 	local d = cd.data
 	local n = d["readyFrame"]
-	local f = n and d["pinned"] and _G["CDTL3_Ready_" .. n]
+	local f = n and d["pinned"] and CDTL3:SlotFrame("ready", n)
 	if f and f.boardOn and cd.icon:GetParent() == f.mf then
 		CDTL3:SendToHolding(cd)
 	end

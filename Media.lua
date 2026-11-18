@@ -132,6 +132,8 @@ function CDTL3:PlayPicked(name)
 		return false
 	end
 	local ok = pcall(function()
+		-- a sound that can't be found errors here, inside the pcall, and the answer is false
+		---@diagnostic disable-next-line: param-type-mismatch
 		PlaySoundFile(CDTL3.LSM:Fetch("sound", name), "SFX")
 	end)
 	return ok

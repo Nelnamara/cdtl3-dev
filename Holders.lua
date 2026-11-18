@@ -75,6 +75,8 @@ private.CreateHolder = function(d)
 	f:SetSize(d["sizeX"], d["sizeY"])
 
 	f.bg = f:CreateTexture(nil, "BACKGROUND")
+	-- SetAllPoints(true) is the old "fill the parent" form; the definitions only list a region
+	---@diagnostic disable-next-line: param-type-mismatch
 	f.bg:SetAllPoints(true)
 	f.bg:SetColorTexture( 0.1, 0.1, 0.1, 0.5 )
 
@@ -83,6 +85,8 @@ private.CreateHolder = function(d)
 	end)
 
 	f.text = f:CreateFontString(nil,"ARTWORK")
+	-- Fetch falls back to a default font, so the path is there in game
+	---@diagnostic disable-next-line: param-type-mismatch
 	f.text:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed"), 12)
 	f.text:SetShadowColor( 0, 0, 0, 1 )
 	f.text:SetShadowOffset(1.5, -1)
@@ -101,7 +105,6 @@ end
 
 private.HolderUpdate = function(f, elapsed)
 	if CDTL3.db.profile.global["debugMode"] then
-		local s = CDTL3.db.profile.holders
 		local children = { f:GetChildren() }
 		local validChildren = {}
 

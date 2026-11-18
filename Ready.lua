@@ -6,31 +6,13 @@
 local private = {}
 
 function CDTL3:CreateReadyFrames()
-	local ready1Enabled = CDTL3.db.profile.ready["ready1"]["enabled"]
-	local ready2Enabled = CDTL3.db.profile.ready["ready2"]["enabled"]
-	local ready3Enabled = CDTL3.db.profile.ready["ready3"]["enabled"]
-
-	if ready1Enabled then
-		if CDTL3_Ready_1 then
-			CDTL3:RefreshReady(1)
-		else
-			private.CreateReady(1)
-		end
-	end
-
-	if ready2Enabled then
-		if CDTL3_Ready_2 then
-			CDTL3:RefreshReady(2)
-		else
-			private.CreateReady(2)
-		end
-	end
-
-	if ready3Enabled then
-		if CDTL3_Ready_3 then
-			CDTL3:RefreshReady(3)
-		else
-			private.CreateReady(3)
+	for i = 1, 3 do
+		if CDTL3:SlotSettings("ready", i)["enabled"] then
+			if CDTL3:SlotFrame("ready", i) then
+				CDTL3:RefreshReady(i)
+			else
+				private.CreateReady(i)
+			end
 		end
 	end
 end
@@ -48,6 +30,8 @@ private.CreateReady = function(frameNumber)
 	f.forceHide = false
 
 	f.mf = CreateFrame("Frame", frameName.."_MF", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+	-- f is a Frame; the optional template argument makes the definitions give a union
+	---@diagnostic disable-next-line: param-type-mismatch
 	f.mf:SetParent(f)
 	f.mf.bg = f.mf:CreateTexture(nil, "BACKGROUND")
 	--f.mf.bd = CreateFrame("Frame", frameName.."_BD", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
@@ -58,6 +42,8 @@ private.CreateReady = function(frameNumber)
 	f.mf.triggerUpdate = false
 
 	f.db = CreateFrame("Frame", frameName.."_DB", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+	-- f is a Frame; the optional template argument makes the definitions give a union
+	---@diagnostic disable-next-line: param-type-mismatch
 	f.db:SetParent(f)
 	f.db.bg = f.db:CreateTexture(nil, "BACKGROUND")
 	f.db.text = f.db:CreateFontString(nil,"ARTWORK")
@@ -129,7 +115,6 @@ private.ReadyUpdate = function(f, elapsed)
 		local yOffset = 0
 		local xMod = 0
 		local yMod = 0
-		local anchor = "TOP"
 		local mfAnchor = "CENTER"
 
 		if count == 1 then
@@ -252,6 +237,8 @@ private.ReadyUpdate = function(f, elapsed)
 	end
 end
 
+-- ReadyBoard.lua wraps this on purpose: its version calls this one first
+---@diagnostic disable-next-line: duplicate-set-field
 function CDTL3:RefreshReady(i)
 	local f = CDTL3:SlotFrame("ready", i)
 	local s = CDTL3:SlotSettings("ready", i)
