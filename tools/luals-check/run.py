@@ -25,20 +25,20 @@ IGNORE = ["Libs", "tools", "dist", "docs", ".claude", ".github"]
 
 
 def args():
-    a = sys.argv[1:]
+    argv = sys.argv[1:]
     opts = {"folder": os.path.dirname(os.path.dirname(HERE)), "hints": False, "codes": None, "out": None}
     i = 0
-    while i < len(a):
-        if a[i] == "--hints":
+    while i < len(argv):
+        if argv[i] == "--hints":
             opts["hints"] = True
-        elif a[i] == "--codes":
+        elif argv[i] == "--codes":
             i += 1
-            opts["codes"] = set(a[i].split(","))
-        elif a[i] == "--out":
+            opts["codes"] = set(argv[i].split(","))
+        elif argv[i] == "--out":
             i += 1
-            opts["out"] = a[i]
+            opts["out"] = argv[i]
         else:
-            opts["folder"] = a[i]
+            opts["folder"] = argv[i]
         i += 1
     opts["folder"] = os.path.abspath(opts["folder"])
     # one reused folder per addon, so runs leave nothing behind
@@ -77,31 +77,32 @@ def rows(result):
 
 
 def main():
-    o = args()
+    opts = args()
     for p in (LUALS, os.path.join(ANN, "vscode-wow-api", "Annotations", "Core"), os.path.join(ANN, "data", "globals.ts")):
         if not os.path.exists(p):
             sys.exit("missing " + p + " (see tools/luals-check/README.md)")
     known = names(os.path.join(ANN, "data", "globals.ts"), r'^\s*"(.+?)": true')
     api = names(os.path.join(ANN, "data", "globalapi.ts"), r'^\s*"(.+?)": true')
 
-    first = run(o["folder"], os.path.join(o["out"], "pass1"), [])
+    first = run(opts["folder"], os.path.join(opts["out"], "pass1"), [])
     auto = set()
     for f, line, sev, code, msg in rows(first):
         m = re.search(r"`(.+?)`", msg)
         if code == "undefined-global" and m and m.group(1) in known and m.group(1) not in api:
             auto.add(m.group(1))
-    result = run(o["folder"], os.path.join(o["out"], "pass2"), auto)
+    result = run(opts["folder"], os.path.join(opts["out"], "pass2"), auto)
 
-    all_ = sorted(rows(result))
-    by = Counter((SEV[s], c) for _, _, s, c, _ in all_)
-    print(f"{o['folder']}: {len(all_)} items", dict(Counter(SEV[s] for _, _, s, _, _ in all_)))
+    items = sorted(rows(result))
+    counts = Counter((SEV[s], c) for _, _, s, c, _ in items)
+    print(f"{opts['folder']}: {len(items)} items", dict(Counter(SEV[s] for _, _, s, _, _ in items)))
     print("UI globals marked known (as the extension does):", ", ".join(sorted(auto)) or "none")
-    for (s, c), n in sorted(by.items(), key=lambda kv: (-kv[1], kv[0])):
+    for (s, c), n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
         print(f"{n:6}  {s:8} {c}")
-    for f, line, sev, code, msg in all_:
-        if (sev <= 2 or o["hints"]) and (not o["codes"] or code in o["codes"]):
+    for f, line, sev, code, msg in items:
+        if (sev <= 2 or opts["hints"]) and (not opts["codes"] or code in opts["codes"]):
             print(f"{SEV[sev]:7} {code:22} {f}:{line}  {msg[:160]}")
-    print("check.json:", os.path.join(o["out"], "pass2", "log", "check.json"))
+    print("check.json:", os.path.join(opts["out"], "pass2", "log", "check.json"))
 
 
-main()
+if __name__ == "__main__":
+    main()

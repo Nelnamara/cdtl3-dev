@@ -6,7 +6,14 @@
 		- Almost complete re-write, see changelog in game for details
 ]]--
 
-CDTL3 = LibStub("AceAddon-3.0"):NewAddon("CDTL3", "AceConsole-3.0", "AceEvent-3.0")
+-- Type notes for the Lua language server (the WoW API check reviewers run); no effect in game.
+-- AceDB always makes profile, global and char, filled from the defaults.
+---@class CDTL3DB: AceDBObject-3.0
+---@field profile table
+---@field global table
+---@field char table
+
+CDTL3 =LibStub("AceAddon-3.0"):NewAddon("CDTL3", "AceConsole-3.0", "AceEvent-3.0")
 CDTL3.Masque = LibStub("Masque", true)
 CDTL3.LSM = LibStub("LibSharedMedia-3.0")
 CDTL3.GUI = LibStub("AceGUI-3.0")
@@ -1100,7 +1107,7 @@ function CDTL3:OnInitialize()
 	-- are declared in the TOC SavedVariables so the old global still loads here; the
 	-- old CDTL2DB can be dropped from the TOC in a future version once users migrate.
 	if not CDTL3DB and CDTL2DB then CDTL3DB = CDTL2DB end
-	self.db = LibStub("AceDB-3.0"):New("CDTL3DB", defaults, true)
+	self.db = LibStub("AceDB-3.0"):New("CDTL3DB", defaults, true) --[[@as CDTL3DB]]
 	self.registry = LibStub("AceConfigRegistry-3.0")
 	self.profile = LibStub("AceDBOptions-3.0"):GetOptionsTable(self.db)
 
