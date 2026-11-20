@@ -1,0 +1,668 @@
+<title>CDTL3 Looks: Original Effects</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600&family=Fira+Sans+Condensed:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap">
+<style>
+:root {
+	--bg: #f2f4f3; --surface: #ffffff; --fg: #1c2421; --muted: #55635e; --line: #d2dbd7; --accent: #0f6b62;
+	/* game screen: the same in both themes, because it stands for the game */
+	--gs1: #2a3140; --gs2: #161a21;
+	--gold: #ffd100; --ggrey: #a9a9a9; --gblue: #54a3ff; --ggreen: #33ff99;
+	--class: #ff7d0a; --bar1: #c61e48; --mana: #2f6fd6;
+	--lanebg: rgba(38, 38, 38, 0.55); --dbov: rgba(26, 26, 26, 0.88);
+	color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) { --bg: #0f1514; --surface: #17201e; --fg: #e6eeeb; --muted: #9aaba6; --line: #2c3a36; --accent: #4fc4b6; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0f1514; --surface: #17201e; --fg: #e6eeeb; --muted: #9aaba6; --line: #2c3a36; --accent: #4fc4b6; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 "Fira Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 32px max(16px, env(safe-area-inset-right, 0px)) 72px max(16px, env(safe-area-inset-left, 0px)); }
+.top h1 { margin: 0 0 4px; font-size: 27px; font-weight: 600; letter-spacing: -0.01em; }
+.top p { margin: 0; color: var(--muted); }
+.look { margin-top: 44px; padding-top: 28px; border-top: 1px solid var(--line); }
+.look h2 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
+.look .what { margin: 0 0 18px; max-width: 72ch; color: var(--muted); }
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr)); gap: 24px 22px; }
+.choice { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+figcaption { font-size: 14px; line-height: 1.45; color: var(--muted); }
+figcaption b { display: block; margin-bottom: 1px; font-size: 15px; font-weight: 600; color: var(--fg); }
+
+/* ---------- the game screen ---------- */
+.mock { position: relative; overflow: hidden; flex: 1 0 auto; min-height: 300px; display: flex; flex-direction: column; gap: 12px; padding: 16px 12px; border: 1px solid var(--line); border-radius: 6px; background: linear-gradient(180deg, var(--gs1), var(--gs2)); color: #fff; font: 12px/1.35 "Fira Sans Condensed", "Roboto Condensed", "Arial Narrow", sans-serif; }
+.mock p { margin: 0; }
+.ann { align-self: flex-start; padding: 3px 8px; border: 1px solid rgba(255,255,255,0.16); border-radius: 999px; background: rgba(255,255,255,0.07); color: #d8dce2; font: 500 11px/1.2 "Fira Sans", system-ui, sans-serif; }
+.gold { color: var(--gold); } .dim { color: var(--ggrey); } .blu { color: var(--gblue); }
+.c { text-align: center; } .sm { font-size: 11px; }
+.ol { text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000, 1px 1px 1px #000; }
+.sp { flex: 1; }
+
+/* lanes */
+.lane { position: relative; flex: none; align-self: center; width: 100%; max-width: 400px; height: 44px; background: var(--class); box-shadow: 0 0 0 1px rgba(0,0,0,0.55), 0 0 7px 2px rgba(0,0,0,0.35); }
+.lane.thin { height: 5px; margin: 12px 0; }
+.lane.mana { height: 12px; background: #1d1d1d; }
+.lane.mana .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--mana); }
+.mt { position: absolute; top: 50%; left: var(--x, 50%); transform: translate(-50%, -50%); font-size: 12px; white-space: nowrap; text-shadow: 1.5px 1px 0 #000; }
+.mt.l { left: 5px; transform: translateY(-50%); }
+.mt.r { left: auto; right: 5px; transform: translateY(-50%); }
+.dbov { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; background: var(--dbov); font-size: 12px; }
+.lab { align-self: center; width: 100%; max-width: 400px; margin-bottom: -7px; color: var(--gold); font-size: 11.5px; text-shadow: 1px 1px 0 #000; }
+
+/* icons: a square stands in for the spell art, its letter is the spell */
+.ic { --s: 40px; position: absolute; top: 50%; left: var(--x); z-index: 1; width: var(--s); height: var(--s); transform: translate(-50%, -50%); display: grid; place-items: center; background: var(--c, #555); border: 1px solid #000; box-shadow: 0 0 4px rgba(0,0,0,0.6); }
+.ic::before { content: attr(data-g); position: absolute; inset: 0; display: grid; place-items: center; font-weight: 600; font-size: calc(var(--s) * 0.5); color: rgba(255,255,255,0.3); }
+.ic .t { position: relative; font-size: 16px; font-weight: 500; text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000, 1px 1px 1px #000; }
+.ic.sm { --s: 30px; } .ic.sm .t { font-size: 13px; }
+.ic.hov { outline: 2px solid rgba(255,255,255,0.85); outline-offset: 1px; }
+.est { opacity: 0.55; }
+.dt { opacity: 0.55; }
+.tl { font-style: italic; }
+.tick { position: absolute; top: 2px; right: 2px; z-index: 1; width: 12px; height: 12px; border-radius: 50%; background: var(--gold); color: #111; font: 700 9px/12px system-ui, sans-serif; text-align: center; }
+
+/* bar frames */
+.bars { align-self: flex-start; width: 180px; max-width: 100%; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 0 7px 2px rgba(0,0,0,0.35); }
+.bar { position: relative; height: 25px; display: flex; align-items: center; background: var(--lanebg); }
+.bar .bi { position: relative; z-index: 1; flex: none; width: 25px; height: 25px; display: grid; place-items: center; background: var(--c); border-right: 1px solid #000; font-weight: 600; font-size: 12px; color: rgba(255,255,255,0.35); }
+.bar .f { position: absolute; left: 25px; top: 0; bottom: 0; width: calc((100% - 25px) * var(--p)); background: var(--bar1); }
+.bar .n { position: relative; flex: 1; min-width: 0; margin-left: 5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-shadow: 1.5px 1px 0 #000; }
+.bar .tm { position: relative; margin-right: 5px; text-shadow: 1.5px 1px 0 #000; }
+.bar .tick { position: relative; top: auto; right: auto; flex: none; margin-right: 4px; }
+.bar.est { opacity: 0.55; }
+
+/* ready frames */
+.rdy { position: relative; flex: none; width: 50px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; background: var(--c); border: 1px solid #000; box-shadow: 0 0 6px 2px rgba(0,0,0,0.35); }
+.rdy .a { font-size: 18px; } .rdy .b { margin-top: 3px; font-size: 12px; }
+.ovb { position: relative; flex: none; display: grid; place-items: center; background: var(--dbov); box-shadow: 0 0 6px 2px rgba(0,0,0,0.35); font-size: 12px; }
+.frow { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+.num { position: absolute; top: -9px; right: -9px; z-index: 3; width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; background: var(--gold); color: #111; font-weight: 600; font-size: 11px; box-shadow: 0 0 0 2px rgba(0,0,0,0.5); }
+
+/* the Ace3 settings window */
+.ace { position: relative; width: 100%; padding: 22px 9px 40px; background: rgba(11,11,11,0.94); border: 1px solid #6b6b6b; outline: 1px solid #000; border-radius: 3px; }
+.ace-t { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); padding: 2px 24px; white-space: nowrap; background: #1d1810; border: 1px solid #8a6d32; border-radius: 3px; color: var(--gold); font-size: 12.5px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 0 4px; }
+.tabs.sub { padding: 0; }
+.tab { padding: 3px 7px 2px; font-size: 11px; color: var(--gold); background: #202020; border: 1px solid #4d4d4d; border-bottom: 0; border-radius: 4px 4px 0 0; }
+.tab.on { color: #fff; background: #343434; }
+.pane { display: flex; flex-direction: column; gap: 8px; min-height: 150px; padding: 9px 10px; background: rgba(255,255,255,0.025); border: 1px solid #4d4d4d; }
+.tabs.sub + .split { margin-top: -8px; border-top: 1px solid #4d4d4d; padding-top: 8px; }
+.split { display: flex; gap: 8px; align-items: flex-start; }
+.tree { flex: none; width: 84px; display: flex; flex-direction: column; gap: 1px; padding: 3px; border: 1px solid #3d3d3d; }
+.tree span { padding: 2px 4px; font-size: 11.5px; color: var(--gold); }
+.tree .on { background: rgba(255,255,255,0.14); color: #fff; }
+.tree.wide { width: 116px; }
+.body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 2px 2px 2px 4px; }
+.desc { margin: 0; font-size: 12px; line-height: 1.4; color: #fff; }
+.desc.dim { color: var(--ggrey); }
+.intro { padding-left: 7px; border-left: 2px solid var(--gold); }
+.ex { margin: -5px 0 0; font-size: 11.5px; line-height: 1.35; color: var(--ggrey); }
+.old { font-weight: 400; color: var(--ggrey); }
+.hd { display: flex; align-items: center; gap: 8px; color: var(--gold); font-size: 12px; }
+.hd::before, .hd::after { content: ""; flex: 1; height: 1px; background: #555; }
+.row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.row.c { justify-content: center; }
+.row.sb { justify-content: space-between; align-items: center; }
+.lbl { font-size: 11px; color: var(--gold); }
+.dd { position: relative; align-self: flex-start; min-width: 150px; display: flex; flex-direction: column; gap: 2px; }
+.row .dd { align-self: auto; }
+.dd.wide { align-self: stretch; min-width: 0; }
+.box { min-width: 0; display: flex; justify-content: space-between; gap: 8px; padding: 3px 6px; background: #0a0a0a; border: 1px solid #5a5a5a; border-radius: 3px; color: #fff; font-size: 12px; }
+.box::after { content: "\25BE"; color: var(--gold); }
+.box.in { display: block; min-height: 22px; }
+.box.in::after { content: none; }
+.mono { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 10.5px/1.5 ui-monospace, Consolas, monospace; color: #d6d6d6; }
+.ddl { position: absolute; top: 100%; left: 0; right: 0; z-index: 4; margin-top: 2px; padding: 4px 0; background: #0a0a0a; border: 1px solid #777; border-radius: 3px; box-shadow: 0 3px 8px rgba(0,0,0,0.6); }
+.ddl span { position: relative; display: block; padding: 2px 10px 2px 22px; font-size: 12px; }
+.ddl .on::before { content: "\2713"; position: absolute; left: 7px; color: var(--gold); }
+.cb { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #fff; }
+.cb::before { content: ""; flex: none; width: 14px; height: 14px; display: grid; place-items: center; background: #0b0b0b; border: 1px solid #6f6f6f; border-radius: 2px; color: var(--gold); font-size: 12px; line-height: 1; }
+.cb.on::before { content: "\2713"; }
+.sl { flex: 1; min-width: 130px; max-width: 210px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.sl .track { position: relative; width: 100%; height: 7px; background: #0b0b0b; border: 1px solid #555; border-radius: 4px; }
+.sl .track i { position: absolute; top: 50%; left: var(--v); width: 9px; height: 15px; transform: translate(-50%, -50%); background: linear-gradient(#e0e0e0, #9a9a9a); border: 1px solid #222; border-radius: 2px; }
+.sl .val { padding: 0 9px; font-size: 11px; background: #0b0b0b; border: 1px solid #444; border-radius: 2px; }
+.btn { display: inline-block; padding: 3px 11px; white-space: nowrap; font-size: 11.5px; color: var(--gold); background: linear-gradient(#911d1d, #560b0b); border: 1px solid #2b0505; border-radius: 3px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.15); }
+.btn.s { padding: 2px 8px; font-size: 11px; }
+.foot { position: absolute; left: 9px; right: 9px; bottom: 9px; display: flex; align-items: center; gap: 6px; }
+.foot .stat { flex: 1; height: 20px; background: rgba(0,0,0,0.4); border: 1px solid #3d3d3d; }
+.seg { align-self: center; display: inline-flex; margin: 0 auto 8px; overflow: hidden; border: 1px solid #666; border-radius: 4px; }
+.seg span { padding: 3px 14px; font-size: 12px; color: var(--gold); background: #1c1c1c; }
+.seg .on { color: #fff; background: #3a3a3a; }
+.acewrap { display: flex; flex-direction: column; }
+
+/* CDTL3's own windows (welcome, unlock box) */
+.win { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 12px; background: rgba(26,26,26,0.93); box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 0 10px 3px rgba(0,0,0,0.45); }
+.win h4 { margin: 0 0 2px; text-align: center; font-size: 18px; font-weight: 500; text-shadow: 1.5px 1px 0 #000; }
+.scroll { position: relative; max-height: 132px; overflow: hidden; padding-right: 16px; display: flex; flex-direction: column; gap: 7px; }
+.scroll::before { content: ""; position: absolute; top: 0; right: 2px; width: 8px; height: 100%; background: #2b2b2b; border-radius: 4px; }
+.scroll::after { content: ""; position: absolute; left: 0; right: 16px; bottom: 0; height: 40px; background: linear-gradient(rgba(26,26,26,0), rgba(26,26,26,0.97)); }
+.url { word-break: break-all; }
+.unl { align-self: center; width: 180px; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 6px 4px; text-align: center; line-height: 1.3; background: var(--dbov); box-shadow: 0 0 6px 2px rgba(0,0,0,0.35); }
+.unl .btn { margin-top: 4px; }
+.three { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.three li { line-height: 1.4; }
+.card { position: relative; align-self: center; max-width: 300px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; padding: 10px 12px; background: rgba(12,12,14,0.96); border: 1px solid #c9a646; border-radius: 4px; }
+.card::after { content: ""; position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); border: 9px solid transparent; border-bottom: 0; border-top-color: #c9a646; }
+.card .x { position: absolute; top: 4px; right: 8px; color: var(--ggrey); }
+.dots { letter-spacing: 3px; color: var(--gold); }
+.lnk { color: #71d5ff; }
+
+/* tooltip, chat, minimap */
+.tip { position: relative; max-width: 240px; padding: 6px 9px; font-size: 12px; line-height: 1.45; background: rgba(6,8,20,0.95); border: 1px solid #8c94a8; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.55); }
+.tip .h { font-size: 13.5px; }
+.tip.r { align-self: flex-end; }
+.gap { height: 6px; }
+.leg { font-size: 11.5px; line-height: 1.4; padding: 6px 9px; background: rgba(12,12,12,0.92); border: 1px solid #4d4d4d; border-radius: 3px; }
+.leg .gold { display: block; margin-bottom: 2px; font-size: 11px; }
+.chat { align-self: flex-start; max-width: 440px; display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; background: rgba(0,0,0,0.42); border-radius: 2px; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; text-shadow: 1px 1px 0 #000; }
+.pfx { color: var(--ggreen); }
+.mmrow { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-end; gap: 6px; }
+.mm { position: relative; flex: none; width: 112px; height: 112px; border-radius: 50%; background: radial-gradient(circle at 42% 38%, #4b6a3f, #2a3d25 62%, #1c2a19); border: 3px solid #7d776b; box-shadow: 0 0 0 1px #000, 0 0 8px rgba(0,0,0,0.5); }
+.mmb { position: absolute; left: 1px; top: 81px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle, #2b3f63, #16213a); border: 2px solid #d0aa48; box-shadow: 0 0 0 1px #000; font-size: 10px; font-weight: 600; color: #fff; }
+.qa { display: flex; flex-direction: column; gap: 2px; }
+.qa ol { margin: 0; padding-left: 18px; }
+.cmd { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid #2e2e2e; }
+.cmd span:first-child { min-width: 0; }
+.rep { max-height: 156px; overflow: hidden; padding: 6px 7px; background: #060606; border: 1px solid #4d4d4d; border-radius: 3px; font-size: 11px; line-height: 1.4; color: #e8e8e8; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* setups and looks */
+.ban { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 9px; background: rgba(12,12,14,0.95); border: 1px solid #c9a646; border-radius: 4px; }
+.chips { flex: 1; display: flex; flex-wrap: wrap; gap: 3px; }
+.chips span { padding: 2px 7px; font-size: 11px; color: var(--gold); border: 1px solid #555; border-radius: 3px; }
+.chips .on { color: #fff; background: #3a3a3a; border-color: #999; }
+.tiles, .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tile, .lc { display: flex; flex-direction: column; gap: 4px; padding: 7px; background: rgba(0,0,0,0.3); border: 1px solid #444; border-radius: 3px; }
+.tile.on, .lc.on { border-color: var(--gold); background: rgba(255,209,0,0.06); }
+.mini { height: 48px; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 0 7px; background: rgba(0,0,0,0.38); }
+.ml { position: relative; display: block; height: 9px; background: var(--class); }
+.ml.th { height: 3px; } .ml.big { height: 17px; } .ml.mana { height: 5px; background: var(--mana); }
+.ml b { position: absolute; top: 50%; width: 9px; height: 9px; transform: translate(-50%, -50%); background: #d8d8d8; border: 1px solid #000; }
+.ml.big b { width: 15px; height: 15px; }
+.sum { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.35; }
+.lc.add { min-height: 112px; align-items: center; justify-content: center; text-align: center; border-style: dashed; }
+.plus { font-size: 24px; line-height: 1; color: var(--gold); }
+.pv { height: 50px; display: flex; flex-direction: column; justify-content: center; gap: 7px; padding: 0 8px; background: #13161b; }
+.pv .pl { position: relative; height: 13px; }
+.pv .pb { width: 72%; height: 9px; }
+.pv .pl b { position: absolute; top: 50%; width: 11px; height: 11px; transform: translate(-50%, -50%); background: #ccc; border: 1px solid #000; }
+.pv.k .pl { background: var(--class); box-shadow: 0 0 5px 2px rgba(0,0,0,0.45); }
+.pv.k .pb { background: linear-gradient(90deg, var(--bar1) 64%, rgba(38,38,38,0.7) 64%); box-shadow: 0 0 5px 2px rgba(0,0,0,0.45); }
+.pv.m .pl { background: var(--class); outline: 1px solid #000; }
+.pv.m .pb { background: linear-gradient(90deg, var(--class) 64%, rgba(13,13,13,0.8) 64%); outline: 1px solid #000; }
+.pv.r .pl { background: #6a4bb5; outline: 1px solid #cfc6ef; }
+.pv.r .pb { background: linear-gradient(90deg, #6a4bb5 64%, #0d0d0d 64%); outline: 1px solid #cfc6ef; }
+</style>
+<style>
+/* the original effects, drawn moving: each effect animates an inner element so the lane's own placement transform stays put */
+.demo { display: flex; flex-wrap: wrap; gap: 14px 12px; justify-content: center; }
+.dem { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 70px; }
+.dem .nm { font-size: 11px; color: #d8dce2; text-align: center; line-height: 1.2; }
+.di { position: relative; width: 40px; height: 40px; display: grid; place-items: center; background: var(--c, #3b64a6); border: 1px solid #000; box-shadow: 0 0 4px rgba(0,0,0,0.6); }
+.di::before { content: attr(data-g); font-weight: 600; font-size: 18px; color: rgba(255,255,255,0.35); }
+.di.off { opacity: 0.35; }
+.di.off::after { content: ""; position: absolute; inset: -4px; border: 2px dashed #777; }
+/* Glow: the game's action-button glow, a gold halo breathing round the icon */
+.fx-glow { animation: fxGlow 1s ease-in-out infinite alternate; }
+@keyframes fxGlow { from { box-shadow: 0 0 3px 1px rgba(255,209,0,0.55), 0 0 0 1px #000; } to { box-shadow: 0 0 12px 5px rgba(255,209,0,0.95), 0 0 0 1px #000; } }
+/* Pulse: the whole icon fades 0.2 to 1 and back, 0.5 s each way */
+.fx-pulse { animation: fxPulse 0.5s linear infinite alternate; }
+@keyframes fxPulse { from { opacity: 0.2; } to { opacity: 1; } }
+/* Border: a static border round the icon */
+.fx-border { outline: 3px solid #fff; outline-offset: 2px; }
+/* Border Pulse: that border fades 0.2 to 1 and back, 0.5 s */
+.fx-bpulse::after { content: ""; position: absolute; inset: -5px; border: 3px solid #fff; animation: fxPulse 0.5s linear infinite alternate; }
+/* Flash Icon (V2's): a white layer over the icon flashing */
+.fx-flash::after { content: ""; position: absolute; inset: 0; background: #fff; animation: fxFlash 0.5s linear infinite alternate; }
+@keyframes fxFlash { from { opacity: 0.1; } to { opacity: 0.75; } }
+/* Bounce: up 10 px in 0.25 s, down in 0.25 s, a 0.25 s rest */
+.fx-bounce { animation: fxBounce 0.75s ease-in-out infinite; }
+@keyframes fxBounce { 0% { transform: translateY(0); } 33% { transform: translateY(-10px); } 66%, 100% { transform: translateY(0); } }
+/* Shake: rocks 10 degrees each way, 0.5 s */
+.fx-shake { animation: fxShake 0.5s ease-in-out infinite alternate; }
+@keyframes fxShake { from { transform: rotate(-10deg); } to { transform: rotate(10deg); } }
+/* Scale: to 1.2 in 0.25 s, to 0.8 in 0.25 s */
+.fx-scale { animation: fxScale 0.5s ease-in-out infinite; }
+@keyframes fxScale { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(0.8); } }
+
+/* on a lane: an icon that slides to the Ready end, then does its finish */
+.trk { position: absolute; top: 50%; left: 0; width: 100%; height: 0; }
+.mv { position: absolute; top: 0; left: 92%; width: 40px; height: 40px; transform: translate(-50%, -50%); animation: fxSlide 4s linear infinite; }
+.mv .di { width: 40px; height: 40px; }
+@keyframes fxSlide { 0% { left: 92%; opacity: 1; } 70% { left: 5%; opacity: 1; } 71%, 100% { left: 5%; opacity: 0; } }
+.fin { position: absolute; top: 50%; left: 5%; width: 40px; height: 40px; transform: translate(-50%, -50%); pointer-events: none; opacity: 0; }
+/* the grow-and-fade from TeZwo's screenshot: the icon swells and goes see-through as it finishes */
+.fin.grow { animation: fxGrow 4s linear infinite; }
+@keyframes fxGrow { 0%, 70% { opacity: 0; transform: translate(-50%, -50%) scale(1); } 71% { opacity: 0.95; transform: translate(-50%, -50%) scale(1); } 88% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); } }
+/* a gold ring that bursts outward from the Ready end */
+.fin.ring { border: 3px solid var(--gold); border-radius: 50%; animation: fxRing 4s ease-out infinite; }
+@keyframes fxRing { 0%, 70% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } 71% { opacity: 1; transform: translate(-50%, -50%) scale(0.6); } 90% { opacity: 0; transform: translate(-50%, -50%) scale(2.4); } 100% { opacity: 0; } }
+
+/* frames showing and hiding */
+.sh { align-self: center; width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 10px; }
+.sh-fade { animation: fxShowFade 3.2s linear infinite; }
+@keyframes fxShowFade { 0% { opacity: 0; } 9%, 60% { opacity: 1; } 69%, 100% { opacity: 0; } }
+.sh-slow { animation: fxShowSlow 5s linear infinite; }
+@keyframes fxShowSlow { 0% { opacity: 0; } 20%, 60% { opacity: 1; } 80%, 100% { opacity: 0; } }
+.sh-scale { animation: fxShowScale 3.2s ease-out infinite; transform-origin: center; }
+@keyframes fxShowScale { 0% { opacity: 0; transform: scale(0.6); } 12%, 60% { opacity: 1; transform: scale(1); } 72%, 100% { opacity: 0; transform: scale(0.6); } }
+.sh-bar { align-self: flex-start; }
+
+/* split marks */
+.mk { position: absolute; top: 0; bottom: 0; left: var(--x); width: 1px; background: rgba(0,0,0,0.55); }
+.lane.sp { background: #2c2c2c; }
+.lane.sp .mt { color: #cfcfcf; }
+.note { font-size: 11px; color: var(--ggrey); align-self: center; max-width: 400px; text-align: center; }
+</style>
+
+<div class="wrap">
+<header class="top">
+	<h1>CDTL3 Looks: The Original's Effects</h1>
+	<p>The original CooldownTimeline's looks, rebuilt in our own code. Every drawing below moves the way the effect does in the game: timings and sizes come from the original's own values. Pick one per idea, or none, and add a note. Not a look choice, so not here: Glow and Flash Icon will show without a highlight border texture (GitHub issue #13's bug).</p>
+</header>
+
+<!-- ============================== effects ============================== -->
+<section class="look" data-item="effects" id="effects">
+	<h2>Highlight effects to offer</h2>
+	<p class="what">For the spells you mark Highlight in Filters, in Lanes › Icons › Highlight Style (and the Ready frames'). V2 kept four and dropped the original's Pulse and Bounce; the original also had Shake and Scale in its code but hidden from its settings. Each choice is the list the dropdown would hold, every effect drawn moving.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<span class="ann">Today: 4 effects</span>
+				<div class="demo">
+					<div class="dem"><span class="di fx-border" data-g="B"></span><span class="nm">Border</span></div>
+					<div class="dem"><span class="di fx-bpulse" data-g="B"></span><span class="nm">Border Flash</span></div>
+					<div class="dem"><span class="di fx-flash" data-g="F"></span><span class="nm">Flash Icon</span></div>
+					<div class="dem"><span class="di fx-glow" data-g="G"></span><span class="nm">Glow</span></div>
+				</div>
+			</div>
+			<figcaption><b>Today</b> Border, Border Flash, Flash Icon and Glow.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="original">
+			<div class="mock">
+				<span class="ann">The original's list: 5 effects</span>
+				<div class="demo">
+					<div class="dem"><span class="di fx-glow" data-g="G"></span><span class="nm">Glow</span></div>
+					<div class="dem"><span class="di fx-pulse" data-g="P"></span><span class="nm">Pulse</span></div>
+					<div class="dem"><span class="di fx-border" data-g="B"></span><span class="nm">Border</span></div>
+					<div class="dem"><span class="di fx-bpulse" data-g="B"></span><span class="nm">Border Pulse</span></div>
+					<div class="dem"><span class="di fx-bounce" data-g="Bo"></span><span class="nm">Bounce</span></div>
+				</div>
+			</div>
+			<figcaption><b>The original's five</b> Glow, Pulse, Border, Border Pulse and Bounce, with the original's names. Flash Icon goes.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="original-all">
+			<div class="mock">
+				<span class="ann">The original's code: 7 effects</span>
+				<div class="demo">
+					<div class="dem"><span class="di fx-glow" data-g="G"></span><span class="nm">Glow</span></div>
+					<div class="dem"><span class="di fx-pulse" data-g="P"></span><span class="nm">Pulse</span></div>
+					<div class="dem"><span class="di fx-border" data-g="B"></span><span class="nm">Border</span></div>
+					<div class="dem"><span class="di fx-bpulse" data-g="B"></span><span class="nm">Border Pulse</span></div>
+					<div class="dem"><span class="di fx-bounce" data-g="Bo"></span><span class="nm">Bounce</span></div>
+					<div class="dem"><span class="di fx-shake" data-g="Sh"></span><span class="nm">Shake</span></div>
+					<div class="dem"><span class="di fx-scale" data-g="Sc"></span><span class="nm">Scale</span></div>
+				</div>
+			</div>
+			<figcaption><b>All seven</b> The five, plus Shake and Scale, which the original built but never put in its settings.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="all-plus-flash">
+			<div class="mock">
+				<span class="ann">Everything: 8 effects</span>
+				<div class="demo">
+					<div class="dem"><span class="di fx-glow" data-g="G"></span><span class="nm">Glow</span></div>
+					<div class="dem"><span class="di fx-pulse" data-g="P"></span><span class="nm">Pulse</span></div>
+					<div class="dem"><span class="di fx-border" data-g="B"></span><span class="nm">Border</span></div>
+					<div class="dem"><span class="di fx-bpulse" data-g="B"></span><span class="nm">Border Pulse</span></div>
+					<div class="dem"><span class="di fx-bounce" data-g="Bo"></span><span class="nm">Bounce</span></div>
+					<div class="dem"><span class="di fx-shake" data-g="Sh"></span><span class="nm">Shake</span></div>
+					<div class="dem"><span class="di fx-scale" data-g="Sc"></span><span class="nm">Scale</span></div>
+					<div class="dem"><span class="di fx-flash" data-g="F"></span><span class="nm">Flash Icon</span></div>
+				</div>
+			</div>
+			<figcaption><b>All seven and Flash Icon</b> The original's seven, and V2's Flash Icon kept for anyone already using it.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ============================== finish ============================== -->
+<section class="look" data-item="finish" id="finish">
+	<h2>When a cooldown reaches the Ready end</h2>
+	<p class="what">TeZwo's screenshot (GitHub issues #13 and #14, from the original) catches a big, see-through copy of an icon at the lane's Ready end, mid-way through growing and fading out as the cooldown finished. CDTL3 has nothing there today. Each drawing loops: the icon slides to Ready, then finishes.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<span class="ann">Lane 1</span>
+				<div class="sp"></div>
+				<div class="lane"><span class="mt l">Ready</span><span class="mt r">2m</span>
+					<span class="trk"><span class="mv"><span class="di" style="--c:#3d8f9a" data-g="T"></span></span></span>
+				</div>
+				<div class="sp"></div>
+			</div>
+			<figcaption><b>Today</b> The icon reaches Ready and leaves the lane, with nothing more.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="grow-fade">
+			<div class="mock">
+				<span class="ann">Lane 1</span>
+				<div class="sp"></div>
+				<div class="lane"><span class="mt l">Ready</span><span class="mt r">2m</span>
+					<span class="trk"><span class="mv"><span class="di" style="--c:#3d8f9a" data-g="T"></span></span></span>
+					<span class="fin grow"><span class="di" style="--c:#3d8f9a" data-g="T"></span></span>
+				</div>
+				<div class="sp"></div>
+			</div>
+			<figcaption><b>Grow and fade</b> As it reaches Ready the icon swells to about twice its size and goes see-through in half a second, as in TeZwo's screenshot. A setting per lane, on by default.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="ring">
+			<div class="mock">
+				<span class="ann">Lane 1</span>
+				<div class="sp"></div>
+				<div class="lane"><span class="mt l">Ready</span><span class="mt r">2m</span>
+					<span class="trk"><span class="mv"><span class="di" style="--c:#3d8f9a" data-g="T"></span></span></span>
+					<span class="fin ring"></span>
+				</div>
+				<div class="sp"></div>
+			</div>
+			<figcaption><b>Gold ring</b> A gold ring bursts outward from the Ready end instead; the icon itself just leaves.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ============================== showhide ============================== -->
+<section class="look" data-item="showhide" id="showhide">
+	<h2>Lanes, Ready frames and bar frames showing and hiding</h2>
+	<p class="what">When a frame shows or hides (out of combat, or nothing cooling down). The original let you set each frame's animation: Fade or Scale, how long, from and to, how many loops, and bounce; bar frames faded over a second. V2 replaced all of it with one fixed 0.3 s fade and no settings.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<span class="ann">Every frame, fixed</span>
+				<div class="sp"></div>
+				<div class="sh sh-fade">
+					<div class="lane"><span class="mt l">Ready</span><span class="mt r">2m</span><span class="ic" style="--x:40%;--c:#8a7a4a" data-g="Ib"><span class="t">48</span></span></div>
+					<div class="bars sh-bar"><div class="bar"><span class="bi" style="--c:#7b6140">B</span><span class="f" style="--p:.6"></span><span class="n">Barkskin</span><span class="tm">36</span></div></div>
+				</div>
+				<div class="sp"></div>
+			</div>
+			<figcaption><b>Today</b> Everything fades in and out over 0.3 s; nothing to change.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="original">
+			<div class="mock">
+				<span class="ann">Lane 1 › Show and hide</span>
+				<div class="ace"><div class="ace-t">CDTL3</div>
+					<div class="pane">
+						<div class="hd">Show animation</div>
+						<div class="row"><div class="dd"><span class="lbl">Type</span><span class="box">Fade</span></div>
+							<div class="sl"><span class="lbl">Length (seconds)</span><span class="track"><i style="--v:15%"></i></span><span class="val">0.3</span></div></div>
+						<div class="row"><div class="sl"><span class="lbl">From</span><span class="track"><i style="--v:0%"></i></span><span class="val">0</span></div>
+							<div class="sl"><span class="lbl">To</span><span class="track"><i style="--v:100%"></i></span><span class="val">1</span></div></div>
+						<div class="row"><div class="sl"><span class="lbl">Loops</span><span class="track"><i style="--v:0%"></i></span><span class="val">1</span></div><span class="cb">Bounce</span></div>
+						<div class="hd">Hide animation</div>
+						<p class="desc dim">The same five settings, Fade from 1 to 0 by default.</p>
+					</div>
+				</div>
+				<div class="sh sh-fade">
+					<div class="lane"><span class="mt l">Ready</span><span class="mt r">2m</span><span class="ic" style="--x:40%;--c:#8a7a4a" data-g="Ib"><span class="t">48</span></span></div>
+				</div>
+			</div>
+			<figcaption><b>The original's settings</b> Each lane, Ready frame and bar frame gets show and hide settings: Fade or Scale, length, from, to, loops and bounce. Defaults match today (0.3 s fade), so nothing changes until someone changes it.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="original-defaults">
+			<div class="mock">
+				<span class="ann">The original's defaults</span>
+				<div class="sp"></div>
+				<div class="sh sh-fade">
+					<div class="lane"><span class="mt l">Ready</span><span class="mt r">2m</span><span class="ic" style="--x:40%;--c:#8a7a4a" data-g="Ib"><span class="t">48</span></span></div>
+				</div>
+				<div class="sh sh-slow">
+					<div class="bars sh-bar"><div class="bar"><span class="bi" style="--c:#7b6140">B</span><span class="f" style="--p:.6"></span><span class="n">Barkskin</span><span class="tm">36</span></div></div>
+				</div>
+				<div class="sp"></div>
+			</div>
+			<figcaption><b>The settings, with the original's defaults</b> The same settings, and bar frames go back to the original's one-second fade; lanes and Ready frames stay at 0.3 s.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="scale">
+			<div class="mock">
+				<span class="ann">Scale chosen</span>
+				<div class="sp"></div>
+				<div class="sh sh-scale">
+					<div class="lane"><span class="mt l">Ready</span><span class="mt r">2m</span><span class="ic" style="--x:40%;--c:#8a7a4a" data-g="Ib"><span class="t">48</span></span></div>
+				</div>
+				<div class="sp"></div>
+			</div>
+			<figcaption><b>What Scale looks like</b> The same settings with Scale picked: the frame grows in from smaller as it fades in, and shrinks as it fades out.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+<!-- ============================== splits ============================== -->
+<section class="look" data-item="splits" id="splits">
+	<h2>Five splits</h2>
+	<p class="what">Split Count goes up to 5. Icons move evenly in time between neighbouring marks, as today and as in the original; what differs is where the marks sit by default. The copy of the original we read (v1.0) stopped at 3 and spaced marks evenly; TeZwo's screenshot is from a later original with five, where the marks crowd towards the long end.</p>
+	<div class="choices">
+
+		<figure class="choice" data-choice="today">
+			<div class="mock">
+				<span class="ann">Split (Time), 3 marks, today's default places</span>
+				<div class="sp"></div>
+				<div class="lane sp"><span class="mt l">Ready</span>
+					<span class="mk" style="--x:25%"></span><span class="mt" style="--x:25%">10s</span>
+					<span class="mk" style="--x:50%"></span><span class="mt" style="--x:50%">30s</span>
+					<span class="mk" style="--x:75%"></span><span class="mt" style="--x:75%">1m</span>
+					<span class="mt r">2m</span>
+					<span class="ic sm" style="--x:62%;--c:#3b64a6" data-g="I"><span class="t">45</span></span>
+				</div>
+				<div class="sp"></div>
+			</div>
+			<figcaption><b>Today</b> Up to 3 marks; each mark's place is a slider.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="even">
+			<div class="mock">
+				<span class="ann">Split (Time), 5 marks, evenly spaced</span>
+				<div class="sp"></div>
+				<div class="lane sp"><span class="mt l">Ready</span>
+					<span class="mk" style="--x:16.7%"></span><span class="mt" style="--x:16.7%">1s</span>
+					<span class="mk" style="--x:33.3%"></span><span class="mt" style="--x:33.3%">10s</span>
+					<span class="mk" style="--x:50%"></span><span class="mt" style="--x:50%">30s</span>
+					<span class="mk" style="--x:66.7%"></span><span class="mt" style="--x:66.7%">1m</span>
+					<span class="mk" style="--x:83.3%"></span><span class="mt" style="--x:83.3%">2m</span>
+					<span class="mt r">5m</span>
+					<span class="ic sm" style="--x:42%;--c:#3b64a6" data-g="I"><span class="t">28</span></span>
+				</div>
+				<div class="sp"></div>
+			</div>
+			<figcaption><b>Evenly spaced</b> Like the original v1.0: the marks start evenly spaced for any count (1 to 5). The place sliders stay for anyone who wants their own.</figcaption>
+		</figure>
+
+		<figure class="choice" data-choice="tezwo">
+			<div class="mock">
+				<span class="ann">Split (Time), 5 marks, spaced like TeZwo's screenshot</span>
+				<div class="sp"></div>
+				<div class="lane sp"><span class="mt l">Ready</span>
+					<span class="mk" style="--x:17%"></span><span class="mt" style="--x:17%">1s</span>
+					<span class="mk" style="--x:33%"></span><span class="mt" style="--x:33%">10s</span>
+					<span class="mk" style="--x:47%"></span><span class="mt" style="--x:47%">30s</span>
+					<span class="mk" style="--x:58%"></span><span class="mt" style="--x:58%">1m</span>
+					<span class="mk" style="--x:72%"></span><span class="mt" style="--x:72%">2m</span>
+					<span class="mt r">5m</span>
+					<span class="ic sm" style="--x:40%;--c:#3b64a6" data-g="I"><span class="t">28</span></span>
+				</div>
+				<div class="sp"></div>
+			</div>
+			<figcaption><b>Like the later original</b> The five marks start where TeZwo's screenshot has them (about 17, 33, 47, 58 and 72 percent along), giving the short times more room. The place sliders stay.</figcaption>
+		</figure>
+
+	</div>
+</section>
+
+</div>
+
+<!-- Pick layer: appended to each look board when it is published. Adds a pick row under every
+     section.look (one button per figure.choice, plus None of these) and a note, saved to the
+     page's db (collection "picks", one document per idea). -->
+<style>
+:root {
+	--pk-bg: #ffffff; --pk-fg: #1d2420; --pk-muted: #5c6b67; --pk-line: #cfd8d4;
+	--pk-on: #ffffff; --pk-pick: #0f6b62; --pk-none: #7a5a12;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) { --pk-bg: #1a2220; --pk-fg: #e6eeeb; --pk-muted: #94a5a0; --pk-line: #33423e; --pk-on: #0d1211; --pk-pick: #4fc4b6; --pk-none: #e0a94a; }
+}
+:root[data-theme="dark"] { --pk-bg: #1a2220; --pk-fg: #e6eeeb; --pk-muted: #94a5a0; --pk-line: #33423e; --pk-on: #0d1211; --pk-pick: #4fc4b6; --pk-none: #e0a94a; }
+.pk { margin-top: 14px; padding: 12px; border: 1px solid var(--pk-line); border-radius: 8px; background: var(--pk-bg); color: var(--pk-fg); display: flex; flex-direction: column; gap: 10px; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.pk-label { font-weight: 600; font-size: 13px; color: var(--pk-muted); }
+.pk-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.pk-row button { font: inherit; font-size: 13px; font-weight: 500; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--pk-line); background: transparent; color: var(--pk-fg); cursor: pointer; }
+.pk-row button[aria-pressed="true"] { background: var(--pk-pick); border-color: var(--pk-pick); color: var(--pk-on); }
+.pk-row button.none[aria-pressed="true"] { background: var(--pk-none); border-color: var(--pk-none); }
+.pk-row button:disabled { opacity: 0.5; cursor: default; }
+.pk-row button:focus-visible, .pk textarea:focus-visible { outline: 2px solid var(--pk-pick); outline-offset: 2px; }
+.pk textarea { font: inherit; font-size: 13.5px; min-height: 36px; resize: vertical; width: 100%; box-sizing: border-box; color: var(--pk-fg); background: transparent; border: 1px solid var(--pk-line); border-radius: 6px; padding: 7px 9px; }
+.pk-saved { font-size: 12px; color: var(--pk-muted); min-height: 1em; }
+figure.choice.pk-picked { outline: 3px solid var(--pk-pick); outline-offset: 3px; border-radius: 6px; }
+.pk-status { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; margin: 0; padding: 8px 12px; background: var(--pk-bg); color: var(--pk-fg); border-bottom: 1px solid var(--pk-line); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+</style>
+<script>
+(function () {
+	var looks = Array.prototype.slice.call(document.querySelectorAll("section.look[data-item]"));
+	var picks = {};      // item -> saved { choice, note }
+	var ui = {};         // item -> { buttons, note, saved, figures }
+	var timers = {};
+	var queues = {};
+	var db = null, readOnly = false;
+	var status = document.createElement("p");
+	status.className = "pk-status";
+	status.textContent = "Loading saved picks…";
+	document.body.insertBefore(status, document.body.firstChild);
+	function setStatus(t) { status.textContent = t; status.hidden = !t; }
+
+	function nameOf(fig) {
+		var b = fig.querySelector("figcaption b");
+		return (b ? b.textContent : fig.getAttribute("data-choice") || "").trim();
+	}
+
+	looks.forEach(function (sec) {
+		var item = sec.getAttribute("data-item");
+		var titleEl = sec.querySelector("h2");
+		var figures = Array.prototype.slice.call(sec.querySelectorAll("figure.choice[data-choice]"));
+		var box = document.createElement("div");
+		box.className = "pk";
+		var label = document.createElement("div");
+		label.className = "pk-label";
+		label.textContent = "Your pick";
+		var row = document.createElement("div");
+		row.className = "pk-row";
+		var buttons = {};
+		figures.forEach(function (fig) {
+			var c = fig.getAttribute("data-choice");
+			var b = document.createElement("button");
+			b.type = "button";
+			b.textContent = nameOf(fig);
+			b.addEventListener("click", function () { choose(item, c); });
+			row.appendChild(b);
+			buttons[c] = b;
+		});
+		var none = document.createElement("button");
+		none.type = "button";
+		none.className = "none";
+		none.textContent = "None of these";
+		none.addEventListener("click", function () { choose(item, "none"); });
+		row.appendChild(none);
+		buttons.none = none;
+		var note = document.createElement("textarea");
+		note.rows = 1;
+		note.placeholder = "Note (what to change, or mix two choices)";
+		note.setAttribute("aria-label", "Note for " + (titleEl ? titleEl.textContent : item));
+		var saved = document.createElement("div");
+		saved.className = "pk-saved";
+		note.addEventListener("input", function () {
+			clearTimeout(timers[item]);
+			saved.textContent = "";
+			timers[item] = setTimeout(function () { saveNote(item); }, 900);
+		});
+		note.addEventListener("blur", function () { clearTimeout(timers[item]); saveNote(item); });
+		box.appendChild(label);
+		box.appendChild(row);
+		box.appendChild(note);
+		box.appendChild(saved);
+		sec.appendChild(box);
+		ui[item] = { buttons: buttons, note: note, saved: saved, figures: figures, title: titleEl ? titleEl.textContent.trim() : item };
+		paint(item);
+	});
+
+	function paint(item) {
+		var u = ui[item], p = picks[item] || {};
+		Object.keys(u.buttons).forEach(function (c) {
+			u.buttons[c].setAttribute("aria-pressed", p.choice === c ? "true" : "false");
+			u.buttons[c].disabled = readOnly || !db;
+		});
+		u.figures.forEach(function (fig) {
+			fig.classList.toggle("pk-picked", fig.getAttribute("data-choice") === p.choice);
+		});
+		u.note.readOnly = readOnly || !db;
+		if (document.activeElement !== u.note && u.note.value !== (p.note || "")) { u.note.value = p.note || ""; }
+	}
+
+	function write(item, patch) {
+		if (!db || readOnly) { return; }
+		var u = ui[item];
+		var data = Object.assign({ item: item, title: u.title, updatedAt: new Date().toISOString() }, patch);
+		var run = function () {
+			return db.collection("picks").doc(item).set(Object.assign({}, picks[item] || {}, data)).then(function () {
+				u.saved.textContent = "Saved";
+			}, function (e) {
+				if (e && e.code === "invalid_argument") { readOnly = true; setStatus("You can see the picks but not change them."); looks.forEach(function (s) { paint(s.getAttribute("data-item")); }); }
+				else { u.saved.textContent = "Not saved. Try again."; }
+			});
+		};
+		queues[item] = (queues[item] || Promise.resolve()).then(run, run);
+	}
+
+	function choose(item, c) {
+		var p = picks[item] || (picks[item] = {});
+		p.choice = p.choice === c ? "" : c;
+		var fig = ui[item].figures.filter(function (f) { return f.getAttribute("data-choice") === p.choice; })[0];
+		p.choiceName = p.choice === "none" ? "None of these" : (fig ? nameOf(fig) : "");
+		paint(item);
+		write(item, { choice: p.choice, choiceName: p.choiceName });
+	}
+
+	function saveNote(item) {
+		var p = picks[item] || (picks[item] = {});
+		var v = ui[item].note.value;
+		if (v === (p.note || "")) { return; }
+		p.note = v;
+		write(item, { note: v });
+	}
+
+	var use = window.claude && window.claude.use;
+	if (!use) { setStatus("Picks can't be saved here. Open this board in Claude to pick."); return; }
+	var slow = setTimeout(function () { setStatus("Saved picks can't be reached yet. Still trying…"); }, 10000);
+	use("db").then(function (store) {
+		if (!store) { clearTimeout(slow); setStatus("Picks can't be saved in this view. Sign in to Claude to pick."); return; }
+		db = store;
+		db.collection("picks").onSnapshot(function (snap) {
+			snap.docs.forEach(function (doc) {
+				var d = doc.data() || {}, mine = picks[doc.id] || {};
+				picks[doc.id] = { choice: d.choice || "", choiceName: d.choiceName || "", note: d.note || "" };
+				if (ui[doc.id] && document.activeElement === ui[doc.id].note) { picks[doc.id].note = mine.note || picks[doc.id].note; }
+			});
+			if (!snap.metadata || !snap.metadata.fromCache) { clearTimeout(slow); if (!readOnly) { setStatus(""); } }
+			looks.forEach(function (s) { paint(s.getAttribute("data-item")); });
+		}, function () { clearTimeout(slow); setStatus("Saved picks stopped loading. Reopen the board to try again."); });
+	});
+})();
+</script>
