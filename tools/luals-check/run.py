@@ -66,7 +66,9 @@ def run(folder, out, globals_):
     subprocess.run([LUALS, "--check=" + folder, "--configpath=" + cfgPath, "--checklevel=Hint",
                     "--check_format=json", "--logpath=" + log], capture_output=True)
     path = os.path.join(log, "check.json")
-    return json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
+    data = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else {}
+    # LuaLS 3.19 writes a clean run as [] (3.18 wrote {}): both mean nothing to report
+    return data if isinstance(data, dict) else {}
 
 
 def rows(result):
