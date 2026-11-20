@@ -469,6 +469,49 @@ private.HighlightEdge = function(hl)
 	return hl.edge
 end
 
+-- Masque: an icon wearing a round skin (Cirque and the like) gets round highlights: the plain edge, the
+-- glow and the Flash Icon fill. Masque keeps the shape of the skin it put on a button in its own
+-- record (Masque Core/Button.lua: _MSQ_CFG.Shape, "Circle" for round skins); any other shape, or no
+-- Masque, keeps the square ones. A border texture you choose stays as it is.
+private.IsRound = function(f)
+	local cfg = rawget(f, "_MSQ_CFG")
+	return type(cfg) == "table" and cfg.Shape == "Circle"
+end
+
+-- a white circle (Media/ring.tga) or disc on frame, centred, made once and kept under key
+private.RoundTexture = function(frame, key, file, layer)
+	local t = frame[key]
+	if not t then
+		t = frame:CreateTexture(nil, layer or "OVERLAY")
+		t:SetTexture(file)
+		t:SetPoint("CENTER", frame, "CENTER", 0, 0)
+		frame[key] = t
+	end
+	return t
+end
+
+-- the glow round or square: the square bars, or two gold circles round the icon
+private.GlowShape = function(glow, round, size)
+	local fx, c = CDTL3.IconFx, private.GLOW_COLOR
+	fx.RingShow(glow.inner, not round)
+	fx.RingShow(glow.outer, not round)
+	if round then
+		local inner = private.RoundTexture(glow, "roundInner", fx.RING_TEX)
+		inner:SetSize(size + 6, size + 6)
+		inner:SetVertexColor(c[1], c[2], c[3], 0.9)
+		inner:Show()
+		local outer = private.RoundTexture(glow, "roundOuter", fx.RING_TEX, "ARTWORK")
+		outer:SetSize(size + 16, size + 16)
+		outer:SetVertexColor(c[1], c[2], c[3], 0.35)
+		outer:Show()
+	else
+		if glow.roundInner then
+			glow.roundInner:Hide()
+			glow.roundOuter:Hide()
+		end
+	end
+end
+
 private.PlayHighlight = function(hl, key, build)
 	local g = hl[key]
 	if not g then
@@ -612,11 +655,19 @@ function CDTL3:ApplyHighlight(f, s, style)
 
 	local c = hs["border"]["color"]
 	local plain = hs["border"]["style"] == "None"
+	local round = private.IsRound(f)
+	local size = s["icons"]["size"]
 	if style == "GLOW" then
 		private.PlayHighlight(f.hl, "agGlow", private.BuildGlow)
+		private.GlowShape(f.hl.glow, round, size)
 		f.hl.glow:Show()
 	elseif style == "BORDER" or style == "BORDER_FLASH" then
-		if plain then
+		if plain and round then
+			local edge = private.RoundTexture(f.hl, "roundEdge", CDTL3.IconFx.RING_TEX)
+			edge:SetSize(size + 2 * private.EDGE, size + 2 * private.EDGE)
+			edge:SetVertexColor(c["r"], c["g"], c["b"], c["a"])
+			edge:Show()
+		elseif plain then
 			local edge = private.HighlightEdge(f.hl)
 			private.RingColor(edge, c["r"], c["g"], c["b"], c["a"])
 			CDTL3.IconFx.RingShow(edge, true)
@@ -630,7 +681,12 @@ function CDTL3:ApplyHighlight(f, s, style)
 		f.hl:ClearAllPoints()
 		f.hl:SetPoint("CENTER", 0, 0)
 		f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
-		f.hl.tx:SetColorTexture( 1, 1, 1, 1 )
+		if round then
+			f.hl.tx:SetTexture(CDTL3.IconFx.DISC_TEX)
+			f.hl.tx:SetVertexColor(1, 1, 1, 1)
+		else
+			f.hl.tx:SetColorTexture( 1, 1, 1, 1 )
+		end
 		private.PlayHighlight(f.hl, "agPulse", private.BuildFlash)
 	elseif style == "PULSE" then
 		private.PlayHighlight(f.hl, "agIconPulse", private.BuildIconPulse)

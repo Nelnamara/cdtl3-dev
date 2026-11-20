@@ -615,6 +615,8 @@ end
 -- is anchored to the lane (never to the icon, whose size and place can be hidden), sized from the
 -- saved icon size, and its frames are children of the lane so a faded lane hides them.
 private.RING = [[Interface\AddOns\CooldownTimeline3\Media\ring.tga]]	-- tools/make-ring.py
+private.DISC = [[Interface\AddOns\CooldownTimeline3\Media\disc.tga]]	-- the same circle filled
+FX.RING_TEX, FX.DISC_TEX = private.RING, private.DISC	-- also the round highlights (Cooldown.lua)
 private.FINISH_POOL = 4
 private.FINISH_TIME = 0.5
 private.RING_TIME, private.RING_HOLD = 0.9, 0.35

@@ -2188,6 +2188,9 @@ function CDTL3:RemoveHighlights(f, s)
 	if f.hl.edge then
 		CDTL3.IconFx.RingShow(f.hl.edge, false)
 	end
+	if f.hl.roundEdge then
+		f.hl.roundEdge:Hide()
+	end
 	f.hl:SetBackdropBorderColor(
 		s["icons"]["highlight"]["border"]["color"]["r"],
 		s["icons"]["highlight"]["border"]["color"]["g"],

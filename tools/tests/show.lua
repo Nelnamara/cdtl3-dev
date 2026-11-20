@@ -621,6 +621,25 @@ do
 	check("  a chosen texture is used as before, with no plain edge", F.icon.hl.__backdrop.edgeFile == CDTL3.LSM:Fetch("border", "CDTL3 Shadow")
 		and not edgeShown(F.icon.hl))
 	hs["border"]["style"] = "None"
+
+	-- a round Masque skin (Masque keeps its skin's shape in the button's _MSQ_CFG): round highlights
+	local hl = F.icon.hl
+	rawset(F.icon, "_MSQ_CFG", { Shape = "Circle" })
+	hs["style"] = "BORDER"; CDTL3:RefreshAllIcons()
+	local size = lane1["icons"]["size"]
+	check("round skin: Border draws a round edge (Media/ring.tga) round the icon, no square edge", hl.roundEdge and hl.roundEdge:IsShown()
+		and hl.roundEdge.__tex == CDTL3.IconFx.RING_TEX and hl.roundEdge.__w == size + 4 and not edgeShown(hl), hl.roundEdge and tostring(hl.roundEdge.__w))
+	hs["style"] = "GLOW"; CDTL3:RefreshAllIcons()
+	check("  Glow: two gold circles, no square bars, no round edge", hl.glow.roundInner:IsShown() and hl.glow.roundOuter:IsShown()
+		and not hl.glow.inner[1]:IsShown() and not hl.roundEdge:IsShown())
+	hs["style"] = "FLASH"; CDTL3:RefreshAllIcons()
+	check("  Flash Icon: a white disc (Media/disc.tga), not a square", hl.tx.__tex == CDTL3.IconFx.DISC_TEX, tostring(hl.tx.__tex))
+	rawset(F.icon, "_MSQ_CFG", { Shape = "Square" })
+	hs["style"] = "GLOW"; CDTL3:RefreshAllIcons()
+	check("a square skin: the square glow again", hl.glow.inner[1]:IsShown() and not hl.glow.roundInner:IsShown())
+	hs["style"] = "BORDER"; CDTL3:RefreshAllIcons()
+	check("  and the square edge", edgeShown(hl) and not hl.roundEdge:IsShown())
+	rawset(F.icon, "_MSQ_CFG", nil)
 	hs["style"] = "BORDER"
 	CDTL3:RefreshAllIcons()
 
