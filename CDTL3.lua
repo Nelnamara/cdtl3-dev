@@ -161,7 +161,7 @@ function CDTL3:SlotParent(group, n)
 	return name and _G[name]
 end
 
-CDTL3.version = "3.2.2"
+CDTL3.version = "3.3.0"
 -- the welcome window (GetSpecialMessage + changelog) opens once for anyone whose last seen version is older
 CDTL3.noticeVersion = "3.3"
 CDTL3.cdUID = 999

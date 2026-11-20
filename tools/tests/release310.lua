@@ -46,7 +46,7 @@ local CT = CDTL3.CombatTimers
 local available = CT and CT:Available()
 
 print("[version " .. FLAVOR .. "]")
-check("version is 3.2.2", CDTL3.version == "3.2.2")
+check("version is 3.3.0", CDTL3.version == "3.3.0")
 check("notice version is 3.3 (the window opens once on every client for anyone who last saw 3.2.x or older)", CDTL3.noticeVersion == "3.3")
 local function newer(prev)
 	g.previousVersion = prev
@@ -99,7 +99,7 @@ check("changelog says every cooldown you pin, not only defensives", log:find("ev
 print("[take the tour " .. FLAVOR .. "]")
 local win = _G["CDTL3_Firstrun"]
 local shippedVersion = CDTL3.version
-CDTL3.version = "3.3.0"	-- the release this notice version belongs to (the dev tree still says 3.2.2)
+CDTL3.version = "3.3.0"	-- the release this notice version belongs to
 local tourBtn = _G["CDTL3_Firstrun_Tour"]
 check("the window has a Take the tour button", win and tourBtn and tourBtn:GetText() == "Take the tour")
 check("  no tour is up and none is pending before the click", _G["CDTL3_Tour"] == nil and CDTL3.db.global.tourPending == nil)

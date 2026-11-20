@@ -1,6 +1,6 @@
 # CooldownTimeline 3
 
-## Unreleased
+## v3.3.0
 
 - The original looks are back: eight highlight effects for spells you mark Highlight in Filters (Lanes › Icons › Highlight Style): Glow, Pulse, Border, Border Pulse, Bounce, Shake, Scale and Flash Icon. Pulse, Bounce, Shake and Scale return from the original Cooldown Timeline, and Border Flash is called Border Pulse again
 - New Effect speed slider next to Highlight Style (Lanes › Icons, and each Ready frame): 50%, half the original's speed, out of the box, from 25% to 200%
