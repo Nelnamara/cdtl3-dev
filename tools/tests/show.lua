@@ -569,7 +569,9 @@ do
 		check("  RemoveHighlights stops it", g.__running == false)
 	end
 
-	-- the values
+	-- the values: the original's own timings at Effect speed 100%
+	check("Effect speed is 50% out of the box", hs["speed"] == 0.5, tostring(hs["speed"]))
+	hs["speed"] = 1
 	hs["style"] = "PULSE"; CDTL3:RefreshAllIcons()
 	local a = anims(F.icon.hl.agIconPulse)[1]
 	check("Pulse: icon alpha 0.2 to 1 in 0.5 s, bounce looping", a and eq(a.__set.SetFromAlpha, 0.2) and eq(a.__set.SetToAlpha, 1)
@@ -588,6 +590,20 @@ do
 	check("Scale: to 1.2 in 0.25 s then 0.8 in 0.25 s, repeating", s1 and s2 and eq(s1.__set.SetScaleTo, 1.2, 1.2)
 		and eq(s2.__set.SetScaleTo, 0.8, 0.8) and eq(s1.__set.SetDuration, 0.25) and eq(s2.__set.SetDuration, 0.25)
 		and eq(F.icon.hl.agScale.__set.SetLooping, "REPEAT"))
+
+	-- Effect speed: 50% doubles every timing, 200% halves it; a change shows on the next refresh
+	hs["speed"] = 0.5
+	hs["style"] = "BOUNCE"; CDTL3:RefreshAllIcons()
+	up, down = table.unpack(anims(F.icon.hl.agBounce))
+	hs["style"] = "SCALE"; CDTL3:RefreshAllIcons()
+	s1 = anims(F.icon.hl.agScale)[1]
+	check("Effect speed 50%: Bounce 0.5 s legs and a 0.5 s rest, Scale 0.5 s", eq(up.__set.SetDuration, 0.5) and eq(down.__set.SetDuration, 0.5)
+		and eq(down.__set.SetEndDelay, 0.5) and eq(s1.__set.SetDuration, 0.5))
+	hs["style"] = "PULSE"; CDTL3:RefreshAllIcons()
+	check("  Pulse 1 s", eq(anims(F.icon.hl.agIconPulse)[1].__set.SetDuration, 1))
+	hs["speed"] = 2; CDTL3:RefreshAllIcons()
+	check("Effect speed 200%: Pulse 0.25 s", eq(anims(F.icon.hl.agIconPulse)[1].__set.SetDuration, 0.25))
+	hs["speed"] = 0.5
 
 	-- only one effect at a time: switching style stops the old one
 	hs["style"] = "BOUNCE"; CDTL3:RefreshAllIcons()
@@ -652,6 +668,12 @@ do
 	check("  its tooltip names the Filters Highlight spells", opt.desc:find("Highlight in Filters", 1, true) ~= nil, opt.desc)
 	local ropt = CDTL3:GetFullOptions().args.ready.args.ready1.args.icons.args.highlightStyle
 	check("  the Ready frames offer the same", ropt and ropt.values.BOUNCE == "Bounce")
+	local sp = CDTL3:GetFullOptions().args.lanes.args.lane1.args.icons.args.highlightSpeed
+	check("Lanes > Icons > Effect speed: a slider from 25% to 200%, the Ready frames too", sp and sp.type == "range" and sp.min == 0.25 and sp.max == 2
+		and sp.isPercent and CDTL3:GetFullOptions().args.ready.args.ready1.args.icons.args.highlightSpeed ~= nil)
+	sp.set({}, 1.5)
+	check("  it saves to the lane", hs["speed"] == 1.5 and sp.get({}) == 1.5)
+	sp.set({}, 0.5)
 	check("  the menu lists them in the samples' order", opt.sorting and table.concat(opt.sorting, ",") == "GLOW,PULSE,BORDER,BORDER_FLASH,BOUNCE,SHAKE,SCALE,FLASH")
 	CDTL3:RemoveHighlights(F.icon, lane1)
 	F.data["currentCD"] = 0

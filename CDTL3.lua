@@ -212,6 +212,20 @@ local function WithOverrides(base, overrides)
 end
 
 -- The usual text on an icon or bar (tags on, white, outlined); each text lists only what it changes.
+-- icons.highlight, for lanes and Ready frames (Ready frames' border colour is fainter)
+local HIGHLIGHT = {
+	style = "BORDER",
+	speed = 0.5,		-- Effect speed: half the original's (Cooldown.lua PlayHighlight)
+	border = {
+		style = "None",
+		color = { r = 1, g = 1, b = 1, a = 1 },
+		size = 5,
+		padding = 5,
+		inset = 0,
+		flash = false,
+	},
+}
+
 local ICON_TEXT = {
 	enabled = true,
 	used = true,
@@ -369,18 +383,7 @@ local laneDefaults = {
 			inset = 0,
 		},
 
-		highlight = {
-			style = "BORDER",
-
-			border = {
-				style = "None",
-				color = { r = 1, g = 1, b = 1, a = 1 },
-				size = 5,
-				padding = 5,
-				inset = 0,
-				flash = false,
-			},
-		},
+		highlight = WithOverrides(HIGHLIGHT),
 
 		text1 = WithOverrides(ICON_TEXT, {
 			dtags = true,
@@ -671,18 +674,7 @@ local readyDefaults = WithOverrides(FRAME_BACK, {
 			inset = 0,
 		},
 
-		highlight = {
-			style = "BORDER",
-
-			border = {
-				style = "None",
-				color = { r = 1, g = 1, b = 1, a = 0.25 },
-				size = 5,
-				padding = 5,
-				inset = 0,
-				flash = false,
-			},
-		},
+		highlight = WithOverrides(HIGHLIGHT, { border = { color = { a = 0.25 } } }),
 
 		text1 = WithOverrides(ICON_TEXT, {
 			text = "[cd.name.s]",
@@ -1578,7 +1570,7 @@ private.BuildSamples = function(f)
 
 	-- the eight highlight effects, each on a small icon
 	P.icons = {}
-	P.s = { icons = { size = 28, highlight = { style = "BORDER", border = {
+	P.s = { icons = { size = 28, highlight = { style = "BORDER", speed = 0.5, border = {
 		style = "None", color = { r = 1, g = 1, b = 1, a = 1 }, size = 5, padding = 5, inset = 0, flash = false } } } }
 	for i, look in ipairs(private.SAMPLE_LOOKS) do
 		local ic = CreateFrame("Frame", name.."_SampleHl"..i, f)

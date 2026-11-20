@@ -615,6 +615,8 @@ function CDTL3:GetChangeLog()
 	changeLog = changeLog.."    Pulse, Border, Border Pulse, Bounce, Shake, Scale and Flash Icon.\n"
 	changeLog = changeLog.."    Pulse, Bounce, Shake and Scale return from the original Cooldown\n"
 	changeLog = changeLog.."    Timeline, and Border Flash is called Border Pulse again\n"
+	changeLog = changeLog.."  - New Effect speed slider next to Highlight Style: 50% (half the\n"
+	changeLog = changeLog.."    original's speed) out of the box, from 25% to 200%\n"
 	changeLog = changeLog.."  - Border and Border Pulse highlights now show without a border texture\n"
 	changeLog = changeLog.."    chosen: they draw a thin edge in the highlight colour. Thanks to TeZwo\n"
 	changeLog = changeLog.."  - Glow is a gold halo CDTL3 draws itself, so it shows on every client.\n"
@@ -2586,6 +2588,23 @@ private.AddIconArgs = function(args, s, i, footer)
 			end,
 		set = function(info, val)
 				s["icons"]["highlight"]["style"] = val
+				CDTL3:RefreshAllIcons()
+			end,
+	}
+	args["highlightSpeed"] = {
+		name = L["Effect speed"],
+		desc = L["How fast the highlight effect moves. 100% is the original Cooldown Timeline's speed; the default is 50%, half as fast"],
+		order = 403,
+		type = "range",
+		min = 0.25,
+		max = 2,
+		step = 0.05,
+		isPercent = true,
+		get = function(info)
+				return s["icons"]["highlight"]["speed"]
+			end,
+		set = function(info, val)
+				s["icons"]["highlight"]["speed"] = val
 				CDTL3:RefreshAllIcons()
 			end,
 	}

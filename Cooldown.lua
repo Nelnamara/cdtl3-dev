@@ -512,11 +512,35 @@ private.GlowShape = function(glow, round, size)
 	end
 end
 
-private.PlayHighlight = function(hl, key, build)
+-- Effect speed (icons.highlight.speed): 1 is the original's own timings, 0.5 half as fast (the
+-- default), 2 twice as fast. Each animation keeps its timing at 1 (private.Timed) and every play sets
+-- it for the frame's speed, so a changed slider shows on the next refresh.
+private.DEFAULT_SPEED = 0.5
+
+private.Timed = function(g, a, duration, endDelay)
+	g.cdtl3Times = g.cdtl3Times or {}
+	g.cdtl3Times[#g.cdtl3Times + 1] = { a, duration, endDelay }
+	a:SetDuration(duration)
+	if endDelay then
+		a:SetEndDelay(endDelay)
+	end
+end
+
+private.PlayHighlight = function(hl, key, build, speed)
 	local g = hl[key]
 	if not g then
 		g = build(hl:GetParent(), hl)
 		hl[key] = g
+	end
+	speed = (type(speed) == "number" and speed > 0) and speed or private.DEFAULT_SPEED
+	if g.cdtl3Speed ~= speed then
+		g.cdtl3Speed = speed
+		for _, t in ipairs(g.cdtl3Times or {}) do
+			t[1]:SetDuration(t[2] / speed)
+			if t[3] then
+				t[1]:SetEndDelay(t[3] / speed)
+			end
+		end
 	end
 	g:Play()
 end
@@ -528,7 +552,7 @@ private.BuildBorderPulse = function(_, hl)
 	local a = g:CreateAnimation("Alpha")
 	a:SetFromAlpha(0.2)
 	a:SetToAlpha(1)
-	a:SetDuration(0.5)
+	private.Timed(g, a, 0.5)
 	a:SetOrder(1)
 	return g
 end
@@ -550,7 +574,7 @@ private.BuildGlow = function(_, hl)
 	local a = g:CreateAnimation("Alpha")
 	a:SetFromAlpha(0.35)
 	a:SetToAlpha(1)
-	a:SetDuration(0.5)
+	private.Timed(g, a, 0.5)
 	a:SetOrder(1)
 	return g
 end
@@ -565,7 +589,7 @@ private.BuildIconPulse = function(f)
 	local a = g:CreateAnimation("Alpha")
 	a:SetFromAlpha(0.2)
 	a:SetToAlpha(1)
-	a:SetDuration(0.5)
+	private.Timed(g, a, 0.5)
 	a:SetOrder(1)
 	return g
 end
@@ -576,12 +600,11 @@ private.BuildBounce = function(f)
 	g:SetLooping("REPEAT")
 	local up = g:CreateAnimation("Translation")
 	up:SetOffset(0, 10)
-	up:SetDuration(0.25)
+	private.Timed(g, up, 0.25)
 	up:SetOrder(1)
 	local down = g:CreateAnimation("Translation")
 	down:SetOffset(0, -10)
-	down:SetDuration(0.25)
-	down:SetEndDelay(0.25)
+	private.Timed(g, down, 0.25, 0.25)
 	down:SetOrder(2)
 	return g
 end
@@ -592,12 +615,12 @@ private.BuildShake = function(f)
 	g:SetLooping("BOUNCE")
 	local one = g:CreateAnimation("Rotation")
 	one:SetDegrees(10)
-	one:SetDuration(0.25)
+	private.Timed(g, one, 0.25)
 	one:SetOrigin("CENTER", 0, 0)
 	one:SetOrder(1)
 	local two = g:CreateAnimation("Rotation")
 	two:SetDegrees(-20)
-	two:SetDuration(0.5)
+	private.Timed(g, two, 0.5)
 	two:SetOrigin("CENTER", 0, 0)
 	two:SetOrder(2)
 	return g
@@ -620,10 +643,10 @@ private.BuildScale = function(f)
 		down:SetScale(0.8 / 1.2, 0.8 / 1.2)
 	end
 	up:SetOrigin("CENTER", 0, 0)
-	up:SetDuration(0.25)
+	private.Timed(g, up, 0.25)
 	up:SetOrder(1)
 	down:SetOrigin("CENTER", 0, 0)
-	down:SetDuration(0.25)
+	private.Timed(g, down, 0.25)
 	down:SetOrder(2)
 	return g
 end
@@ -658,7 +681,7 @@ function CDTL3:ApplyHighlight(f, s, style)
 	local round = private.IsRound(f)
 	local size = s["icons"]["size"]
 	if style == "GLOW" then
-		private.PlayHighlight(f.hl, "agGlow", private.BuildGlow)
+		private.PlayHighlight(f.hl, "agGlow", private.BuildGlow, hs["speed"])
 		private.GlowShape(f.hl.glow, round, size)
 		f.hl.glow:Show()
 	elseif style == "BORDER" or style == "BORDER_FLASH" then
@@ -675,7 +698,7 @@ function CDTL3:ApplyHighlight(f, s, style)
 			f.hl:SetBackdropBorderColor(c["r"], c["g"], c["b"], c["a"])
 		end
 		if style == "BORDER_FLASH" then
-			private.PlayHighlight(f.hl, "agBorderPulse", private.BuildBorderPulse)
+			private.PlayHighlight(f.hl, "agBorderPulse", private.BuildBorderPulse, hs["speed"])
 		end
 	elseif style == "FLASH" then
 		f.hl:ClearAllPoints()
@@ -687,15 +710,15 @@ function CDTL3:ApplyHighlight(f, s, style)
 		else
 			f.hl.tx:SetColorTexture( 1, 1, 1, 1 )
 		end
-		private.PlayHighlight(f.hl, "agPulse", private.BuildFlash)
+		private.PlayHighlight(f.hl, "agPulse", private.BuildFlash, hs["speed"])
 	elseif style == "PULSE" then
-		private.PlayHighlight(f.hl, "agIconPulse", private.BuildIconPulse)
+		private.PlayHighlight(f.hl, "agIconPulse", private.BuildIconPulse, hs["speed"])
 	elseif style == "BOUNCE" then
-		private.PlayHighlight(f.hl, "agBounce", private.BuildBounce)
+		private.PlayHighlight(f.hl, "agBounce", private.BuildBounce, hs["speed"])
 	elseif style == "SHAKE" then
-		private.PlayHighlight(f.hl, "agShake", private.BuildShake)
+		private.PlayHighlight(f.hl, "agShake", private.BuildShake, hs["speed"])
 	elseif style == "SCALE" then
-		private.PlayHighlight(f.hl, "agScale", private.BuildScale)
+		private.PlayHighlight(f.hl, "agScale", private.BuildScale, hs["speed"])
 	end
 
 	f.hl:Show()

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - The original looks are back: eight highlight effects for spells you mark Highlight in Filters (Lanes › Icons › Highlight Style): Glow, Pulse, Border, Border Pulse, Bounce, Shake, Scale and Flash Icon. Pulse, Bounce, Shake and Scale return from the original Cooldown Timeline, and Border Flash is called Border Pulse again
+- New Effect speed slider next to Highlight Style (Lanes › Icons, and each Ready frame): 50%, half the original's speed, out of the box, from 25% to 200%
 - Border and Border Pulse highlights now show without a border texture chosen: they draw a thin edge in the highlight colour (GitHub issue 13). Thanks to TeZwo. Glow is now a gold halo CDTL3 draws itself, so it shows on every client. On a round Masque skin (Cirque and the like) the glow, the plain border and Flash Icon are round too
 - New Finish effect per lane (Lanes › Icons › Finish effect): when an icon reaches the Ready end it can grow and fade, or shrink away as a gold ring goes out. Off by default
 - The What's new window now has live samples at the top: the two Finish effects on a short lane and each highlight effect on a small icon. It opens once for everyone after this update
