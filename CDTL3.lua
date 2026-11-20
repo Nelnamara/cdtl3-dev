@@ -244,6 +244,17 @@ local MODE_TEXT = {
 	shadY = -1,
 }
 
+-- Show and hide (each lane, bar frame and ready frame): how the frame comes in and goes out, each a
+-- FADE or SCALE of `duration` seconds from `from` to `to`, played `loops` times; `bounce` plays every
+-- other loop back the other way. Fade from/to are fractions of the frame's alpha, scale from/to are
+-- sizes. Lanes and Ready frames take 0.3 s, bar frames 1.0 s (CDTL3:SetFadeAnimations, Lanes.lua).
+local function ShowAnim(duration)
+	return { type = "FADE", duration = duration, from = 0, to = 1, loops = 1, bounce = false }
+end
+local function HideAnim(duration)
+	return { type = "FADE", duration = duration, from = 1, to = 0, loops = 1, bounce = false }
+end
+
 -- The backdrop and border a bar frame and a ready frame start with
 local FRAME_BACK = {
 	bgTexture = "CDTL3 Smooth",
@@ -264,6 +275,7 @@ local FRAME_BACK = {
 local laneDefaults = {
 	enabled = true,
 	showMode = "GLOBAL", dimInsteadOfHide = false, dimAlpha = 0.3,
+	showAnim = ShowAnim(0.3), hideAnim = HideAnim(0.3),
 	name = "Lane 1",
 	reversed = false,
 	vertical = false,
@@ -507,6 +519,7 @@ local laneDefaults = {
 local barFrameDefaults = WithOverrides(FRAME_BACK, {
 	enabled = true,
 	showMode = "GLOBAL", dimInsteadOfHide = false, dimAlpha = 0.3,
+	showAnim = ShowAnim(1), hideAnim = HideAnim(1),
 	name = "Bar Frame 1",
 	grow = "UP",
 	horizontal = false,
@@ -601,6 +614,7 @@ local barFrameDefaults = WithOverrides(FRAME_BACK, {
 local readyDefaults = WithOverrides(FRAME_BACK, {
 	enabled = true,
 	showMode = "GLOBAL", dimInsteadOfHide = false, dimAlpha = 0.3,
+	showAnim = ShowAnim(0.3), hideAnim = HideAnim(0.3),
 	name = "Ready 1",
 	grow = "DOWN",
 	padding = 0,

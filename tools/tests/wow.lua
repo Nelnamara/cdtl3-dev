@@ -342,7 +342,7 @@ Methods.CreateAnimation = function(s, t) local a = newObj("Animation", nil, s); 
 -- animation groups and animations keep what they were told, so the harnesses can read it back
 Methods.Play = function(s) s.__plays = (s.__plays or 0) + 1; s.__running = true end
 Methods.Stop = function(s) s.__running = false end
-for _, k in ipairs({ "SetFromAlpha", "SetToAlpha", "SetOffset", "SetDegrees", "SetScaleFrom", "SetScaleTo", "SetDuration", "SetEndDelay", "SetLooping" }) do
+for _, k in ipairs({ "SetFromAlpha", "SetToAlpha", "SetOffset", "SetDegrees", "SetScaleFrom", "SetScaleTo", "SetDuration", "SetEndDelay", "SetLooping", "SetOrder", "SetOrigin" }) do
 	Methods[k] = function(s, ...) s.__set = s.__set or {}; s.__set[k] = { ... } end
 end
 Methods.GetRegionParent = function(s) return s.__parent end

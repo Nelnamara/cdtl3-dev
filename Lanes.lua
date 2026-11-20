@@ -143,7 +143,7 @@ function CDTL3:RefreshLane(i)
 	private.UpdateText(f, s)
 
 	-- ANIMATION
-	CDTL3:SetFadeAnimations(f, s["alpha"])
+	CDTL3:SetFadeAnimations(f, s["alpha"], s)
 
 	-- EFFECTS: burst window, refresh zone, Ready-by list (IconFx.lua)
 	CDTL3.IconFx:RefreshLane(f, s)
@@ -152,32 +152,115 @@ function CDTL3:RefreshLane(i)
 	CDTL3:FinishFrameRefresh(f, s)
 end
 
--- Lanes, bar frames and ready frames: the fade in and out to alpha. They are made once per frame
--- and only their alpha targets change on a refresh (making them on every refresh leaked a pair of
--- groups each time).
-function CDTL3:SetFadeAnimations(f, alpha)
-	if not f.animateIn then
-		f.animateIn = f:CreateAnimationGroup()
-		f.animateIn:SetLooping("NONE")
-		f.animateIn:SetToFinalAlpha(true)
-		f.animateIn.fade = f.animateIn:CreateAnimation("Alpha")
-		f.animateIn.fade:SetDuration(0.3)
-		f.animateIn.fade:SetSmoothing("OUT")
-		f.animateIn.fade:SetOrder(1)
+-- Lanes, bar frames and ready frames: how each shows and hides (s.showAnim / s.hideAnim, defaults in
+-- CDTL3.lua: type FADE or SCALE, duration, from, to, loops, bounce). One animation group per frame per
+-- direction (f.animateIn to show, f.animateOut to hide), made once and reused: a refresh only writes the
+-- numbers into it again, and a change of type, loops or bounce (what the group is made of) builds a new
+-- group and lets the old one go. Each loop is one Alpha animation (and one Scale animation for SCALE) in its
+-- own order; with bounce every second loop plays back the other way. A scale never touches the frame's
+-- position or size, it only draws it larger or smaller around its centre. However it plays, the group
+-- ends with the frame at its resting alpha (the frame's alpha to show, 0 to hide), because Autohide reads
+-- the frame's alpha to know whether it is showing.
+private.ANIM_LIMITS = { duration = { 0.1, 3 }, loops = { 1, 10 } }
 
-		f.animateOut = f:CreateAnimationGroup()
-		f.animateOut:SetLooping("NONE")
-		f.animateOut:SetToFinalAlpha(true)
-		f.animateOut.fade = f.animateOut:CreateAnimation("Alpha")
-		f.animateOut.fade:SetDuration(0.3)
-		f.animateOut.fade:SetSmoothing("OUT")
-		f.animateOut.fade:SetOrder(1)
+local function Clamp(v, lo, hi, default)
+	v = tonumber(v) or default
+	return math.max(lo, math.min(hi, v))
+end
+
+-- the settings of one direction with every missing or odd value made usable
+private.ReadAnim = function(a, hide, duration)
+	a = type(a) == "table" and a or {}
+	local scale = a["type"] == "SCALE"
+	local lim = private.ANIM_LIMITS
+	return {
+		scale = scale,
+		duration = Clamp(a["duration"], lim.duration[1], lim.duration[2], duration),
+		from = Clamp(a["from"], 0, 2, hide and 1 or 0),
+		to = Clamp(a["to"], 0, 2, hide and 0 or 1),
+		loops = math.floor(Clamp(a["loops"], lim.loops[1], lim.loops[2], 1)),
+		bounce = a["bounce"] and true or false,
+	}
+end
+
+private.AnimShape = function(a)
+	return (a.scale and "S" or "F") .. a.loops .. (a.bounce and "b" or "")
+end
+
+-- write the numbers of a read direction into its group's animations
+private.ConfigAnim = function(g, a, alpha, hide)
+	g.rest = hide and 0 or alpha
+	for k, part in ipairs(g.parts) do
+		local back = a.bounce and k % 2 == 0
+		local from, to
+		if a.scale then
+			-- scale: the frame fades in (or out) while it grows or shrinks
+			from, to = hide and alpha or 0, hide and 0 or alpha
+		else
+			from, to = alpha * a.from, alpha * a.to
+		end
+		if back then from, to = to, from end
+		part.fade:SetDuration(a.duration)
+		part.fade:SetFromAlpha(from)
+		part.fade:SetToAlpha(to)
+		if part.scale then
+			local sFrom, sTo = a.from, a.to
+			if back then sFrom, sTo = sTo, sFrom end
+			part.scale:SetDuration(a.duration)
+			if part.scale.SetScaleFrom then
+				part.scale:SetScaleFrom(sFrom, sFrom)
+				part.scale:SetScaleTo(sTo, sTo)
+			else
+				-- older clients: SetScale multiplies what is there
+				part.scale:SetScale(sTo / math.max(sFrom, 0.01), sTo / math.max(sFrom, 0.01))
+			end
+		end
 	end
+end
 
-	f.animateIn.fade:SetFromAlpha(0)
-	f.animateIn.fade:SetToAlpha(alpha)
-	f.animateOut.fade:SetFromAlpha(alpha)
-	f.animateOut.fade:SetToAlpha(0)
+private.BuildAnim = function(f, a)
+	local g = f:CreateAnimationGroup()
+	g:SetLooping("NONE")
+	g.parts = {}
+	g.shape = private.AnimShape(a)
+	for k = 1, a.loops do
+		local part = {}
+		part.fade = g:CreateAnimation("Alpha")
+		part.fade:SetOrder(k)
+		part.fade:SetSmoothing("OUT")
+		if a.scale then
+			part.scale = g:CreateAnimation("Scale")
+			part.scale:SetOrder(k)
+			part.scale:SetSmoothing("OUT")
+			part.scale:SetOrigin("CENTER", 0, 0)
+		end
+		g.parts[k] = part
+	end
+	-- a group that ran to its end leaves the frame at rest; one that was stopped leaves it to its caller
+	g:SetScript("OnFinished", function(group, requested)
+		if not requested then
+			f:SetAlpha(group.rest)
+		end
+	end)
+	return g
+end
+
+function CDTL3:SetFadeAnimations(f, alpha, s)
+	s = s or {}
+	for _, dir in ipairs({ "animateIn", "animateOut" }) do
+		local hide = dir == "animateOut"
+		local a = private.ReadAnim(s[hide and "hideAnim" or "showAnim"], hide, 0.3)
+		local g = f[dir]
+		if not g or g.shape ~= private.AnimShape(a) then
+			if g then
+				g:Stop()
+				g:SetScript("OnFinished", nil)
+			end
+			g = private.BuildAnim(f, a)
+			f[dir] = g
+		end
+		private.ConfigAnim(g, a, alpha, hide)
+	end
 end
 
 -- Lanes, bar frames and ready frames, at the end of a refresh: the debug and unlock box (f.db, which

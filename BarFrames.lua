@@ -167,7 +167,7 @@ function CDTL3:RefreshStackFrame(f, s, group)
 	end
 
 	-- ANIMATION
-	CDTL3:SetFadeAnimations(f, 1)
+	CDTL3:SetFadeAnimations(f, s["alpha"] or 1, s)
 
 	-- DEBUG/UNLOCK
 	f.db:SetSize(width + (s["padding"] * 2), height + (s["padding"] * 2))

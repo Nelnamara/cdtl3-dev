@@ -3130,6 +3130,7 @@ private.GetBarFrameSet = function(i)
 
 	private.AddCopyArgs(options.args.general.args, "barFrames", i, L["Bar Frame"])
 	private.AddShowArgs(options.args.general.args, function() return frame end, refresh)
+	private.AddShowHideArgs(options, function() return frame end, refresh)
 
 	return options
 end
@@ -5827,6 +5828,7 @@ private.GetLaneSet = function(i)
 
 	private.AddCopyArgs(options.args.general.args, "lanes", i, L["Lane"])
 	private.AddShowArgs(options.args.general.args, function() return lane end, refresh)
+	private.AddShowHideArgs(options, function() return lane end, refresh)
 	private.AddShareLaneArgs(options.args.general.args, i)
 	CDTL3:AddCasterLaneArgs(options.args.general.args, i, lane)
 	CDTL3.IconFx:AddLaneArgs(options.args, i)
@@ -6037,6 +6039,7 @@ private.GetReadySet = function(i)
 	private.AddReadyTestArgs(options.args.general.args, ready)
 	CDTL3:AddReadyBoardArgs(options.args.general.args, ready, i)	-- ReadyBoard.lua
 	private.AddShowArgs(options.args.general.args, function() return ready end, refresh)
+	private.AddShowHideArgs(options, function() return ready end, refresh)
 
 	return options
 end
@@ -6849,6 +6852,102 @@ private.AddShowArgs = function(args, settings, refresh)
 				settings()["dimAlpha"] = val
 				refresh()
 			end,
+	}
+end
+
+-- Show and hide (each lane, bar frame and ready frame, a tab of its own): how the frame comes in and
+-- goes out. Two groups of controls, Show (s.showAnim) and Hide (s.hideAnim), the same seven each; a change
+-- makes the frame's animations again (CDTL3:SetFadeAnimations, Lanes.lua), so `refresh` is the frame's refresh.
+private.ANIM_TYPES = {
+	["FADE"] = L["Fade"],
+	["SCALE"] = L["Scale"],
+}
+
+private.AddShowHideArgs = function(options, settings, refresh)
+	local function group(key, title, order)
+		local function anim() return settings()[key] end
+		local function range(name, desc, o, min, max, step, field)
+			return {
+				name = name,
+				desc = desc,
+				order = o,
+				type = "range",
+				min = min,
+				max = max,
+				step = step,
+				get = function(info) return anim()[field] end,
+				set = function(info, val)
+						anim()[field] = val
+						refresh()
+					end,
+			}
+		end
+		local isScale = function() return anim()["type"] == "SCALE" end
+		local g = {
+			name = title,
+			type = "group",
+			inline = true,
+			order = order,
+			args = {},
+		}
+		local args = g.args
+		args["type"] = {
+			name = L["Type"],
+			desc = L["Fade changes how see-through the frame is. Scale also grows or shrinks it around its middle."],
+			order = 1,
+			type = "select",
+			values = private.ANIM_TYPES,
+			sorting = { "FADE", "SCALE" },
+			get = function(info) return anim()["type"] end,
+			set = function(info, val)
+					local a = anim()
+					a["type"] = val
+					-- a new type starts from its usual numbers
+					if val == "SCALE" then
+						a["from"], a["to"] = key == "showAnim" and 0.6 or 1, key == "showAnim" and 1 or 0.6
+					else
+						a["from"], a["to"] = key == "showAnim" and 0 or 1, key == "showAnim" and 1 or 0
+					end
+					refresh()
+				end,
+		}
+		args["duration"] = range(L["Length"], L["How many seconds one play takes"], 2, 0.1, 3, 0.1, "duration")
+		-- one slider per kind of range: a slider's limits are plain numbers, so Scale has its own pair
+		for _, field in ipairs({ "from", "to" }) do
+			local desc = field == "from" and L["Where it starts: a share of the frame's own alpha for Fade, a size for Scale"]
+				or L["Where it ends: a share of the frame's own alpha for Fade, a size for Scale"]
+			local name = field == "from" and L["From"] or L["To"]
+			local o = field == "from" and 3 or 4
+			local fade = range(name, desc, o, 0, 1, 0.05, field)
+			fade.hidden = isScale
+			args[field] = fade
+			local scale = range(name, desc, o, 0.1, 2, 0.05, field)
+			scale.hidden = function(info) return not isScale() end
+			args[field .. "Scale"] = scale
+		end
+		args["loops"] = range(L["Loops"], L["How many times it plays (1 is once)"], 5, 1, 10, 1, "loops")
+		args["bounce"] = {
+			name = L["Bounce"],
+			desc = L["Every second play goes back the other way"],
+			order = 6,
+			type = "toggle",
+			get = function(info) return anim()["bounce"] end,
+			set = function(info, val)
+					anim()["bounce"] = val
+					refresh()
+				end,
+		}
+		return g
+	end
+
+	options.args["showHide"] = {
+		name = L["Show and hide"],
+		type = "group",
+		order = 880,
+		args = {
+			show = group("showAnim", L["Show"], 100),
+			hide = group("hideAnim", L["Hide"], 200),
+		},
 	}
 end
 

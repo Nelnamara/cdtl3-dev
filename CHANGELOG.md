@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Every lane, Ready frame and bar frame has a Show and hide tab: pick Fade or Scale for how it comes in and goes out, with its own length, start and end, number of plays and Bounce. The defaults look exactly as before
 - Under the hood: the code now passes the WoW API check that addon reviewers use with no warnings, and about 2,000 lines of copied code are gone. Nothing looks or works differently in game
 - Boss fights only now asks the game's current encounter call first, so it keeps working if you switch off Blizzard's old-API fallbacks
 

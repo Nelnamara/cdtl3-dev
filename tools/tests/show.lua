@@ -701,4 +701,136 @@ do
 	leave()
 end
 
+---------------------------------------------------------------- Show and hide animations
+print("[show and hide animations " .. FLAVOR .. "]")
+do
+	local P = CDTL3.db.profile
+	local L1, B1, R1 = P.lanes.lane1, P.barFrames.frame1, P.ready.ready1
+	local lane, bar, rdy = CDTL3_Lane_1, CDTL3_BarFrame_1, CDTL3_Ready_1
+	local function same(a, b) return a and b and a[1] == b[1] and a[2] == b[2] end
+	local function shape(a, type_, d, from, to, loops, bounce)
+		return a.type == type_ and a.duration == d and a.from == from and a.to == to and a.loops == loops and a.bounce == bounce
+	end
+	local function alphaOf(grp, k) return grp.__anims[k] end
+	-- the options setters of lane 1, bar frame 1 and ready 1
+	local function opt(opts, set, dir, name) return opts.args[set].args.showHide.args[dir].args[name] end
+	local lo, bo, ro = CDTL3:GetLaneOptions(), CDTL3:GetBarFrameOptions(), CDTL3:GetReadyOptions()
+
+	check("defaults: lane and Ready frame show FADE 0 to 1 and hide FADE 1 to 0 over 0.3 s, once, no bounce",
+		shape(L1.showAnim, "FADE", 0.3, 0, 1, 1, false) and shape(L1.hideAnim, "FADE", 0.3, 1, 0, 1, false)
+		and shape(R1.showAnim, "FADE", 0.3, 0, 1, 1, false) and shape(R1.hideAnim, "FADE", 0.3, 1, 0, 1, false))
+	check("  bar frames: the same over 1.0 s", shape(B1.showAnim, "FADE", 1, 0, 1, 1, false) and shape(B1.hideAnim, "FADE", 1, 1, 0, 1, false))
+	local all = true
+	for i = 1, 3 do
+		for _, s in ipairs({ P.lanes["lane" .. i], P.ready["ready" .. i] }) do
+			if s.showAnim.duration ~= 0.3 or s.hideAnim.duration ~= 0.3 then all = false end
+		end
+		if P.barFrames["frame" .. i].showAnim.duration ~= 1 then all = false end
+	end
+	check("  the same on lanes, Ready frames and bar frames 2 and 3 (old profiles get them from the defaults)", all)
+
+	CDTL3:RefreshLane(1); CDTL3:RefreshBarFrame(1); CDTL3:RefreshReady(1)
+	local function A(fr, dir) return fr[dir].__anims end
+	local li, lo1 = A(lane, "animateIn"), A(lane, "animateOut")
+	check("a lane's default groups look as before: one Alpha, 0 to its alpha in, its alpha to 0 out, 0.3 s",
+		#li == 1 and li[1].__atype == "Alpha" and same(li[1].__set.SetFromAlpha, { 0 }) == true and li[1].__set.SetToAlpha[1] == L1.alpha
+		and li[1].__set.SetDuration[1] == 0.3 and #lo1 == 1 and lo1[1].__set.SetFromAlpha[1] == L1.alpha and lo1[1].__set.SetToAlpha[1] == 0
+		and lo1[1].__set.SetDuration[1] == 0.3)
+	check("  a bar frame's take 1.0 s, a Ready frame's 0.3 s",
+		A(bar, "animateIn")[1].__set.SetDuration[1] == 1 and A(bar, "animateOut")[1].__set.SetDuration[1] == 1
+		and A(rdy, "animateIn")[1].__set.SetDuration[1] == 0.3)
+
+	-- each kind reads its own settings
+	local g1, g2, g3 = lane.animateIn, bar.animateOut, rdy.animateIn
+	L1.showAnim.duration = 2; B1.hideAnim.duration = 2.5; R1.showAnim.to = 0.5
+	CDTL3:RefreshLane(1); CDTL3:RefreshBarFrame(1); CDTL3:RefreshReady(1)
+	check("each frame kind uses its own settings",
+		lane.animateIn.__anims[1].__set.SetDuration[1] == 2 and lane.animateOut.__anims[1].__set.SetDuration[1] == 0.3
+		and bar.animateOut.__anims[1].__set.SetDuration[1] == 2.5 and bar.animateIn.__anims[1].__set.SetDuration[1] == 1
+		and rdy.animateIn.__anims[1].__set.SetToAlpha[1] == 0.5 and rdy.animateOut.__anims[1].__set.SetFromAlpha[1] == 1)
+	check("  a number changed: the same group, new numbers (nothing piles up)", lane.animateIn == g1 and bar.animateOut == g2 and rdy.animateIn == g3)
+	L1.showAnim.duration = 0.3; B1.hideAnim.duration = 1; R1.showAnim.to = 1
+	CDTL3:RefreshLane(1); CDTL3:RefreshBarFrame(1); CDTL3:RefreshReady(1)
+	local frames = #GetAllFrames()
+	for _ = 1, 5 do CDTL3:RefreshLane(1); CDTL3:RefreshBarFrame(1); CDTL3:RefreshReady(1) end
+	check("  refreshing again makes nothing new", #GetAllFrames() == frames and lane.animateIn == g1)
+
+	-- Scale, through the options
+	local x0, y0, w0, h0 = lane.__points and #lane.__points, 0, lane:GetWidth(), lane:GetHeight()
+	local pts0 = {}
+	for i, p in ipairs(lane.__points or {}) do pts0[i] = table.concat({ tostring(p[1]), tostring(p[2]), tostring(p[3]), tostring(p[4]), tostring(p[5]) }, "|") end
+	opt(lo, "lane1", "show", "type").set({}, "SCALE")
+	opt(lo, "lane1", "hide", "type").set({}, "SCALE")
+	check("Scale picked: from and to change to 0.6 and 1 for show, 1 and 0.6 for hide",
+		shape(L1.showAnim, "SCALE", 0.3, 0.6, 1, 1, false) and shape(L1.hideAnim, "SCALE", 0.3, 1, 0.6, 1, false))
+	check("  a changed type builds a new group", lane.animateIn ~= g1)
+	local sin, sout = A(lane, "animateIn"), A(lane, "animateOut")
+	check("  show: Scale 0.6 to 1 around the centre while the Alpha runs 0 to the lane's alpha",
+		#sin == 2 and sin[1].__atype == "Alpha" and sin[2].__atype == "Scale" and same(sin[2].__set.SetScaleFrom, { 0.6, 0.6 })
+		and same(sin[2].__set.SetScaleTo, { 1, 1 }) and sin[2].__set.SetOrigin[1] == "CENTER" and sin[1].__set.SetFromAlpha[1] == 0
+		and sin[1].__set.SetToAlpha[1] == L1.alpha)
+	check("  hide: Scale 1 to 0.6 while the Alpha runs from the lane's alpha to 0",
+		#sout == 2 and same(sout[2].__set.SetScaleFrom, { 1, 1 }) and same(sout[2].__set.SetScaleTo, { 0.6, 0.6 })
+		and sout[1].__set.SetFromAlpha[1] == L1.alpha and sout[1].__set.SetToAlpha[1] == 0)
+	local pts1 = {}
+	for i, p in ipairs(lane.__points or {}) do pts1[i] = table.concat({ tostring(p[1]), tostring(p[2]), tostring(p[3]), tostring(p[4]), tostring(p[5]) }, "|") end
+	check("  the lane's saved position, points and size are untouched (a Scale animation only draws it)",
+		table.concat(pts0, ";") == table.concat(pts1, ";") and lane:GetWidth() == w0 and lane:GetHeight() == h0 and L1.width == w0 and lane:GetScale() == 1)
+	opt(lo, "lane1", "show", "type").set({}, "FADE")
+	check("  back to Fade: 0 to 1 and 1 to 0 again, one Alpha in the group", shape(L1.showAnim, "FADE", 0.3, 0, 1, 1, false) and #A(lane, "animateIn") == 1)
+	opt(lo, "lane1", "hide", "type").set({}, "FADE")
+
+	-- loops and bounce
+	opt(bo, "barFrame1", "show", "loops").set({}, 3)
+	opt(bo, "barFrame1", "show", "bounce").set({}, true)
+	local bi = A(bar, "animateIn")
+	check("3 loops with bounce: three Alphas in orders 1, 2, 3, the second playing back the other way",
+		#bi == 3 and bi[1].__set.SetOrder[1] == 1 and bi[2].__set.SetOrder[1] == 2 and bi[3].__set.SetOrder[1] == 3
+		and bi[1].__set.SetFromAlpha[1] == 0 and bi[1].__set.SetToAlpha[1] == 1 and bi[2].__set.SetFromAlpha[1] == 1
+		and bi[2].__set.SetToAlpha[1] == 0 and bi[3].__set.SetFromAlpha[1] == 0 and bi[3].__set.SetToAlpha[1] == 1)
+	opt(bo, "barFrame1", "show", "bounce").set({}, false)
+	bi = A(bar, "animateIn")
+	check("  without bounce every loop plays the same way", #bi == 3 and bi[2].__set.SetFromAlpha[1] == 0 and bi[2].__set.SetToAlpha[1] == 1)
+	opt(bo, "barFrame1", "show", "loops").set({}, 1)
+	check("  back to one loop", #A(bar, "animateIn") == 1)
+	opt(ro, "ready1", "hide", "type").set({}, "SCALE")
+	opt(ro, "ready1", "hide", "loops").set({}, 2)
+	opt(ro, "ready1", "hide", "bounce").set({}, true)
+	local rs = A(rdy, "animateOut")
+	check("  Scale with bounce: each loop has its Scale, the second 0.6 back to 1",
+		#rs == 4 and same(rs[2].__set.SetScaleFrom, { 1, 1 }) and same(rs[2].__set.SetScaleTo, { 0.6, 0.6 })
+		and same(rs[4].__set.SetScaleFrom, { 0.6, 0.6 }) and same(rs[4].__set.SetScaleTo, { 1, 1 }))
+	-- the options themselves
+	local range = opt(lo, "lane1", "show", "from")
+	check("options: Length 0.1 to 3, Loops 1 to 10, From and To 0 to 1 for Fade and 0.1 to 2 for Scale",
+		opt(lo, "lane1", "show", "duration").min == 0.1 and opt(lo, "lane1", "show", "duration").max == 3
+		and opt(lo, "lane1", "show", "loops").min == 1 and opt(lo, "lane1", "show", "loops").max == 10
+		and range.min == 0 and range.max == 1 and opt(ro, "ready1", "hide", "toScale").min == 0.1 and opt(ro, "ready1", "hide", "toScale").max == 2)
+	opt(ro, "ready1", "hide", "type").set({}, "FADE")
+	opt(ro, "ready1", "hide", "loops").set({}, 1)
+	opt(ro, "ready1", "hide", "bounce").set({}, false)
+
+	-- a group that runs to its end leaves the frame at rest; a stopped one leaves it alone
+	local gin, gout = lane.animateIn, lane.animateOut
+	lane:SetAlpha(0.2); gin.__scripts.OnFinished(gin, false)
+	check("a show that ends leaves the lane at its alpha", lane:GetAlpha() == L1.alpha, tostring(lane:GetAlpha()))
+	gout.__scripts.OnFinished(gout, false)
+	check("  a hide that ends leaves it at 0", lane:GetAlpha() == 0, tostring(lane:GetAlpha()))
+	lane:SetAlpha(0.7); gout.__scripts.OnFinished(gout, true)
+	check("  a group that was stopped changes nothing", lane:GetAlpha() == 0.7)
+
+	-- Autohide still hides and shows, and Pause while hidden still sees the hidden lane
+	instantFades(lane, L1.alpha); instantFades(bar, 1); instantFades(rdy, 1)
+	CDTL3.combat = false
+	L1.showMode = "COMBAT"
+	CDTL3:RefreshLane(1)
+	check("Autohide: Only in combat, out of combat: the lane hides", lane:GetAlpha() == 0, tostring(lane:GetAlpha()))
+	CDTL3.combat = true
+	CDTL3:RefreshLane(1)
+	check("  in combat: it shows again", lane:GetAlpha() == L1.alpha, tostring(lane:GetAlpha()))
+	CDTL3.combat = false
+	L1.showMode = "GLOBAL"
+	CDTL3:RefreshLane(1)
+end
+
 print(string.format("RESULT show %s: fails=%d lua errors=%d", FLAVOR, fails, #ERRORS - base))
