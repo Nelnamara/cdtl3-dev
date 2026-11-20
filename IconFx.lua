@@ -605,6 +605,123 @@ function FX:Ended(f)
 	end
 end
 
+---------------------------------------------------------------- finish effect
+-- Lane setting Icons > Finish effect (icons.finishFx): when a lane icon reaches the Ready end and
+-- leaves for its Ready frame (Cooldown.lua IconUpdate), one of two things plays once at that end of
+-- the lane: "GROW" is a copy of the icon's picture that grows to 2.2 times and fades over half a
+-- second, "RING" a gold ring that grows from 0.6 to 2.4 times the icon's size and fades. A lane keeps
+-- FINISH_POOL frames and reuses them in turn (none made per finish). The effect is a drawing only: it
+-- is anchored to the lane (never to the icon, whose size and place can be hidden), sized from the
+-- saved icon size, and its frames are children of the lane so a faded lane hides them.
+private.RING = [[Interface\AddOns\CooldownTimeline3\Media\ring.tga]]	-- tools/make-ring.py
+private.FINISH_POOL = 4
+private.FINISH_TIME = 0.5
+private.GROW_TO = 2.2
+private.RING_FROM, private.RING_TO = 0.6, 2.4
+private.finishPools = {}
+
+private.FinishDone = function(group)
+	group:GetParent():Hide()
+end
+
+private.NewFinishFrame = function(lane)
+	local fr = CreateFrame("Frame", nil, lane)
+	fr:SetFrameLevel(lane:GetFrameLevel() + 10)
+	fr:EnableMouse(false)
+	fr.pic = fr:CreateTexture(nil, "OVERLAY")
+	fr.pic:SetAllPoints(fr)
+	fr.ring = fr:CreateTexture(nil, "OVERLAY")
+	fr.ring:SetAllPoints(fr)
+	fr.ring:SetTexture(private.RING)
+	fr.ring:SetVertexColor(1, 0.82, 0, 1)
+	local g = fr:CreateAnimationGroup()
+	g:SetToFinalAlpha(true)	-- stays faded until OnFinished hides it (no flash of full alpha)
+	g:SetScript("OnFinished", private.FinishDone)
+	fr.scale = g:CreateAnimation("Scale")
+	fr.scale:SetOrigin("CENTER", 0, 0)
+	fr.scale:SetDuration(private.FINISH_TIME)
+	fr.scale:SetOrder(1)
+	fr.fade = g:CreateAnimation("Alpha")
+	fr.fade:SetFromAlpha(1)
+	fr.fade:SetToAlpha(0)
+	fr.fade:SetDuration(private.FINISH_TIME)
+	fr.fade:SetOrder(1)
+	fr.group = g
+	fr:Hide()
+	return fr
+end
+
+-- the next frame of the lane's pool, made the first times it is asked
+private.NextFinishFrame = function(n, lane)
+	local pool = private.finishPools[n]
+	if not pool then
+		pool = { count = 0, nextAt = 1 }
+		private.finishPools[n] = pool
+	end
+	local fr = pool[pool.nextAt]
+	if not fr or fr:GetParent() ~= lane then
+		fr = private.NewFinishFrame(lane)
+		pool[pool.nextAt] = fr
+	end
+	pool.nextAt = pool.nextAt % private.FINISH_POOL + 1
+	return fr
+end
+
+-- f: the cooldown that just finished on its lane, ic its icon, s the lane's settings
+function FX:Finish(f, ic, s)
+	local mode = s and s["icons"]["finishFx"]
+	if mode ~= "GROW" and mode ~= "RING" then
+		return
+	end
+	local lane = ic:GetParent()
+	local n = f.data["lane"]
+	if not ic.valid or not lane then
+		return
+	end
+
+	local size = s["icons"]["size"]
+	local fr = private.NextFinishFrame(n, lane)
+	fr.group:Stop()
+
+	-- the Ready end of the lane, where an icon at 0 percent stands (Cooldown.lua IconUpdate)
+	local anchor, x, y = "LEFT", 0, ic.yOffset + ic.sOffset
+	if s["vertical"] then
+		anchor = s["reversed"] and "TOP" or "BOTTOM"
+		x, y = ic.yOffset + ic.sOffset, 0
+	elseif s["reversed"] then
+		anchor = "RIGHT"
+	end
+	fr:ClearAllPoints()
+	fr:SetPoint(anchor, lane, anchor, x, y)
+
+	local from, to
+	if mode == "GROW" then
+		fr:SetSize(size, size)
+		fr.pic:SetTexture(ic.tx:GetTexture() or f.data["icon"])
+		fr.pic:SetTexCoord(ic.tx:GetTexCoord())
+		fr.pic:Show()
+		fr.ring:Hide()
+		from, to = 1, private.GROW_TO
+	else
+		local small = size * private.RING_FROM
+		fr:SetSize(small, small)
+		fr.pic:Hide()
+		fr.ring:Show()
+		from, to = 1, private.RING_TO / private.RING_FROM
+	end
+
+	if fr.scale.SetScaleFrom then
+		fr.scale:SetScaleFrom(from, from)
+		fr.scale:SetScaleTo(to, to)
+	else
+		-- older clients: SetScale multiplies the size
+		fr.scale:SetScale(to, to)
+	end
+	fr:SetAlpha(1)
+	fr:Show()
+	fr.group:Play()
+end
+
 ---------------------------------------------------------------- GCD waits
 -- for pcall: is the spell waiting on nothing but the global cooldown? Retail: the game says (isOnGCD is
 -- never hidden). Classic: its cooldown is the very same one the GCD spell reports.

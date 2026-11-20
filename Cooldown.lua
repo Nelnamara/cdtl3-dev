@@ -1574,6 +1574,8 @@ private.IconUpdate = function(f, elapsed)
 
 			else
 				CDTL3.IconFx:Ended(f)	-- a buff that was up: the lane flash (IconFx.lua)
+				-- Finish effect: played once at the lane's Ready end as the icon leaves it (IconFx.lua)
+				CDTL3.IconFx:Finish(f, ic, CDTL3:SlotSettings("lanes", d["lane"]))
 				CDTL3:FireTimer("CDTL3_TimerReady", f)
 				CDTL3:SendToReady(f)
 				CDTL3:FireTimerIfHeld(f)

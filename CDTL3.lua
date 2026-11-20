@@ -340,6 +340,8 @@ local laneDefaults = {
 	icons = {
 		size = 40,
 		hlStyle = "NONE",
+		-- Finish effect at the Ready end (IconFx.lua): NONE, GROW (grow and fade) or RING (gold ring)
+		finishFx = "NONE",
 		timeFormat = "H:MM:SS.MS",
 
 		alpha = 1,

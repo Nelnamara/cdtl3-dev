@@ -5799,6 +5799,23 @@ private.GetLaneSet = function(i)
 	}
 
 	private.AddIconArgs(options.args.icons.args, lane, i, 288)
+	options.args.icons.args["finishFx"] = {
+		name = L["Finish effect"],
+		desc = L["What plays once at this lane's Ready end when an icon gets there"],
+		order = 402,
+		type = "select",
+		values = {
+				["NONE"] = L["None"],
+				["GROW"] = L["Grow and fade"],
+				["RING"] = L["Gold ring"],
+			},
+		get = function(info)
+				return lane["icons"]["finishFx"]
+			end,
+		set = function(info, val)
+				lane["icons"]["finishFx"] = val
+			end,
+	}
 	private.AddTextArgs(options.args.text.args, lane, "modeText", i)
 	-- no line under the last default text: the Custom Text header follows
 	options.args.text.args["dText5Footer"] = nil

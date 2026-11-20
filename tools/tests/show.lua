@@ -626,6 +626,79 @@ do
 	RunOnUpdate(0.02, 5)
 	leave()
 
+	-- finish effect
+	local function poolFrames()
+		local out = {}
+		for _, fr in ipairs(GetAllFrames()) do
+			local p = rawget(fr, "__parent")
+			if rawget(fr, "pic") and rawget(fr, "ring") and p and p.__name == "CDTL3_Lane_1" then out[#out + 1] = fr end
+		end
+		return out
+	end
+	for n = 1, 3 do
+		check("lane " .. n .. ": Finish effect is off by default", CDTL3:SlotSettings("lanes", n)["icons"]["finishFx"] == "NONE")
+	end
+	ready(911)
+	check("None: nothing is drawn when an icon finishes", #poolFrames() == 0, tostring(#poolFrames()))
+	leave()
+
+	local fopt = CDTL3:GetFullOptions().args.lanes.args.lane1.args.icons.args.finishFx
+	check("Lanes > Icons has Finish effect: None, Grow and fade, Gold ring",
+		fopt and fopt.values.NONE == "None" and fopt.values.GROW == "Grow and fade" and fopt.values.RING == "Gold ring")
+	fopt.set(nil, "GROW")
+	check("  the choice is saved on the lane", lane1["icons"]["finishFx"] == "GROW")
+
+	local Fn = ready(911)
+	local pf = poolFrames()
+	local fr = pf[1]
+	check("Grow and fade: one pooled frame plays once as the icon reaches Ready", #pf == 1 and fr.group.__running == true and fr.group.__plays == 1
+		and fr:IsShown(), tostring(#pf))
+	check("  at the lane's Ready end (left, an icon at 0 percent), sized as the icon", fr and fr.__points[1][1] == "LEFT" and fr.__points[1][2] == fr:GetParent()
+		and fr.__w == lane1["icons"]["size"], fr and tostring(fr.__points[1] and fr.__points[1][1]))
+	check("  grows to 2.2 and fades to 0 in 0.5 s, the icon's picture shown, no ring", fr.pic:IsShown() and not fr.ring:IsShown()
+		and eq(fr.scale.__set.SetScaleTo, 2.2, 2.2) and eq(fr.fade.__set.SetFromAlpha, 1) and eq(fr.fade.__set.SetToAlpha, 0)
+		and eq(fr.fade.__set.SetDuration, 0.5) and eq(fr.scale.__set.SetDuration, 0.5))
+	check("  the icon went on to its Ready frame as before", Fn and pname(Fn.icon) == "CDTL3_Ready_1_MF")
+	fr.group.__scripts.OnFinished(fr.group)
+	check("  when it ends the frame hides", not fr:IsShown())
+	leave()
+
+	lane1["reversed"] = true
+	ready(911)
+	check("Reversed lane: plays at the right end", poolFrames()[2] and poolFrames()[2].__points[1][1] == "RIGHT")
+	leave()
+	lane1["reversed"] = false; lane1["vertical"] = true
+	ready(911)
+	check("Vertical lane: plays at the bottom end; reversed, the top", poolFrames()[3] and poolFrames()[3].__points[1][1] == "BOTTOM")
+	leave()
+	lane1["reversed"] = true
+	ready(911)
+	check("  reversed vertical: the top", poolFrames()[4] and poolFrames()[4].__points[1][1] == "TOP")
+	leave()
+	lane1["reversed"] = false; lane1["vertical"] = false
+
+	fopt.set(nil, "RING")
+	ready(911)
+	pf = poolFrames()
+	-- the fifth finish reuses the first pooled frame
+	fr = pf[1]
+	check("Gold ring: the pool keeps four frames and the fifth finish reuses the first (none made per finish)", #pf == 4
+		and fr.group.__plays == 2, tostring(#pf) .. " frames, plays " .. tostring(fr.group.__plays))
+	check("  a ring grows from 0.6 to 2.4 of the icon size (a 0.6 frame scaled 4 times) and fades, no picture",
+		fr.ring:IsShown() and not fr.pic:IsShown() and eq(fr.scale.__set.SetScaleTo, 2.4 / 0.6, 2.4 / 0.6)
+		and math.abs(fr.__w - lane1["icons"]["size"] * 0.6) < 1e-9 and eq(fr.fade.__set.SetDuration, 0.5))
+	leave()
+	local total = #GetAllFrames()
+	ready(911); leave(); ready(911); leave()
+	check("  more finishes make no new frames", #GetAllFrames() == total and #poolFrames() == 4, tostring(#GetAllFrames() - total))
+	fopt.set(nil, "NONE")
+	local plays = 0
+	for _, f2 in ipairs(poolFrames()) do plays = plays + f2.group.__plays end
+	ready(911)
+	local plays2 = 0
+	for _, f2 in ipairs(poolFrames()) do plays2 = plays2 + f2.group.__plays end
+	check("  set back to None: nothing more plays", plays == plays2)
+	leave()
 end
 
 print(string.format("RESULT show %s: fails=%d lua errors=%d", FLAVOR, fails, #ERRORS - base))
