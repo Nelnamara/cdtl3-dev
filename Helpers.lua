@@ -2166,13 +2166,19 @@ function CDTL3:PullTrackedBuffs()
 	return result
 end
 
+-- the highlight effects' animation groups (Cooldown.lua), each made once per icon
+local HIGHLIGHT_GROUPS = { "agBorderPulse", "agPulse", "agIconPulse", "agBounce", "agShake", "agScale" }
+
 function CDTL3:RemoveHighlights(f, s)
-	if f.hl.agBorderPulse then
-		f.hl.agBorderPulse:Stop()
+	if not f.hl then
+		return
 	end
 
-	if f.hl.agPulse then
-		f.hl.agPulse:Stop()
+	for i = 1, #HIGHLIGHT_GROUPS do
+		local g = f.hl[HIGHLIGHT_GROUPS[i]]
+		if g then
+			g:Stop()
+		end
 	end
 
 	-- the old glow call, existence-guarded

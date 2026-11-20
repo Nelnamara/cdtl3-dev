@@ -2536,14 +2536,18 @@ private.AddIconArgs = function(args, s, i, footer)
 	}
 	args["highlightStyle"] = {
 		name = L["Highlight Style"],
-		desc = L["How to highlight icons"],
+		desc = L["How the spells you mark Highlight in Filters show on their icons"],
 		order = 401,
 		type = "select",
 		values = {
-				["BORDER"] = L["Border"],
-				["BORDER_FLASH"] = L["Border Flash"],
-				["FLASH"] = L["Flash Icon"],
 				["GLOW"] = L["Glow"],
+				["PULSE"] = L["Pulse"],
+				["BORDER"] = L["Border"],
+				["BORDER_FLASH"] = L["Border Pulse"],
+				["BOUNCE"] = L["Bounce"],
+				["SHAKE"] = L["Shake"],
+				["SCALE"] = L["Scale"],
+				["FLASH"] = L["Flash Icon"],
 			},
 		get = function(info)
 				return s["icons"]["highlight"]["style"]

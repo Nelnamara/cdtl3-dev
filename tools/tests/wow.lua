@@ -338,7 +338,13 @@ Methods.GetPropagateKeyboardInput = function() return false end
 Methods.GetButtonState = function() return "NORMAL" end
 Methods.GetMotionScriptsWhileDisabled = function() return false end
 Methods.CreateAnimationGroup = function(s) return newObj("AnimationGroup", nil, s) end
-Methods.CreateAnimation = function(s) return newObj("Animation", nil, s) end
+Methods.CreateAnimation = function(s, t) local a = newObj("Animation", nil, s); a.__atype = t; s.__anims = s.__anims or {}; s.__anims[#s.__anims + 1] = a; return a end
+-- animation groups and animations keep what they were told, so the harnesses can read it back
+Methods.Play = function(s) s.__plays = (s.__plays or 0) + 1; s.__running = true end
+Methods.Stop = function(s) s.__running = false end
+for _, k in ipairs({ "SetFromAlpha", "SetToAlpha", "SetOffset", "SetDegrees", "SetScaleFrom", "SetScaleTo", "SetDuration", "SetEndDelay", "SetLooping" }) do
+	Methods[k] = function(s, ...) s.__set = s.__set or {}; s.__set[k] = { ... } end
+end
 Methods.GetRegionParent = function(s) return s.__parent end
 Methods.GetTextureFileID = function() return 0 end
 Methods.GetTextureFilePath = function(s) return s.__tex end

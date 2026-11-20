@@ -56,6 +56,7 @@ local SPELLS = {
 	[914] = { "Flash Spell", { readyFlash = true } },
 	[915] = { "Say Spell", { sayName = true } },
 	[916] = { "Ready2 Spell", { readyFrame = 2 } },
+	[917] = { "Lit Spell", { highlight = true } },
 }
 local list = {}
 for id, s in pairs(SPELLS) do
@@ -522,6 +523,109 @@ do
 	n = #CHAT
 	fly(60)
 	check("the next flight: nothing said", not chatSince(n, "flight timer"))
+end
+
+---------------------------------------------------------------- highlight effects (issue 13) and the finish effect
+print("[highlight effects and finish effect " .. FLAVOR .. "]")
+do
+	local lane1 = CDTL3:SlotSettings("lanes", 1)
+	local hs = lane1["icons"]["highlight"]
+	local function anims(group)
+		local out = {}
+		for i, a in ipairs(group.__anims or {}) do out[i] = a end
+		return out
+	end
+	local function eq(got, ...)
+		local want = { ... }
+		if not got or #got ~= #want then return false end
+		for i = 1, #want do if got[i] ~= want[i] then return false end end
+		return true
+	end
+
+	check("the highlight border texture is None out of the box", hs["border"]["style"] == "None", tostring(hs["border"]["style"]))
+	cast(917, 600)
+	local F = live("Lit Spell")
+	-- style -> the group it starts, and what it is on
+	local STYLES = {
+		{ "PULSE", "agIconPulse", function(fr) return fr.icon end },
+		{ "BOUNCE", "agBounce", function(fr) return fr.icon end },
+		{ "SHAKE", "agShake", function(fr) return fr.icon.tx end },
+		{ "SCALE", "agScale", function(fr) return fr.icon end },
+		{ "FLASH", "agPulse", function(fr) return fr.icon.hl end },
+		{ "BORDER_FLASH", "agBorderPulse", function(fr) return fr.icon.hl end },
+	}
+	for _, st in ipairs(STYLES) do
+		hs["style"] = st[1]
+		CDTL3:RefreshAllIcons()
+		local hl = F.icon.hl
+		local g = hl and hl[st[2]]
+		check(st[1] .. " draws with the border texture None: its animation runs, on the right frame",
+			hl and hl:IsShown() and g and g.__running == true and g:GetParent() == st[3](F), g and tostring(g.__running))
+		local made = g
+		CDTL3:RefreshAllIcons()
+		check("  a refresh plays the same group again (none made per refresh)", hl[st[2]] == made and made.__plays >= 2, tostring(made and made.__plays))
+		CDTL3:RemoveHighlights(F.icon, lane1)
+		check("  RemoveHighlights stops it", g.__running == false)
+	end
+
+	-- the values
+	hs["style"] = "PULSE"; CDTL3:RefreshAllIcons()
+	local a = anims(F.icon.hl.agIconPulse)[1]
+	check("Pulse: icon alpha 0.2 to 1 in 0.5 s, bounce looping", a and eq(a.__set.SetFromAlpha, 0.2) and eq(a.__set.SetToAlpha, 1)
+		and eq(a.__set.SetDuration, 0.5) and eq(F.icon.hl.agIconPulse.__set.SetLooping, "BOUNCE"))
+	hs["style"] = "BOUNCE"; CDTL3:RefreshAllIcons()
+	local up, down = table.unpack(anims(F.icon.hl.agBounce))
+	check("Bounce: up 10 in 0.25 s, down 10 in 0.25 s, 0.25 s rest, repeating", up and down and eq(up.__set.SetOffset, 0, 10)
+		and eq(down.__set.SetOffset, 0, -10) and eq(up.__set.SetDuration, 0.25) and eq(down.__set.SetDuration, 0.25)
+		and eq(down.__set.SetEndDelay, 0.25) and eq(F.icon.hl.agBounce.__set.SetLooping, "REPEAT"))
+	hs["style"] = "SHAKE"; CDTL3:RefreshAllIcons()
+	local r1, r2 = table.unpack(anims(F.icon.hl.agShake))
+	check("Shake: 10 degrees each way in 0.5 s legs, bounce looping, on the texture", r1 and r2 and r1.__atype == "Rotation"
+		and eq(r1.__set.SetDegrees, 10) and eq(r2.__set.SetDegrees, -20) and eq(F.icon.hl.agShake.__set.SetLooping, "BOUNCE"))
+	hs["style"] = "SCALE"; CDTL3:RefreshAllIcons()
+	local s1, s2 = table.unpack(anims(F.icon.hl.agScale))
+	check("Scale: to 1.2 in 0.25 s then 0.8 in 0.25 s, repeating", s1 and s2 and eq(s1.__set.SetScaleTo, 1.2, 1.2)
+		and eq(s2.__set.SetScaleTo, 0.8, 0.8) and eq(s1.__set.SetDuration, 0.25) and eq(s2.__set.SetDuration, 0.25)
+		and eq(F.icon.hl.agScale.__set.SetLooping, "REPEAT"))
+
+	-- only one effect at a time: switching style stops the old one
+	hs["style"] = "BOUNCE"; CDTL3:RefreshAllIcons()
+	hs["style"] = "PULSE"; CDTL3:RefreshAllIcons()
+	check("switching style stops the old effect", F.icon.hl.agBounce.__running == false and F.icon.hl.agIconPulse.__running == true)
+	-- the highlight off: everything stops
+	F.data["highlight"] = false
+	CDTL3:RefreshAllIcons()
+	check("Highlight unticked: its effect stops and the frame hides", F.icon.hl.agIconPulse.__running == false and not F.icon.hl:IsShown())
+	F.data["highlight"] = true
+
+	-- Border and Border Pulse with border None: a plain thin edge
+	for _, style in ipairs({ "BORDER", "BORDER_FLASH" }) do
+		hs["style"] = style; CDTL3:RefreshAllIcons()
+		local b = F.icon.hl.__backdrop
+		check(style .. " with border None falls back to a visible plain edge", b and b.edgeFile == CDTL3.LSM:Fetch("border", "CDTL3 Pixel")
+			and b.edgeFile ~= nil and b.edgeSize == 1 and F.icon.hl:IsShown(), b and tostring(b.edgeFile))
+	end
+	hs["border"]["style"] = "CDTL3 Shadow"; hs["style"] = "BORDER"; CDTL3:RefreshAllIcons()
+	check("  a chosen texture is used as before", F.icon.hl.__backdrop.edgeFile == CDTL3.LSM:Fetch("border", "CDTL3 Shadow"))
+	hs["border"]["style"] = "None"
+	hs["style"] = "BORDER"
+	CDTL3:RefreshAllIcons()
+
+	-- the options: eight styles, Border Pulse's label
+	local opt = CDTL3:GetFullOptions().args.lanes.args.lane1.args.icons.args.highlightStyle
+	local keys = 0
+	for _ in pairs(opt.values) do keys = keys + 1 end
+	check("Lanes > Icons > Highlight Style offers eight styles, Border Flash saved as BORDER_FLASH, labelled Border Pulse",
+		keys == 8 and opt.values.BORDER_FLASH == "Border Pulse" and opt.values.PULSE == "Pulse" and opt.values.SCALE == "Scale")
+	check("  its tooltip names the Filters Highlight spells", opt.desc:find("Highlight in Filters", 1, true) ~= nil, opt.desc)
+	local ropt = CDTL3:GetFullOptions().args.ready.args.ready1.args.icons.args.highlightStyle
+	check("  the Ready frames offer the same", ropt and ropt.values.BOUNCE == "Bounce")
+	CDTL3:RemoveHighlights(F.icon, lane1)
+	F.data["currentCD"] = 0
+	SPELLCD[917] = nil
+	RunOnUpdate(0.02, 5)
+	leave()
+
 end
 
 print(string.format("RESULT show %s: fails=%d lua errors=%d", FLAVOR, fails, #ERRORS - base))

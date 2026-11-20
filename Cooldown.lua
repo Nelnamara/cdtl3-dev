@@ -443,6 +443,117 @@ function CDTL3:RefreshBar(cd)
 	end
 end
 
+-- Highlight effects (Highlight Style): every animation group is made once per icon, kept on its
+-- highlight frame (f.hl) and stopped in CDTL3:RemoveHighlights (Helpers.lua). They only change how the
+-- icon is drawn: nothing here reads the icon's size or position (a riding icon's are hidden), and an
+-- animation never moves the icon's anchors or its texts.
+-- Pulse, Bounce, Scale and Shake act on the icon frame (Shake on its texture: only textures rotate).
+private.plainEdge = { style = "CDTL3 Pixel", size = 1, padding = 1, inset = 0, color = { r = 1, g = 1, b = 1, a = 1 } }
+
+-- the border Border / Border Pulse draw: the chosen texture, or a plain thin edge in the same colour
+private.HighlightBorder = function(border, style)
+	if border["style"] ~= "None" or (style ~= "BORDER" and style ~= "BORDER_FLASH" and style ~= "GLOW") then
+		return border
+	end
+	local e = private.plainEdge
+	e["color"] = border["color"]
+	return e
+end
+
+private.PlayHighlight = function(hl, key, build)
+	local g = hl[key]
+	if not g then
+		g = build(hl:GetParent(), hl)
+		hl[key] = g
+	end
+	g:Play()
+end
+
+private.BuildBorderPulse = function(_, hl)
+	local g = hl:CreateAnimationGroup()
+	g:SetLooping("BOUNCE")
+	g:SetToFinalAlpha(true)
+	local a = g:CreateAnimation("Alpha")
+	a:SetFromAlpha(0.2)
+	a:SetToAlpha(1)
+	a:SetDuration(0.5)
+	a:SetOrder(1)
+	return g
+end
+
+-- the Flash Icon fill: the same beat on the white fill
+private.BuildFlash = private.BuildBorderPulse
+
+-- the whole icon's alpha 0.2 to 1 and back (no final alpha: the icon's own alpha is its to set)
+private.BuildIconPulse = function(f)
+	local g = f:CreateAnimationGroup()
+	g:SetLooping("BOUNCE")
+	local a = g:CreateAnimation("Alpha")
+	a:SetFromAlpha(0.2)
+	a:SetToAlpha(1)
+	a:SetDuration(0.5)
+	a:SetOrder(1)
+	return g
+end
+
+-- up 10, down 10, rest a quarter second, again
+private.BuildBounce = function(f)
+	local g = f:CreateAnimationGroup()
+	g:SetLooping("REPEAT")
+	local up = g:CreateAnimation("Translation")
+	up:SetOffset(0, 10)
+	up:SetDuration(0.25)
+	up:SetOrder(1)
+	local down = g:CreateAnimation("Translation")
+	down:SetOffset(0, -10)
+	down:SetDuration(0.25)
+	down:SetEndDelay(0.25)
+	down:SetOrder(2)
+	return g
+end
+
+-- 10 degrees each way: out to one side, across to the other, and back (BOUNCE plays it in reverse)
+private.BuildShake = function(f)
+	local g = f.tx:CreateAnimationGroup()
+	g:SetLooping("BOUNCE")
+	local one = g:CreateAnimation("Rotation")
+	one:SetDegrees(10)
+	one:SetDuration(0.25)
+	one:SetOrigin("CENTER", 0, 0)
+	one:SetOrder(1)
+	local two = g:CreateAnimation("Rotation")
+	two:SetDegrees(-20)
+	two:SetDuration(0.5)
+	two:SetOrigin("CENTER", 0, 0)
+	two:SetOrder(2)
+	return g
+end
+
+-- to 1.2 in a quarter second, then to 0.8 in a quarter second, again
+private.BuildScale = function(f)
+	local g = f:CreateAnimationGroup()
+	g:SetLooping("REPEAT")
+	local up = g:CreateAnimation("Scale")
+	local down = g:CreateAnimation("Scale")
+	if up.SetScaleFrom then
+		up:SetScaleFrom(1, 1)
+		up:SetScaleTo(1.2, 1.2)
+		down:SetScaleFrom(1.2, 1.2)
+		down:SetScaleTo(0.8, 0.8)
+	else
+		-- older clients: SetScale multiplies what is there
+		up:SetScale(1.2, 1.2)
+		down:SetScale(0.8 / 1.2, 0.8 / 1.2)
+	end
+	up:SetOrigin("CENTER", 0, 0)
+	up:SetDuration(0.25)
+	up:SetOrder(1)
+	down:SetOrigin("CENTER", 0, 0)
+	down:SetDuration(0.25)
+	down:SetOrder(2)
+	return g
+end
+
 function CDTL3:RefreshIcon(cd)
 	local f = cd.icon
 	local s = CDTL3:SlotSettings("lanes", 1)
@@ -532,99 +643,66 @@ function CDTL3:RefreshIcon(cd)
 		end
 	end
 
-	-- HIGHLIGHT BORDER
+	-- HIGHLIGHT
 	-- Flash when ready (Filters): while it waits in a Ready frame the icon flashes with the Flash
 	-- Icon highlight, whatever that frame's own highlight settings are
 	local readyFlash = cd.data["readyLit"] and not cd.data["highlight"] and group == "ready"
 	if cd.data["highlight"] or readyFlash then
-		if readyFlash or s["icons"]["highlight"]["border"]["style"] ~= "None" then
-			if not f.hl then
-				f.hl = CreateFrame("Frame", f:GetName().."_BD", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-				f.hl:SetParent(f)
-				f.hl.tx = f.hl:CreateTexture()
-			end
+		local hs = s["icons"]["highlight"]
+		if not f.hl then
+			f.hl = CreateFrame("Frame", f:GetName().."_BD", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+			f.hl:SetParent(f)
+			f.hl.tx = f.hl:CreateTexture()
+		end
 
-			CDTL3:SetBorder(f.hl, s["icons"]["highlight"]["border"])
+		local style = readyFlash and "FLASH" or hs["style"]
+		-- Border and Border Pulse with no border texture chosen draw a plain thin edge, so they show
+		-- out of the box; the other styles never use the border (the texture setting is for Border ones)
+		CDTL3:SetBorder(f.hl, private.HighlightBorder(hs["border"], style))
+		f.hl:ClearAllPoints()
+		f.hl:SetPoint("CENTER", 0, 0)
+		f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
+		-- SetAllPoints(true) fills the parent; the definitions only take a region there
+		---@diagnostic disable-next-line: param-type-mismatch
+		f.hl.tx:SetAllPoints(true)
+		f.hl.tx:SetColorTexture( 1, 1, 1, 0.5 )
+		-- fixed offset above the icon (border is +1); incrementing climbed on every refresh
+		f.hl:SetFrameLevel(f:GetFrameLevel() + 2)
+
+		CDTL3:RemoveHighlights(f, s)
+
+		local c = hs["border"]["color"]
+		-- The action-button glow isn't available on every client (e.g. Forever):
+		-- fall back to the plain border highlight there.
+		---@diagnostic disable-next-line: deprecated
+		if style == "GLOW" and ActionButton_ShowOverlayGlow then
+			---@diagnostic disable-next-line: deprecated
+			ActionButton_ShowOverlayGlow(f)
+		elseif style == "BORDER" or style == "GLOW" then
+			f.hl:SetBackdropBorderColor(c["r"], c["g"], c["b"], c["a"])
+		elseif style == "BORDER_FLASH" then
+			f.hl:SetBackdropBorderColor(c["r"], c["g"], c["b"], c["a"])
+			private.PlayHighlight(f.hl, "agBorderPulse", private.BuildBorderPulse)
+		elseif style == "FLASH" then
 			f.hl:ClearAllPoints()
 			f.hl:SetPoint("CENTER", 0, 0)
 			f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
-			-- SetAllPoints(true) fills the parent; the definitions only take a region there
-			---@diagnostic disable-next-line: param-type-mismatch
-			f.hl.tx:SetAllPoints(true)
-			f.hl.tx:SetColorTexture( 1, 1, 1, 0.5 )
-			-- fixed offset above the icon (border is +1); incrementing climbed on every refresh
-			f.hl:SetFrameLevel(f:GetFrameLevel() + 2)
-
-			CDTL3:RemoveHighlights(f, s)
-
-			local style = readyFlash and "FLASH" or s["icons"]["highlight"]["style"]
-			-- The action-button glow isn't available on every client (e.g. Forever):
-			-- fall back to the plain border highlight there.
-			---@diagnostic disable-next-line: deprecated
-			if style == "GLOW" and ActionButton_ShowOverlayGlow then
-				---@diagnostic disable-next-line: deprecated
-				ActionButton_ShowOverlayGlow(f)
-			elseif style == "BORDER" or style == "GLOW" then
-				f.hl:SetBackdropBorderColor(
-					s["icons"]["highlight"]["border"]["color"]["r"],
-					s["icons"]["highlight"]["border"]["color"]["g"],
-					s["icons"]["highlight"]["border"]["color"]["b"],
-					s["icons"]["highlight"]["border"]["color"]["a"]
-				)
-			elseif style == "BORDER_FLASH" then
-				f.hl:SetBackdropBorderColor(
-					s["icons"]["highlight"]["border"]["color"]["r"],
-					s["icons"]["highlight"]["border"]["color"]["g"],
-					s["icons"]["highlight"]["border"]["color"]["b"],
-					s["icons"]["highlight"]["border"]["color"]["a"]
-				)
-
-				-- created once and reused (a new group per refresh leaked)
-				if not f.hl.agBorderPulse then
-					f.hl.agBorderPulse = f.hl:CreateAnimationGroup()
-					f.hl.agBorderPulse:SetLooping("BOUNCE")
-					f.hl.agBorderPulse:SetToFinalAlpha(true)
-
-					local borderPulse = f.hl.agBorderPulse:CreateAnimation("Alpha")
-					borderPulse:SetFromAlpha(0.2)
-					borderPulse:SetToAlpha(1)
-					borderPulse:SetDuration(0.5)
-					borderPulse:SetOrder(1)
-				end
-
-				f.hl.agBorderPulse:Play()
-			elseif style == "FLASH" then
-				f.hl:ClearAllPoints()
-				f.hl:SetPoint("CENTER", 0, 0)
-				f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
-				f.hl.tx:SetColorTexture( 1, 1, 1, 1 )
-
-				-- created once and reused (a new group per refresh leaked)
-				if not f.hl.agPulse then
-					f.hl.agPulse = f.hl:CreateAnimationGroup()
-					f.hl.agPulse:SetLooping("BOUNCE")
-					f.hl.agPulse:SetToFinalAlpha(true)
-
-					local borderPulse = f.hl.agPulse:CreateAnimation("Alpha")
-					borderPulse:SetFromAlpha(0.2)
-					borderPulse:SetToAlpha(1)
-					borderPulse:SetDuration(0.5)
-					borderPulse:SetOrder(1)
-				end
-
-				f.hl.agPulse:Play()
-			else
-				CDTL3:RemoveHighlights(f, s)
-			end
-
-			f.hl:Show()
-		else
-			if f.hl then
-				f.hl:Hide()
-			end
+			f.hl.tx:SetColorTexture( 1, 1, 1, 1 )
+			private.PlayHighlight(f.hl, "agPulse", private.BuildFlash)
+		elseif style == "PULSE" then
+			private.PlayHighlight(f.hl, "agIconPulse", private.BuildIconPulse)
+		elseif style == "BOUNCE" then
+			private.PlayHighlight(f.hl, "agBounce", private.BuildBounce)
+		elseif style == "SHAKE" then
+			private.PlayHighlight(f.hl, "agShake", private.BuildShake)
+		elseif style == "SCALE" then
+			private.PlayHighlight(f.hl, "agScale", private.BuildScale)
 		end
+
+		f.hl:Show()
 	else
 		if f.hl then
+			CDTL3:RemoveHighlights(f, s)
 			f.hl:Hide()
 		end
 	end
