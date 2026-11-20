@@ -431,6 +431,10 @@ local laneDefaults = {
 			s2p = 0.66,
 			s3v = 66,
 			s3p = 0.75,
+			s4v = 80,
+			s4p = 0.85,
+			s5v = 90,
+			s5p = 0.95,
 		},
 		splitAbs = {
 			max = 120,
@@ -443,6 +447,10 @@ local laneDefaults = {
 			s2p = 0.5,
 			s3v = 60,
 			s3p = 0.75,
+			s4v = 80,
+			s4p = 0.85,
+			s5v = 100,
+			s5p = 0.95,
 		},
 	},
 
@@ -470,6 +478,17 @@ local laneDefaults = {
 			align = "RIGHT",
 			pos = 1,
 			offX = -5,
+		}),
+		-- marks 4 and 5 of a split lane (text2 to text4 are marks 1 to 3, text5 is the end); the look of text4
+		text6 = WithOverrides(MODE_TEXT, {
+			text = "T6",
+			used = false,
+			pos = 0.85,
+		}),
+		text7 = WithOverrides(MODE_TEXT, {
+			text = "T7",
+			used = false,
+			pos = 0.95,
 		}),
 	},
 	customText = {
@@ -693,6 +712,12 @@ local readyDefaults = WithOverrides(FRAME_BACK, {
 	},
 })
 
+-- lanes 2 and 3 start with all seven mode texts (Ready, marks, the end) switched off
+local NO_MODE_TEXT = {
+	text1 = { enabled = false }, text2 = { enabled = false }, text3 = { enabled = false }, text4 = { enabled = false },
+	text5 = { enabled = false }, text6 = { enabled = false }, text7 = { enabled = false },
+}
+
 local defaults = {
     profile = {
 		global = {
@@ -887,13 +912,7 @@ local defaults = {
 					text3 = { align = "RIGHT", anchor = "BOTTOMRIGHT", offX = 0, size = 10 },
 				},
 				mode = { split = { count = 3, s1p = 0.25, s2p = 0.5, s2v = 25, s3v = 50 } },
-				modeText = {
-					text1 = { enabled = false },
-					text2 = { enabled = false },
-					text3 = { enabled = false },
-					text4 = { enabled = false },
-					text5 = { enabled = false },
-				},
+				modeText = NO_MODE_TEXT,
 				tracking = { secondaryTracking = "NONE", stHeight = 30 },
 			}),
 			lane3 = WithOverrides(laneDefaults, {
@@ -909,13 +928,7 @@ local defaults = {
 					text3 = { anchor = "BOTTOMRIGHT", offX = -10, offY = 0, size = 10 },
 				},
 				mode = { split = { count = 3, s1p = 0.25, s1v = 5, s2p = 0.5, s2v = 25, s3v = 50 } },
-				modeText = {
-					text1 = { enabled = false },
-					text2 = { enabled = false },
-					text3 = { enabled = false },
-					text4 = { enabled = false },
-					text5 = { enabled = false },
-				},
+				modeText = NO_MODE_TEXT,
 				tracking = { secondaryTracking = "NONE", stHeight = 20 },
 			}),
 		},

@@ -507,6 +507,7 @@ private.SplitCurve = function(s, variant, total)
 	local key = variant .. ":" .. tostring(s["mode"]["type"]) .. ":" .. tostring(total) .. ":" .. tostring(ss["max"])
 		.. ":" .. tostring(ss["count"]) .. ":" .. tostring(ss["s1v"]) .. ":" .. tostring(ss["s1p"]) .. ":" .. tostring(ss["s2v"])
 		.. ":" .. tostring(ss["s2p"]) .. ":" .. tostring(ss["s3v"]) .. ":" .. tostring(ss["s3p"])
+		.. ":" .. tostring(ss["s4v"]) .. ":" .. tostring(ss["s4p"]) .. ":" .. tostring(ss["s5v"]) .. ":" .. tostring(ss["s5p"])
 	local curve = private.curves[key]
 	if curve then
 		return curve
@@ -521,7 +522,7 @@ private.SplitCurve = function(s, variant, total)
 	end
 
 	local xs = { 0, span, span * (1 - 1e-6) }
-	local count = math.min(CDTL3:SplitCount(ss) or 0, 3)
+	local count = math.min(CDTL3:SplitCount(ss) or 0, 5)
 	for i = 1, count do
 		local v = ss["s" .. i .. "v"]
 		if type(v) == "number" then
@@ -643,7 +644,7 @@ end
 private.SplitKnots = function(s)
 	local ss = s["mode"]["splitAbs"]
 	local count, max = CDTL3:SplitAbsCount(ss), tonumber(ss["max"])
-	if not (count and max) or count < 1 or count > 3 or count ~= math.floor(count) then
+	if not (count and max) or count < 1 or count > 5 or count ~= math.floor(count) then
 		return nil
 	end
 	local knots = { { 0, 0 } }
@@ -679,6 +680,7 @@ private.Segments = function(ct, lane, s, geo)
 	local key = geo.anchor .. ":" .. geo.len .. ":" .. tostring(geo.vertical) .. ":" .. tostring(geo.reversed)
 		.. ":" .. tostring(ss["count"]) .. ":" .. tostring(ss["max"]) .. ":" .. tostring(ss["s1v"]) .. ":" .. tostring(ss["s1p"])
 		.. ":" .. tostring(ss["s2v"]) .. ":" .. tostring(ss["s2p"]) .. ":" .. tostring(ss["s3v"]) .. ":" .. tostring(ss["s3p"])
+		.. ":" .. tostring(ss["s4v"]) .. ":" .. tostring(ss["s4p"]) .. ":" .. tostring(ss["s5v"]) .. ":" .. tostring(ss["s5p"])
 	if ct.segBadKey == key then
 		return nil
 	end

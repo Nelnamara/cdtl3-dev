@@ -12,6 +12,7 @@
 --   22 Override Autohide brings back an empty lane that faded out, and fades it again
 --   24 Split Count saves whole numbers only, typed into the options window; a fraction saved
 --      before that reads as the whole number the slider shows
+--   26 five split marks in both modes (issue 14)
 --   25 Edit Mode slider ranges cover the options window's
 dofile(HARNESS_DIR .. "/wow.lua")
 PLAYER.class = "MAGE"
@@ -790,6 +791,301 @@ for _, c in ipairs({ { "SPLIT_ABS", "splitAbs", "sa", 1.5, 2, 45, 120 }, { "SPLI
 end
 s1.mode.type = "LINEAR"
 CDTL3:RefreshLane(1)
+
+---------------------------------------------------------------- 26. Five split marks (issue 14)
+print("[Split marks: five in both modes " .. FLAVOR .. "]")
+do
+	local errs26 = #ERRORS
+	local sl = L.lane1
+	-- this harness's profile is one from before five marks (it saves nothing for marks 4 and 5 or text6, text7):
+	-- what lane 1 reads before this section writes anything is what such a profile loads with
+	local fresh = { s4 = sl.mode.split.s4v, p4 = sl.mode.split.s4p, s5 = sl.mode.splitAbs.s5v, p5 = sl.mode.splitAbs.s5p, t6 = sl.modeText.text6.pos,
+		t7 = sl.modeText.text7.pos, count = sl.mode.split.count, countAbs = sl.mode.splitAbs.count }
+	-- THE OLD CODE (Cooldown.lua and Helpers.lua before five marks), kept as the reference for counts 0 to 3
+	local OLD_KEYS = { SPLIT = "split", SPLIT_ABS = "splitAbs" }
+	local OLD_VALUES = { "s1v", "s2v", "s3v" }
+	local OLD_POSITIONS = { "s1p", "s2p", "s3p" }
+	local function OldSplitCount(ss)
+		local n = tonumber(ss["count"])
+		return n and math.floor(n + 0.5)
+	end
+	local function OldSplitAbsCount(ss)
+		local n = OldSplitCount(ss)
+		if not n then return nil end
+		local max = tonumber(ss["max"])
+		local used = 0
+		for i = 1, math.min(n, 3) do
+			local v = tonumber(ss[OLD_VALUES[i]])
+			if not v or (max and v >= max) then break end
+			used = i
+		end
+		return used
+	end
+	local function OldCalc(current, total, s)
+		local p = 1
+		local max = 100
+		local value = (current / total) * 100
+		local ss = s["mode"][OLD_KEYS[s["mode"]["type"]] or ""]
+		local abs = s["mode"]["type"] == "SPLIT_ABS"
+		if s["mode"]["type"] == "SPLIT" then
+			if total > ss["max"] then total = ss["max"] end
+		elseif abs then
+			max = ss["max"]
+			value = current
+			total = ss["max"]
+		end
+		local splits = nil
+		if abs then splits = OldSplitAbsCount(ss) else splits = OldSplitCount(ss) end
+		if current < total then
+			if abs and splits == 0 then
+				p = current / total
+			elseif splits == 1 or splits == 2 or splits == 3 then
+				local k = splits
+				local toV, toP = max, 1
+				while k > 1 and not (value > ss[OLD_VALUES[k]]) do
+					toV, toP = ss[OLD_VALUES[k]], ss[OLD_POSITIONS[k]]
+					k = k - 1
+				end
+				local markV, markP = ss[OLD_VALUES[k]], ss[OLD_POSITIONS[k]]
+				local rPercent, rSize
+				if value > markV then
+					rPercent = toV - markV
+					rSize = toP - markP
+				else
+					rPercent = markV
+					rSize = markP
+				end
+				local cPercent = value - markV
+				local aPercent = cPercent / rPercent
+				p = markP + (rSize * aPercent)
+			end
+		end
+		return p
+	end
+
+	-- counts 0 to 3 give the old function's numbers exactly, in both modes
+	local markSets = {
+		{ 10, 0.33, 33, 0.66, 66, 0.75 },
+		{ 50, 0.6, 20, 0.3, 70, 0.9 },
+		{ 0, 0.1, 100, 0.5, 120, 0.9 },
+		{ 12.5, 0.125, 37.25, 0.4, 81.75, 0.95 },
+		{ 40, 0.2, 40, 0.5, 40, 0.8 },
+	}
+	local compared, differ, firstDiff = 0, 0, nil
+	for _, mode in ipairs({ "SPLIT", "SPLIT_ABS" }) do
+		for _, m in ipairs(markSets) do
+			for _, n in ipairs({ 0, 1, 2, 3 }) do
+				for _, smax in ipairs({ 60, 120, 180 }) do
+					local ss = { max = smax, count = n, s1v = m[1], s1p = m[2], s2v = m[3], s2p = m[4], s3v = m[5], s3p = m[6],
+						s4v = 99, s4p = 0.99, s5v = 1, s5p = 0.01 }	-- marks 4 and 5 hold values that would show if they were read at count 3 or less
+					local s = { mode = { type = mode, split = ss, splitAbs = ss } }
+					for _, total in ipairs({ 1, 20, 45, 120, 200 }) do
+						for k = -2, 45 do
+							local cur = total * k / 37
+							local want, got = OldCalc(cur, total, s), CDTL3.CalcSplitPosition(cur, total, s)
+							compared = compared + 1
+							if not (want == got or (want ~= want and got ~= got)) then
+								differ = differ + 1
+								firstDiff = firstDiff or string.format("%s count %d max %d total %s at %s: %s vs old %s", mode, n, smax, total, cur, tostring(got), tostring(want))
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	check(string.format("counts 0 to 3 in both modes: the new position is the old function's, exactly, at %d points", compared), differ == 0, firstDiff)
+
+	-- counts 4 and 5 (and 1 to 3 again) follow the straight lines between the marks, from (0, 0) to (max, 1)
+	local function Expected(ss, count, v, max)
+		local ks = { { 0, 0 } }
+		for k = 1, count do ks[#ks + 1] = { ss["s" .. k .. "v"], ss["s" .. k .. "p"] } end
+		ks[#ks + 1] = { max, 1 }
+		for k = 2, #ks do
+			if v <= ks[k][1] then
+				local a, b = ks[k - 1], ks[k]
+				return a[2] + (b[2] - a[2]) * (v - a[1]) / (b[1] - a[1])
+			end
+		end
+		return 1
+	end
+	local function near(a, b) return math.abs(a - b) < 1e-9 end
+	local setsFor = {
+		SPLIT = { max = 100, count = 5, s1v = 10, s1p = 0.2, s2v = 30, s2p = 0.4, s3v = 50, s3p = 0.6, s4v = 70, s4p = 0.8, s5v = 90, s5p = 0.95 },
+		SPLIT_ABS = { max = 180, count = 5, s1v = 10, s1p = 0.2, s2v = 30, s2p = 0.4, s3v = 60, s3p = 0.6, s4v = 100, s4p = 0.8, s5v = 150, s5p = 0.95 },
+	}
+	for _, mode in ipairs({ "SPLIT", "SPLIT_ABS" }) do
+		local ss = setsFor[mode]
+		local s = { mode = { type = mode, split = ss, splitAbs = ss } }
+		for count = 1, 5 do
+			ss.count = count
+			local worst = 0
+			for k = 0, 400 do
+				local v = ss.max * k / 400
+				if v < ss.max then
+					local got = CDTL3.CalcSplitPosition(v, ss.max, s)
+					worst = math.max(worst, math.abs(got - Expected(ss, count, v, ss.max)))
+				end
+			end
+			check(string.format("%s count %d: position follows the lines through %d mark(s)", mode, count, count), worst < 1e-9, string.format("worst %.3g", worst))
+		end
+		ss.count = 5
+		check(mode .. " count 5: 80 sits where mark 4's line says", near(CDTL3.CalcSplitPosition(mode == "SPLIT" and 80 or 125, ss.max, s),
+			mode == "SPLIT" and 0.875 or 0.8 + 0.15 * 25 / 50))
+		check(mode .. " count 5: past the last mark runs on to max", CDTL3.CalcSplitPosition(ss.max - 1, ss.max, s) > ss.s5p)
+		ss.count = 3
+		check(mode .. " count 3: marks 4 and 5 are not read", near(CDTL3.CalcSplitPosition(ss.s4v, ss.max, s), Expected(ss, 3, ss.s4v, ss.max)))
+	end
+
+	-- Split (Time): a mark at or past Max Time drops, with every mark after it
+	do
+		local ss = { max = 100, count = 5, s1v = 10, s1p = 0.2, s2v = 30, s2p = 0.4, s3v = 60, s3p = 0.6, s4v = 80, s4p = 0.8, s5v = 120, s5p = 0.95 }
+		check("Split (Time) count 5, mark 5 past Max Time: 4 marks", CDTL3:SplitAbsCount(ss) == 4, tostring(CDTL3:SplitAbsCount(ss)))
+		ss.max = 80
+		check("  mark 4 at Max Time: 3 marks", CDTL3:SplitAbsCount(ss) == 3, tostring(CDTL3:SplitAbsCount(ss)))
+		ss.max = 40
+		check("  Max Time 40: 2 marks", CDTL3:SplitAbsCount(ss) == 2, tostring(CDTL3:SplitAbsCount(ss)))
+		ss.max, ss.s3v, ss.s4v, ss.s5v = 200, 70, 60, 90	-- mark 4 below mark 3 is still used (as ever); 5 past nothing
+		check("  five marks inside Max Time: 5", CDTL3:SplitAbsCount(ss) == 5)
+		ss.s5v = 200
+		check("  mark 5 at Max Time drops: 4", CDTL3:SplitAbsCount(ss) == 4)
+		ss.max, ss.s3v, ss.s4v, ss.s5v = 70, 60, 80, 120
+		local s = { mode = { type = "SPLIT_ABS", splitAbs = ss } }
+		local want = Expected(ss, 3, 65, 70)
+		check("  Max Time 70: position is the three-mark line (marks 4 and 5 dropped)", near(CDTL3.CalcSplitPosition(65, 70, s), want))
+		ss.count = 0
+		check("  count 0: a straight line", near(CDTL3.CalcSplitPosition(35, 70, s), 0.5))
+	end
+
+	-- real icons in a lane, through its own update: where the icon is drawn
+	do
+		local lane2f, s2l = CDTL3_Lane_2, L.lane2
+		local keep = { w = s2l.width, size = s2l.icons.size, vertical = s2l.vertical, reversed = s2l.reversed, mode = s2l.mode.type, stack = s2l.stacking.enabled }
+		s2l.width, s2l.icons.size, s2l.vertical, s2l.reversed, s2l.stacking.enabled = 600, 30, false, false, false
+		local td = { id = 1, name = "Marks", type = "testing", icon = 1, bCD = 100000, lane = 2, barFrame = 1, readyFrame = 1, enabled = true, ignored = false, usedBy = {} }
+		local f = CDTL3:CreateCooldown(CDTL3:GetUID(), "testing", td)
+		CDTL3:SendToLane(f)
+		local function placed(cur, base)
+			f.data.currentCD, f.data.baseCD = cur, base
+			lane2f.triggerUpdate = true
+			RunOnUpdate(0.02, 3)
+			local p = f.icon.__points[#f.icon.__points]
+			return p and p[2] / (s2l.width - s2l.icons.size)
+		end
+		local pct = { max = 120, count = 5, s1v = 10, s1p = 0.2, s2v = 30, s2p = 0.4, s3v = 50, s3p = 0.6, s4v = 70, s4p = 0.8, s5v = 90, s5p = 0.95 }
+		local abs = { max = 180, count = 5, s1v = 10, s1p = 0.2, s2v = 30, s2p = 0.4, s3v = 60, s3p = 0.6, s4v = 100, s4p = 0.8, s5v = 150, s5p = 0.95 }
+		for k, v in pairs(pct) do s2l.mode.split[k] = v end
+		for k, v in pairs(abs) do s2l.mode.splitAbs[k] = v end
+		for _, c in ipairs({ { "SPLIT", "split", { 5, 20, 40, 60, 80, 95, 99 }, 100 }, { "SPLIT_ABS", "splitAbs", { 5, 20, 45, 80, 120, 160, 175 }, 100 } }) do
+			s2l.mode.type = c[1]
+			local ss = s2l.mode[c[2]]
+			for _, count in ipairs({ 1, 2, 3, 4, 5 }) do
+				ss.count = count
+				CDTL3:RefreshLane(2)
+				local worst, shown = 0, 0
+				for _, cur in ipairs(c[3]) do
+					local got = placed(cur, c[4])
+					local value = c[1] == "SPLIT" and cur / math.min(c[4], ss.max) * 100 or cur
+					if got then
+						shown = shown + 1
+						worst = math.max(worst, math.abs(got - Expected(ss, count, value, c[1] == "SPLIT" and 100 or ss.max)))
+					end
+				end
+				-- (the countdown runs on 3 frames while it is read, so the allowance is a fifth of a pixel per mark's slope, not exact)
+				check(string.format("%s count %d: the icon is drawn on the line through its marks (%d spots)", c[1], count, shown), shown == #c[3] and worst < 0.003, string.format("worst %.3g", worst))
+			end
+		end
+		f.data.currentCD = -1
+		RunOnUpdate(0.02, 5)
+		s2l.width, s2l.icons.size, s2l.vertical, s2l.reversed, s2l.stacking.enabled, s2l.mode.type = keep.w, keep.size, keep.vertical, keep.reversed, keep.stack, keep.mode
+		CDTL3:RefreshLane(2)
+	end
+
+	-- the labels: marks 4 and 5 have their own slots (text6, text7); text1 Ready, text2 to text4 marks 1 to 3, text5 the end
+	do
+		local lane1f = CDTL3_Lane_1
+		local keep = { mode = sl.mode.type, w = sl.width, vertical = sl.vertical, reversed = sl.reversed }
+		sl.width, sl.vertical, sl.reversed = 400, false, false
+		local mt = sl.modeText
+		check("text6 and text7 default to text4's look", mt.text6.font == mt.text4.font and mt.text6.size == mt.text4.size and mt.text6.align == mt.text4.align
+			and mt.text6.anchor == mt.text4.anchor and mt.text7.outline == mt.text4.outline and mt.text7.color.r == mt.text4.color.r and mt.text6.enabled == true)
+		for _, c in ipairs({ { "SPLIT", "split" }, { "SPLIT_ABS", "splitAbs" } }) do
+			sl.mode.type = c[1]
+			local ss = sl.mode[c[2]]
+			ss.max = 200
+			ss.s1v, ss.s1p, ss.s2v, ss.s2p, ss.s3v, ss.s3p, ss.s4v, ss.s4p, ss.s5v, ss.s5p = 10, 0.1, 20, 0.3, 30, 0.5, 40, 0.7, 50, 0.9
+			for _, count in ipairs({ 5, 4, 3, 2, 1 }) do
+				ss.count = count
+				CDTL3:RefreshLane(1)
+				local slots = { "text2", "text3", "text4", "text6", "text7" }
+				local ok, detail = true, ""
+				for k = 1, 5 do
+					local t = mt[slots[k]]
+					local object = lane1f["t" .. (k <= 3 and k + 1 or k + 2)]
+					local want = c[1] == "SPLIT" and (ss["s" .. k .. "v"] .. "%") or CDTL3:ConvertTime(ss["s" .. k .. "v"], ss.timeFormat)
+					local shows = k <= count
+					local x = object.__points[#object.__points]
+					if not (t.used == shows and t.pos == ss["s" .. k .. "p"] and t.text == want and object:GetAlpha() == (shows and 1 or 0)
+						and x and x[4] == t.offX + sl.width * ss["s" .. k .. "p"]) then
+						ok, detail = false, string.format("%s: used %s pos %s text %s alpha %s", slots[k], tostring(t.used), tostring(t.pos), tostring(t.text), tostring(object:GetAlpha()))
+						break
+					end
+				end
+				check(string.format("%s count %d: marks 1 to %d show in their slots, the rest are off", c[1], count, count), ok, detail)
+				check("  Ready and the end keep text1 and text5", mt.text1.text == "Ready" and mt.text5.text == (c[1] == "SPLIT" and "100%" or CDTL3:ConvertTime(ss.max, ss.timeFormat))
+					and mt.text1.used ~= false and lane1f.t5:GetAlpha() == 1)
+			end
+		end
+		sl.mode.type = "LINEAR"
+		CDTL3:RefreshLane(1)
+		check("Linear: text6 and text7 are off", mt.text6.used == false and mt.text7.used == false and lane1f.t6:GetAlpha() == 0 and lane1f.t7:GetAlpha() == 0)
+		sl.mode.type, sl.width, sl.vertical, sl.reversed = keep.mode, keep.w, keep.vertical, keep.reversed
+		CDTL3:RefreshLane(1)
+	end
+
+	-- an old profile (nothing saved for marks 4 and 5 or text6, text7) loads with the defaults
+	do
+		check("old profile (nothing saved for marks 4 and 5, text6, text7) loads with the defaults", fresh.s4 == 80 and fresh.p4 == 0.85 and fresh.s5 == 100
+			and fresh.p5 == 0.95 and fresh.t6 == 0.85 and fresh.t7 == 0.95, string.format("%s %s %s %s %s %s", tostring(fresh.s4), tostring(fresh.p4), tostring(fresh.s5), tostring(fresh.p5), tostring(fresh.t6), tostring(fresh.t7)))
+		local d = CDTL3.db.defaults.profile.lanes.lane1.mode
+		check("defaults: Split (%) marks 4 and 5 sit after mark 3 and before 100", d.split.s4v == 80 and d.split.s4p == 0.85 and d.split.s5v == 90 and d.split.s5p == 0.95
+			and d.split.s4v > d.split.s3v and d.split.s4p > d.split.s3p)
+		check("defaults: Split (Time) marks 4 and 5 sit after mark 3 and before Max Time", d.splitAbs.s4v == 80 and d.splitAbs.s4p == 0.85 and d.splitAbs.s5v == 100
+			and d.splitAbs.s5p == 0.95 and d.splitAbs.s4v > d.splitAbs.s3v and d.splitAbs.s5v < d.splitAbs.max)
+		check("defaults: Split Count is as it was (2 and 3)", d.split.count == 2 and d.splitAbs.count == 3)
+	end
+
+	-- the options: the count slider reaches 5, Split 4 and 5 sliders show when the count reaches them
+	do
+		local lo = CDTL3:GetLaneOptions().args.lane1
+		local keep = sl.mode.type
+		for _, c in ipairs({ { "SPLIT", "split", "s", 0, 100 }, { "SPLIT_ABS", "splitAbs", "sa", 1, 3600 } }) do
+			sl.mode.type = c[1]
+			local cnt = Find(lo, c[3] .. "SplitCount")
+			check(c[1] .. ": Split Count slider runs 1 to 5", cnt and cnt.min == 1 and cnt.max == 5 and cnt.step == 1)
+			for k = 1, 5 do
+				local pos, val = Find(lo, c[3] .. "Split" .. k .. "Position"), Find(lo, c[3] .. "Split" .. k .. "Value")
+				check(string.format("%s: Split %d sliders exist, value %s..%s, position 0..1", c[1], k, tostring(val and val.min), tostring(val and val.max)),
+					pos and val and pos.min == 0 and pos.max == 1 and val.min == c[4] and val.max == c[5])
+				local good = true
+				for n = 1, 5 do
+					sl.mode[c[2]].count = n
+					local hidden = pos.hidden({}) or val.hidden({})
+					if hidden ~= (n < k and k > 1) then good = false end
+				end
+				check(string.format("  Split %d sliders show from count %d", k, k), good)
+				pos.set({}, 0.5)
+				val.set({}, c[1] == "SPLIT" and 55 or 77)
+				check("  their getters read what they set", pos.get({}) == 0.5 and val.get({}) == (c[1] == "SPLIT" and 55 or 77))
+			end
+			sl.mode[c[2]].count = 2
+		end
+		sl.mode.type = keep
+		local tr = Find(lo, "dText7Text")
+		check("per-slot text options exist for text6 and text7", Find(lo, "dText6Text") ~= nil and tr ~= nil and Find(lo, "dText7Font") ~= nil)
+	end
+	check("split marks: no lua errors", #ERRORS == errs26)
+end
 
 ---------------------------------------------------------------- 25. Edit Mode ranges
 if LEM_STUB then

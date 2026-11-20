@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Split (%) and Split (Time) lanes can now have up to five marks (GitHub issue 14): Split Count goes to 5, each mark has its own position and value sliders, and marks 4 and 5 get their own text slots (Text 6 and Text 7). Nothing changes on a lane until its Split Count is raised
 - Every lane, Ready frame and bar frame has a Show and hide tab: pick Fade or Scale for how it comes in and goes out, with its own length, start and end, number of plays and Bounce. The defaults look exactly as before
 - Under the hood: the code now passes the WoW API check that addon reviewers use with no warnings, and about 2,000 lines of copied code are gone. Nothing looks or works differently in game
 - Boss fights only now asks the game's current encounter call first, so it keeps working if you switch off Blizzard's old-API fallbacks

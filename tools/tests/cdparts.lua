@@ -270,7 +270,7 @@ local marks = {
 local compared, differ, firstDiff = 0, 0, nil
 for _, mode in ipairs({ "SPLIT", "SPLIT_ABS" }) do
 	for _, m in ipairs(marks) do
-		for _, n in ipairs({ "x", 0, 1, 2, 3, 4 }) do
+		for _, n in ipairs({ "x", 0, 1, 2, 3 }) do
 			for _, smax in ipairs({ 60, 120 }) do
 				local ss = { max = smax, count = n, s1v = m[2], s1p = m[3], s2v = m[4], s2p = m[5], s3v = m[6], s3p = m[7] }
 				local s = { mode = { type = mode, split = ss, splitAbs = ss } }
@@ -296,7 +296,7 @@ for _, mode in ipairs({ "SPLIT", "SPLIT_ABS" }) do
 		end
 	end
 end
-check(string.format("CalcSplitPosition is the copied blocks' result exactly, at %d points (marks in and out of order, at the ends, counts none to 4)",
+check(string.format("CalcSplitPosition is the copied blocks' result exactly, at %d points (marks in and out of order, at the ends, counts none to 3; 4 and 5 are checked in lanes.lua)",
 	compared), differ == 0, firstDiff)
 
 ---------------------------------------------------------------- 4. the spell countdown

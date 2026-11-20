@@ -4503,6 +4503,122 @@ private.GetCustomSet = function(t, o)
 	return options
 end
 
+-- SPLIT MARKS of a lane's Split (%) and Split (Time) modes: the Split Count slider and, for each of
+-- the five marks, its position and value sliders (shown once the count reaches the mark). Marks keep
+-- the option keys and orders they had when there were three (sSplit1Position, 411 ...), mark k at
+-- base + 10 * k. mode.split holds s1v..s5v as percents, mode.splitAbs as seconds from the end.
+private.SPLIT_MODES = {
+	SPLIT = {
+		key = "split", prefix = "sSplit", base = 400, countKey = "sSplitCount",
+		countDesc = L["How many % splits appear on the lane"], min = 0, max = 100,
+		pos = {
+			L["What position should split 1 appear"], L["What position should split 2 appear"],
+			L["What position should split 3 appear"], L["What position should split 4 appear"],
+			L["What position should split 5 appear"],
+		},
+		val = {
+			L["What percentage should split 1 occur"], L["What percentage should split 2 occur"],
+			L["What percentage should split 3 occur"], L["What percentage should split 4 occur"],
+			L["What percentage should split 5 occur"],
+		},
+	},
+	SPLIT_ABS = {
+		key = "splitAbs", prefix = "saSplit", base = 500, countKey = "saSplitCount",
+		countDesc = L["How many % splits appear on the lane"], min = 1, max = 3600,
+		pos = {
+			L["What position should splitAbs 1 appear"], L["What position should splitAbs 2 appear"],
+			L["What position should splitAbs 3 appear"], L["What position should split 4 appear"],
+			L["What position should split 5 appear"],
+		},
+		val = {
+			L["How many seconds from the end split 1 sits at (up to 3600)."],
+			L["How many seconds from the end split 2 sits at (up to 3600)."],
+			L["How many seconds from the end split 3 sits at (up to 3600)."],
+			L["How many seconds from the end split 4 sits at (up to 3600)."],
+			L["How many seconds from the end split 5 sits at (up to 3600)."],
+		},
+	},
+}
+private.AddSplitArgs = function(args, lane, i)
+	local names = {
+		L["Split 1 Position"], L["Split 2 Position"], L["Split 3 Position"], L["Split 4 Position"], L["Split 5 Position"],
+	}
+	local valueNames = {
+		L["Split 1 Value"], L["Split 2 Value"], L["Split 3 Value"], L["Split 4 Value"], L["Split 5 Value"],
+	}
+	for mode, m in pairs(private.SPLIT_MODES) do
+		local ss = function() return lane["mode"][m.key] end
+		-- shown in this mode, from mark k on (k = 0: the count slider itself)
+		local function shown(k)
+			return function(info)
+				if lane["mode"]["type"] ~= mode then
+					return true
+				end
+				return k > 0 and (CDTL3:SplitCount(ss()) or 0) < k
+			end
+		end
+		args["spacer" .. m.base] = { name = "\n\n", type = "description", order = m.base, hidden = shown(0), }
+		args[m.countKey] = {
+			name = L["Split Count"],
+			desc = m.countDesc,
+			order = m.base + 1,
+			type = "range",
+			hidden = shown(0),
+			min = 1,
+			max = 5,
+			step = 1,
+			bigStep = 1,
+			get = function(info, index)
+					return CDTL3:SplitCount(ss())
+				end,
+			set = function(info, val)
+					ss()["count"] = val
+					CDTL3:RefreshLane(i)
+				end,
+		}
+		for k = 1, 5 do
+			local o = m.base + 10 * k
+			local pKey, vKey = "s" .. k .. "p", "s" .. k .. "v"
+			-- mark 1 is shown at any count
+			local hidden = shown(k == 1 and 0 or k)
+			args["spacer" .. o] = { name = k == 1 and "\n\n" or "", type = "description", order = o, hidden = hidden, }
+			args[m.prefix .. k .. "Position"] = {
+				name = names[k],
+				desc = m.pos[k],
+				order = o + 1,
+				type = "range",
+				hidden = hidden,
+				min = 0,
+				max = 1,
+				get = function(info, index)
+						return ss()[pKey]
+					end,
+				set = function(info, val)
+						ss()[pKey] = val
+						CDTL3:RefreshLane(i)
+					end,
+			}
+			args[m.prefix .. k .. "Value"] = {
+				name = valueNames[k],
+				desc = m.val[k],
+				order = o + 2,
+				type = "range",
+				hidden = hidden,
+				min = m.min,
+				max = m.max,
+				bigStep = 1,
+				get = function(info, index)
+						return ss()[vKey]
+					end,
+				set = function(info, val)
+						ss()[vKey] = val
+						CDTL3:RefreshLane(i)
+					end,
+			}
+		end
+	end
+end
+
 private.GetLaneSet = function(i)
 	local lane = CDTL3:SlotSettings("lanes", i)
 	local function refresh()
@@ -4730,422 +4846,6 @@ private.GetLaneSet = function(i)
 									lane["mode"]["splitAbs"]["hideTimeSurplus"] = val
 								end
 							end,
-					},
-					spacer400 = {
-						name = "\n\n",
-						type = "description",
-						order = 400,
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT" then
-								return false
-							end
-							return true
-						end,
-					},
-					sSplitCount = {
-						name = L["Split Count"],
-						desc = L["How many % splits appear on the lane"],
-						order = 401,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT" then
-								return false
-							end
-							return true
-						end,
-						min = 1,
-						max = 3,
-						step = 1,
-						bigStep = 1,
-						get = function(info, index)
-								return CDTL3:SplitCount(lane["mode"]["split"])
-							end,
-						set = function(info, val)
-								lane["mode"]["split"]["count"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					spacer410 = {
-						name = "\n\n",
-						type = "description",
-						order = 410,
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT" then
-								return false
-							end
-							return true
-						end,
-					},
-					sSplit1Position = {
-						name = L["Split 1 Position"],
-						desc = L["What position should split 1 appear"],
-						order = 411,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT" then
-								return false
-							end
-							return true
-						end,
-						min = 0,
-						max = 1,
-						get = function(info, index)
-								return lane["mode"]["split"]["s1p"]
-							end,
-						set = function(info, val)
-								lane["mode"]["split"]["s1p"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					sSplit1Value = {
-						name = L["Split 1 Value"],
-						desc = L["What percentage should split 1 occur"],
-						order = 412,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT" then
-								return false
-							end
-							return true
-						end,
-						min = 0,
-						max = 100,
-						bigStep = 1,
-						get = function(info, index)
-								return lane["mode"]["split"]["s1v"]
-							end,
-						set = function(info, val)
-								lane["mode"]["split"]["s1v"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					spacer420 = {
-						name = "",
-						type = "description",
-						order = 420,
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT" then
-								if CDTL3:SplitCount(lane["mode"]["split"]) >= 2 then
-									return false
-								end
-							end
-							return true
-						end,
-					},
-					sSplit2Position = {
-						name = L["Split 2 Position"],
-						desc = L["What position should split 2 appear"],
-						order = 421,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT" then
-								if CDTL3:SplitCount(lane["mode"]["split"]) >= 2 then
-									return false
-								end
-							end
-							return true
-						end,
-						min = 0,
-						max = 1,
-						get = function(info, index)
-								return lane["mode"]["split"]["s2p"]
-							end,
-						set = function(info, val)
-								lane["mode"]["split"]["s2p"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					sSplit2Value = {
-						name = L["Split 2 Value"],
-						desc = L["What percentage should split 2 occur"],
-						order = 422,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT" then
-								if CDTL3:SplitCount(lane["mode"]["split"]) >= 2 then
-									return false
-								end
-							end
-							return true
-						end,
-						min = 0,
-						max = 100,
-						bigStep = 1,
-						get = function(info, index)
-								return lane["mode"]["split"]["s2v"]
-							end,
-						set = function(info, val)
-								lane["mode"]["split"]["s2v"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					spacer430 = {
-						name = "",
-						type = "description",
-						order = 430,
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT" then
-								if CDTL3:SplitCount(lane["mode"]["split"]) >= 2 then
-									return false
-								end
-							end
-							return true
-						end,
-					},
-					sSplit3Position = {
-						name = L["Split 3 Position"],
-						desc = L["What position should split 3 appear"],
-						order = 431,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT" then
-								if CDTL3:SplitCount(lane["mode"]["split"]) >= 3 then
-									return false
-								end
-							end
-							return true
-						end,
-						min = 0,
-						max = 1,
-						get = function(info, index)
-								return lane["mode"]["split"]["s3p"]
-							end,
-						set = function(info, val)
-								lane["mode"]["split"]["s3p"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					sSplit3Value = {
-						name = L["Split 3 Value"],
-						desc = L["What percentage should split 3 occur"],
-						order = 432,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT" then
-								if CDTL3:SplitCount(lane["mode"]["split"]) >= 3 then
-									return false
-								end
-							end
-							return true
-						end,
-						min = 0,
-						max = 100,
-						bigStep = 1,
-						get = function(info, index)
-								return lane["mode"]["split"]["s3v"]
-							end,
-						set = function(info, val)
-								lane["mode"]["split"]["s3v"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					spacer500 = {
-						name = "\n\n",
-						type = "description",
-						order = 500,
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT_ABS" then
-								return false
-							end
-							return true
-						end,
-					},
-					saSplitCount = {
-						name = L["Split Count"],
-						desc = L["How many % splits appear on the lane"],
-						order = 502,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT_ABS" then
-								return false
-							end
-							return true
-						end,
-						min = 1,
-						max = 3,
-						step = 1,
-						bigStep = 1,
-						get = function(info, index)
-								return CDTL3:SplitCount(lane["mode"]["splitAbs"])
-							end,
-						set = function(info, val)
-								lane["mode"]["splitAbs"]["count"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					spacer510 = {
-						name = "\n\n",
-						type = "description",
-						order = 510,
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT_ABS" then
-								return false
-							end
-							return true
-						end,
-					},
-					saSplit1Position = {
-						name = L["Split 1 Position"],
-						desc = L["What position should splitAbs 1 appear"],
-						order = 511,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT_ABS" then
-								return false
-							end
-							return true
-						end,
-						min = 0,
-						max = 1,
-						get = function(info, index)
-								return lane["mode"]["splitAbs"]["s1p"]
-							end,
-						set = function(info, val)
-								lane["mode"]["splitAbs"]["s1p"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					saSplit1Value = {
-						name = L["Split 1 Value"],
-						desc = L["How many seconds from the end split 1 sits at (up to 3600)."],
-						order = 512,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT_ABS" then
-								return false
-							end
-							return true
-						end,
-						min = 1,
-						max = 3600,
-						bigStep = 1,
-						get = function(info, index)
-								return lane["mode"]["splitAbs"]["s1v"]
-							end,
-						set = function(info, val)
-								lane["mode"]["splitAbs"]["s1v"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					spacer520 = {
-						name = "",
-						type = "description",
-						order = 520,
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT_ABS" then
-								if CDTL3:SplitCount(lane["mode"]["splitAbs"]) >= 2 then
-									return false
-								end
-							end
-							return true
-						end,
-					},
-					saSplit2Position = {
-						name = L["Split 2 Position"],
-						desc = L["What position should splitAbs 2 appear"],
-						order = 521,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT_ABS" then
-								if CDTL3:SplitCount(lane["mode"]["splitAbs"]) >= 2 then
-									return false
-								end
-							end
-							return true
-						end,
-						min = 0,
-						max = 1,
-						get = function(info, index)
-								return lane["mode"]["splitAbs"]["s2p"]
-							end,
-						set = function(info, val)
-								lane["mode"]["splitAbs"]["s2p"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					saSplit2Value = {
-						name = L["Split 2 Value"],
-						desc = L["How many seconds from the end split 2 sits at (up to 3600)."],
-						order = 522,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT_ABS" then
-								if CDTL3:SplitCount(lane["mode"]["splitAbs"]) >= 2 then
-									return false
-								end
-							end
-							return true
-						end,
-						min = 1,
-						max = 3600,
-						bigStep = 1,
-						get = function(info, index)
-								return lane["mode"]["splitAbs"]["s2v"]
-							end,
-						set = function(info, val)
-								lane["mode"]["splitAbs"]["s2v"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					spacer530 = {
-						name = "",
-						type = "description",
-						order = 530,
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT_ABS" then
-								if CDTL3:SplitCount(lane["mode"]["splitAbs"]) >= 2 then
-									return false
-								end
-							end
-							return true
-						end,
-					},
-					saSplit3Position = {
-						name = L["Split 3 Position"],
-						desc = L["What position should splitAbs 3 appear"],
-						order = 531,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT_ABS" then
-								if CDTL3:SplitCount(lane["mode"]["splitAbs"]) >= 3 then
-									return false
-								end
-							end
-							return true
-						end,
-						min = 0,
-						max = 1,
-						get = function(info, index)
-								return lane["mode"]["splitAbs"]["s3p"]
-							end,
-						set = function(info, val)
-								lane["mode"]["splitAbs"]["s3p"] = val
-								CDTL3:RefreshLane(i)
-						end,
-					},
-					saSplit3Value = {
-						name = L["Split 3 Value"],
-						desc = L["How many seconds from the end split 3 sits at (up to 3600)."],
-						order = 532,
-						type = "range",
-						hidden = function(info)
-							if lane["mode"]["type"] == "SPLIT_ABS" then
-								if CDTL3:SplitCount(lane["mode"]["splitAbs"]) >= 3 then
-									return false
-								end
-							end
-							return true
-						end,
-						max = 3600,
-						min = 1,
-						bigStep = 1,
-						get = function(info, index)
-								return lane["mode"]["splitAbs"]["s3v"]
-							end,
-						set = function(info, val)
-								lane["mode"]["splitAbs"]["s3v"] = val
-								CDTL3:RefreshLane(i)
-						end,
 					},
 					spacer600 = {
 						name = "\n\n",
@@ -5817,9 +5517,10 @@ private.GetLaneSet = function(i)
 				lane["icons"]["finishFx"] = val
 			end,
 	}
+	private.AddSplitArgs(options.args.general.args, lane, i)
 	private.AddTextArgs(options.args.text.args, lane, "modeText", i)
 	-- no line under the last default text: the Custom Text header follows
-	options.args.text.args["dText5Footer"] = nil
+	options.args.text.args["dText7Footer"] = nil
 	private.AddTextArgs(options.args.text.args, lane, "customText", i)
 
 	private.AddBorderArgs(options.args.appearance.args, 700, function() return lane["border"] end, refresh, 703)
@@ -6050,7 +5751,7 @@ end
 private.TEXT_LISTS = {
 	bar = { prefix = "bText", count = 3, base = 200, redraw = "BAR", locked = false },
 	icons = { prefix = "iText", count = 3, base = 200, redraw = "ICON", locked = false },
-	modeText = { prefix = "dText", count = 5, base = 200, redraw = "LANE", locked = true },
+	modeText = { prefix = "dText", count = 7, base = 200, redraw = "LANE", locked = true },
 	customText = { prefix = "cText", count = 5, base = 300, redraw = "LANE" },
 }
 

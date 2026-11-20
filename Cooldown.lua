@@ -965,8 +965,8 @@ private.CalcLinearPosition = function(current, total, s)
 end
 
 -- a split lane's marks by number: the value and the position of each (mode.split / mode.splitAbs)
-private.SPLIT_VALUES = { "s1v", "s2v", "s3v" }
-private.SPLIT_POSITIONS = { "s1p", "s2p", "s3p" }
+private.SPLIT_VALUES = { "s1v", "s2v", "s3v", "s4v", "s5v" }
+private.SPLIT_POSITIONS = { "s1p", "s2p", "s3p", "s4p", "s5p" }
 
 private.CalcSplitPosition = function(current, total, s)
 	local p = 1
@@ -998,7 +998,7 @@ private.CalcSplitPosition = function(current, total, s)
 		if abs and splits == 0 then
 			-- Split (Time) with no mark inside Max Time: a straight line to it
 			p = current / total
-		elseif splits == 1 or splits == 2 or splits == 3 then
+		elseif splits and splits >= 1 and splits <= #private.SPLIT_VALUES then
 			-- the stretch from the highest mark value is past to the next mark (past the last mark: to
 			-- max, at 1); under the first mark, the stretch up to it. Checked from the last mark down.
 			local k = splits

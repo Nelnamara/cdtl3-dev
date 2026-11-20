@@ -233,8 +233,8 @@ check("enabled by default", CT:Enabled() == true)
 print("[curves " .. FLAVOR .. "]")
 local function laneCopy(modeType, count, splitMax)
 	local s = { width = 400, icons = { size = 40 }, mode = { type = modeType,
-		split = { max = splitMax or 120, count = count, s1v = 10, s1p = 0.33, s2v = 33, s2p = 0.66, s3v = 66, s3p = 0.75 },
-		splitAbs = { max = 120, count = count, s1v = 10, s1p = 0.25, s2v = 30, s2p = 0.5, s3v = 60, s3p = 0.75 } } }
+		split = { max = splitMax or 120, count = count, s1v = 10, s1p = 0.33, s2v = 33, s2p = 0.66, s3v = 66, s3p = 0.75, s4v = 80, s4p = 0.85, s5v = 90, s5p = 0.95 },
+		splitAbs = { max = 120, count = count, s1v = 10, s1p = 0.25, s2v = 30, s2p = 0.5, s3v = 60, s3p = 0.75, s4v = 80, s4p = 0.85, s5v = 100, s5p = 0.95 } } }
 	return s
 end
 local function worst(curve, span, s, total)
@@ -246,7 +246,7 @@ local function worst(curve, span, s, total)
 	end
 	return w
 end
-for count = 1, 3 do
+for count = 1, 5 do
 	local s = laneCopy("SPLIT_ABS", count)
 	local e = worst(P.SplitCurve(s, "abs"), 150, s, 120)
 	check("SPLIT_ABS count " .. count .. ": curve reproduces CalcSplitPosition", e < 1e-6, string.format("max diff %.2g", e))
@@ -278,7 +278,7 @@ local function chainPosition(segs, n, v, geo)
 	end
 	return pos / geo.len
 end
-for count = 1, 3 do
+for count = 1, 5 do
 	local s = laneCopy("SPLIT_ABS", count)
 	local geo = P.Geometry(s)
 	local cts = {}

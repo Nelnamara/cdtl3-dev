@@ -643,7 +643,7 @@ end
 -- is left out, with any mark after it, so the lane splits as if only the marks inside it were set.
 -- The saved values stay as they are: the sliders show every value the setting holds. nil when the
 -- count isn't a number.
-private.MARK_VALUES = { "s1v", "s2v", "s3v" }
+private.MARK_VALUES = { "s1v", "s2v", "s3v", "s4v", "s5v" }
 function CDTL3:SplitAbsCount(ss)
 	local n = CDTL3:SplitCount(ss)
 	if not n then
@@ -651,7 +651,7 @@ function CDTL3:SplitAbsCount(ss)
 	end
 	local max = tonumber(ss["max"])
 	local used = 0
-	for i = 1, math.min(n, 3) do
+	for i = 1, math.min(n, #private.MARK_VALUES) do
 		local v = tonumber(ss[private.MARK_VALUES[i]])
 		if not v or (max and v >= max) then
 			break

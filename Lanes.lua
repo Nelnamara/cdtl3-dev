@@ -303,18 +303,19 @@ end
 
 private.RefreshText = function(f, s)
 	-- MODE TEXT
-	for i = 1, 10, 1 do
-		-- slots 1 to 5 are the mode texts (t1..t5), 6 to 10 the custom texts (c1..c5)
+	for i = 1, 12, 1 do
+		-- slots 1 to 7 are the mode texts (t1..t7: t1 Ready, t2..t4 marks 1-3, t5 the end, t6 and t7
+		-- marks 4 and 5), 8 to 12 the custom texts (c1..c5)
 		---@type table
 		local tSettings = nil
 		---@type table
 		local tObject = nil
-		if i <= 5 then
+		if i <= 7 then
 			tSettings = s["modeText"]["text"..i]
 			tObject = f["t"..i]
 		else
-			tSettings = s["customText"]["text"..(i - 5)]
-			tObject = f["c"..(i - 5)]
+			tSettings = s["customText"]["text"..(i - 7)]
+			tObject = f["c"..(i - 7)]
 		end
 
 		local anchor = ""
@@ -345,8 +346,8 @@ private.RefreshText = function(f, s)
 					xOffset = -xOffset
 				end
 			end
-		elseif i <= 4 then
-			-- the three marks between the ends
+		elseif i <= 4 or i >= 6 and i <= 7 then
+			-- the five marks between the ends (text2 to text4, text6, text7)
 			if s["vertical"] then
 				anchor = "BOTTOM"
 				align = tSettings["align"]
@@ -1006,6 +1007,8 @@ private.CreateLane = function(laneNumber)
 	f.t3 = f:CreateFontString(nil,"ARTWORK")
 	f.t4 = f:CreateFontString(nil,"ARTWORK")
 	f.t5 = f:CreateFontString(nil,"ARTWORK")
+	f.t6 = f:CreateFontString(nil,"ARTWORK")
+	f.t7 = f:CreateFontString(nil,"ARTWORK")
 
 	f.c1 = f:CreateFontString(nil,"ARTWORK")
 	f.c2 = f:CreateFontString(nil,"ARTWORK")
@@ -1183,6 +1186,9 @@ private.SetModeText = function(f, s)
 		st["text5"]["align"] = "RIGHT"
 		st["text5"]["offX"] = -5
 
+		st["text6"]["used"] = false
+		st["text7"]["used"] = false
+
 	elseif mode == "LINEAR_ABS" then
 		local max = s["mode"]["linearAbs"]["max"]
 		tFormat = s["mode"]["linearAbs"]["timeFormat"]
@@ -1206,6 +1212,9 @@ private.SetModeText = function(f, s)
 		st["text5"]["text"] = CDTL3:ConvertTime(max, tFormat)
 		st["text5"]["pos"] = 1
 		st["text5"]["used"] = true
+
+		st["text6"]["used"] = false
+		st["text7"]["used"] = false
 	elseif mode == "SPLIT" then
 		st["text1"]["text"] = "Ready"
 		st["text2"]["text"] = s["mode"]["split"]["s1v"].."%"
@@ -1215,6 +1224,11 @@ private.SetModeText = function(f, s)
 		st["text4"]["text"] = s["mode"]["split"]["s3v"].."%"
 		st["text4"]["pos"] = s["mode"]["split"]["s3p"]
 		st["text5"]["text"] = "100%"
+		for k = 4, 5 do
+			local slot = st[private.MARK_SLOTS[k]]
+			slot["text"] = s["mode"]["split"]["s"..k.."v"].."%"
+			slot["pos"] = s["mode"]["split"]["s"..k.."p"]
+		end
 
 		private.UseSplitMarks(st, CDTL3:SplitCount(s["mode"]["split"]), 1)
 	elseif mode == "SPLIT_ABS" then
@@ -1229,18 +1243,25 @@ private.SetModeText = function(f, s)
 		st["text4"]["text"] = CDTL3:ConvertTime(s["mode"]["splitAbs"]["s3v"], tFormat)
 		st["text4"]["pos"] = s["mode"]["splitAbs"]["s3p"]
 		st["text5"]["text"] = CDTL3:ConvertTime(max, tFormat)
+		for k = 4, 5 do
+			local slot = st[private.MARK_SLOTS[k]]
+			slot["text"] = CDTL3:ConvertTime(s["mode"]["splitAbs"]["s"..k.."v"], tFormat)
+			slot["pos"] = s["mode"]["splitAbs"]["s"..k.."p"]
+		end
 
 		-- a mark at or past Max Time isn't drawn (a 3:00 lane doesn't show a 10m mark inside it)
 		private.UseSplitMarks(st, CDTL3:SplitAbsCount(s["mode"]["splitAbs"]), 0)
 	end
 end
 
--- Split lanes: the marks between the ends (text2 to text4) show the first count of them. A count
--- outside lowest..3 leaves them as they are (a Split (%) count starts at 1, Split (Time) at 0).
+-- Split lanes: the marks between the ends show the first count of them. Mark k's text slot: marks 1-3
+-- keep text2..text4 (saved settings), marks 4 and 5 are text6 and text7. A count outside lowest..5
+-- leaves them as they are (a Split (%) count starts at 1, Split (Time) at 0).
+private.MARK_SLOTS = { "text2", "text3", "text4", "text6", "text7" }
 private.UseSplitMarks = function(st, count, lowest)
-	if count and count >= lowest and count <= 3 then
-		for k = 1, 3 do
-			st["text"..(k + 1)]["used"] = k <= count
+	if count and count >= lowest and count <= 5 then
+		for k = 1, 5 do
+			st[private.MARK_SLOTS[k]]["used"] = k <= count
 		end
 	end
 end
