@@ -56,6 +56,7 @@ local SPELLS = {
 	[914] = { "Flash Spell", { readyFlash = true } },
 	[915] = { "Say Spell", { sayName = true } },
 	[916] = { "Ready2 Spell", { readyFrame = 2 } },
+	[917] = { "Lit Spell", { highlight = true } },
 }
 local list = {}
 for id, s in pairs(SPELLS) do
@@ -522,6 +523,379 @@ do
 	n = #CHAT
 	fly(60)
 	check("the next flight: nothing said", not chatSince(n, "flight timer"))
+end
+
+---------------------------------------------------------------- highlight effects (issue 13) and the finish effect
+print("[highlight effects and finish effect " .. FLAVOR .. "]")
+do
+	local lane1 = CDTL3:SlotSettings("lanes", 1)
+	local hs = lane1["icons"]["highlight"]
+	local function anims(group)
+		local out = {}
+		for i, a in ipairs(group.__anims or {}) do out[i] = a end
+		return out
+	end
+	local function eq(got, ...)
+		local want = { ... }
+		if not got or #got ~= #want then return false end
+		for i = 1, #want do if got[i] ~= want[i] then return false end end
+		return true
+	end
+
+	check("the highlight border texture is None out of the box", hs["border"]["style"] == "None", tostring(hs["border"]["style"]))
+	cast(917, 600)
+	local F = live("Lit Spell")
+	-- style -> the group it starts, and what it is on
+	local STYLES = {
+		{ "PULSE", "agIconPulse", function(fr) return fr.icon end },
+		{ "BOUNCE", "agBounce", function(fr) return fr.icon end },
+		{ "SHAKE", "agShake", function(fr) return fr.icon.tx end },
+		{ "SCALE", "agScale", function(fr) return fr.icon end },
+		{ "FLASH", "agPulse", function(fr) return fr.icon.hl end },
+		{ "BORDER_FLASH", "agBorderPulse", function(fr) return fr.icon.hl end },
+		{ "GLOW", "agGlow", function(fr) return fr.icon.hl.glow end },
+	}
+	for _, st in ipairs(STYLES) do
+		hs["style"] = st[1]
+		CDTL3:RefreshAllIcons()
+		local hl = F.icon.hl
+		local g = hl and hl[st[2]]
+		check(st[1] .. " draws with the border texture None: its animation runs, on the right frame",
+			hl and hl:IsShown() and g and g.__running == true and g:GetParent() == st[3](F), g and tostring(g.__running))
+		local made = g
+		CDTL3:RefreshAllIcons()
+		check("  a refresh plays the same group again (none made per refresh)", hl[st[2]] == made and made.__plays >= 2, tostring(made and made.__plays))
+		CDTL3:RemoveHighlights(F.icon, lane1)
+		check("  RemoveHighlights stops it", g.__running == false)
+	end
+
+	-- the values: the original's own timings at Effect speed 100%
+	check("Effect speed is 50% out of the box", hs["speed"] == 0.5, tostring(hs["speed"]))
+	hs["speed"] = 1
+	hs["style"] = "PULSE"; CDTL3:RefreshAllIcons()
+	local a = anims(F.icon.hl.agIconPulse)[1]
+	check("Pulse: icon alpha 0.2 to 1 in 0.5 s, bounce looping", a and eq(a.__set.SetFromAlpha, 0.2) and eq(a.__set.SetToAlpha, 1)
+		and eq(a.__set.SetDuration, 0.5) and eq(F.icon.hl.agIconPulse.__set.SetLooping, "BOUNCE"))
+	hs["style"] = "BOUNCE"; CDTL3:RefreshAllIcons()
+	local up, down = table.unpack(anims(F.icon.hl.agBounce))
+	check("Bounce: up 10 in 0.25 s, down 10 in 0.25 s, 0.25 s rest, repeating", up and down and eq(up.__set.SetOffset, 0, 10)
+		and eq(down.__set.SetOffset, 0, -10) and eq(up.__set.SetDuration, 0.25) and eq(down.__set.SetDuration, 0.25)
+		and eq(down.__set.SetEndDelay, 0.25) and eq(F.icon.hl.agBounce.__set.SetLooping, "REPEAT"))
+	hs["style"] = "SHAKE"; CDTL3:RefreshAllIcons()
+	local r1, r2 = table.unpack(anims(F.icon.hl.agShake))
+	check("Shake: 10 degrees each way in 0.5 s legs, bounce looping, on the texture", r1 and r2 and r1.__atype == "Rotation"
+		and eq(r1.__set.SetDegrees, 10) and eq(r2.__set.SetDegrees, -20) and eq(F.icon.hl.agShake.__set.SetLooping, "BOUNCE"))
+	hs["style"] = "SCALE"; CDTL3:RefreshAllIcons()
+	local s1, s2 = table.unpack(anims(F.icon.hl.agScale))
+	check("Scale: to 1.2 in 0.25 s then 0.8 in 0.25 s, repeating", s1 and s2 and eq(s1.__set.SetScaleTo, 1.2, 1.2)
+		and eq(s2.__set.SetScaleTo, 0.8, 0.8) and eq(s1.__set.SetDuration, 0.25) and eq(s2.__set.SetDuration, 0.25)
+		and eq(F.icon.hl.agScale.__set.SetLooping, "REPEAT"))
+
+	-- Effect speed: 50% doubles every timing, 200% halves it; a change shows on the next refresh
+	hs["speed"] = 0.5
+	hs["style"] = "BOUNCE"; CDTL3:RefreshAllIcons()
+	up, down = table.unpack(anims(F.icon.hl.agBounce))
+	hs["style"] = "SCALE"; CDTL3:RefreshAllIcons()
+	s1 = anims(F.icon.hl.agScale)[1]
+	check("Effect speed 50%: Bounce 0.5 s legs and a 0.5 s rest, Scale 0.5 s", eq(up.__set.SetDuration, 0.5) and eq(down.__set.SetDuration, 0.5)
+		and eq(down.__set.SetEndDelay, 0.5) and eq(s1.__set.SetDuration, 0.5))
+	hs["style"] = "PULSE"; CDTL3:RefreshAllIcons()
+	check("  Pulse 1 s", eq(anims(F.icon.hl.agIconPulse)[1].__set.SetDuration, 1))
+	hs["speed"] = 2; CDTL3:RefreshAllIcons()
+	check("Effect speed 200%: Pulse 0.25 s", eq(anims(F.icon.hl.agIconPulse)[1].__set.SetDuration, 0.25))
+	hs["speed"] = 0.5
+
+	-- only one effect at a time: switching style stops the old one
+	hs["style"] = "BOUNCE"; CDTL3:RefreshAllIcons()
+	hs["style"] = "PULSE"; CDTL3:RefreshAllIcons()
+	check("switching style stops the old effect", F.icon.hl.agBounce.__running == false and F.icon.hl.agIconPulse.__running == true)
+	-- the highlight off: everything stops
+	F.data["highlight"] = false
+	CDTL3:RefreshAllIcons()
+	check("Highlight unticked: its effect stops and the frame hides", F.icon.hl.agIconPulse.__running == false and not F.icon.hl:IsShown())
+	F.data["highlight"] = true
+
+	-- Border and Border Pulse with border None: a plain edge of four textures, no backdrop edge
+	local function edgeShown(hl)
+		local e = hl.edge
+		if not e then return false end
+		for i = 1, 4 do if not e[i]:IsShown() then return false end end
+		return true
+	end
+	for _, style in ipairs({ "BORDER", "BORDER_FLASH" }) do
+		hs["style"] = style; CDTL3:RefreshAllIcons()
+		local hl = F.icon.hl
+		local b = hl.__backdrop
+		check(style .. " with border None draws a plain edge of four textures in the border colour, no backdrop edge",
+			edgeShown(hl) and hl:IsShown() and not (b and b.edgeFile == CDTL3.LSM:Fetch("border", "CDTL3 Pixel")), b and tostring(b.edgeFile))
+	end
+	hs["style"] = "GLOW"; CDTL3:RefreshAllIcons()
+	check("Glow: a gold halo frame, no plain edge, no game glow call", F.icon.hl.glow and F.icon.hl.glow:IsShown() and not edgeShown(F.icon.hl))
+	hs["style"] = "PULSE"; CDTL3:RefreshAllIcons()
+	check("  another style hides the halo and the edge", not F.icon.hl.glow:IsShown() and not edgeShown(F.icon.hl))
+	hs["border"]["style"] = "CDTL3 Shadow"; hs["style"] = "BORDER"; CDTL3:RefreshAllIcons()
+	check("  a chosen texture is used as before, with no plain edge", F.icon.hl.__backdrop.edgeFile == CDTL3.LSM:Fetch("border", "CDTL3 Shadow")
+		and not edgeShown(F.icon.hl))
+	hs["border"]["style"] = "None"
+
+	-- a round Masque skin (Masque keeps its skin's shape in the button's _MSQ_CFG): round highlights
+	local hl = F.icon.hl
+	rawset(F.icon, "_MSQ_CFG", { Shape = "Circle" })
+	hs["style"] = "BORDER"; CDTL3:RefreshAllIcons()
+	local size = lane1["icons"]["size"]
+	check("round skin: Border draws a round edge (Media/ring.tga) round the icon, no square edge", hl.roundEdge and hl.roundEdge:IsShown()
+		and hl.roundEdge.__tex == CDTL3.IconFx.RING_TEX and hl.roundEdge.__w == size + 4 and not edgeShown(hl), hl.roundEdge and tostring(hl.roundEdge.__w))
+	hs["style"] = "GLOW"; CDTL3:RefreshAllIcons()
+	check("  Glow: two gold circles, no square bars, no round edge", hl.glow.roundInner:IsShown() and hl.glow.roundOuter:IsShown()
+		and not hl.glow.inner[1]:IsShown() and not hl.roundEdge:IsShown())
+	hs["style"] = "FLASH"; CDTL3:RefreshAllIcons()
+	check("  Flash Icon: a white disc (Media/disc.tga), not a square", hl.tx.__tex == CDTL3.IconFx.DISC_TEX, tostring(hl.tx.__tex))
+	rawset(F.icon, "_MSQ_CFG", { Shape = "Square" })
+	hs["style"] = "GLOW"; CDTL3:RefreshAllIcons()
+	check("a square skin: the square glow again", hl.glow.inner[1]:IsShown() and not hl.glow.roundInner:IsShown())
+	hs["style"] = "BORDER"; CDTL3:RefreshAllIcons()
+	check("  and the square edge", edgeShown(hl) and not hl.roundEdge:IsShown())
+	rawset(F.icon, "_MSQ_CFG", nil)
+	hs["style"] = "BORDER"
+	CDTL3:RefreshAllIcons()
+
+	-- the options: eight styles, Border Pulse's label
+	local opt = CDTL3:GetFullOptions().args.lanes.args.lane1.args.icons.args.highlightStyle
+	local keys = 0
+	for _ in pairs(opt.values) do keys = keys + 1 end
+	check("Lanes > Icons > Highlight Style offers eight styles, Border Flash saved as BORDER_FLASH, labelled Border Pulse",
+		keys == 8 and opt.values.BORDER_FLASH == "Border Pulse" and opt.values.PULSE == "Pulse" and opt.values.SCALE == "Scale")
+	check("  its tooltip names the Filters Highlight spells", opt.desc:find("Highlight in Filters", 1, true) ~= nil, opt.desc)
+	local ropt = CDTL3:GetFullOptions().args.ready.args.ready1.args.icons.args.highlightStyle
+	check("  the Ready frames offer the same", ropt and ropt.values.BOUNCE == "Bounce")
+	local sp = CDTL3:GetFullOptions().args.lanes.args.lane1.args.icons.args.highlightSpeed
+	check("Lanes > Icons > Effect speed: a slider from 25% to 200%, the Ready frames too", sp and sp.type == "range" and sp.min == 0.25 and sp.max == 2
+		and sp.isPercent and CDTL3:GetFullOptions().args.ready.args.ready1.args.icons.args.highlightSpeed ~= nil)
+	sp.set({}, 1.5)
+	check("  it saves to the lane", hs["speed"] == 1.5 and sp.get({}) == 1.5)
+	sp.set({}, 0.5)
+	check("  the menu lists them in the samples' order", opt.sorting and table.concat(opt.sorting, ",") == "GLOW,PULSE,BORDER,BORDER_FLASH,BOUNCE,SHAKE,SCALE,FLASH")
+	CDTL3:RemoveHighlights(F.icon, lane1)
+	F.data["currentCD"] = 0
+	SPELLCD[917] = nil
+	RunOnUpdate(0.02, 5)
+	leave()
+
+	-- finish effect
+	local function poolFrames()
+		local out = {}
+		for _, fr in ipairs(GetAllFrames()) do
+			local p = rawget(fr, "__parent")
+			if rawget(fr, "pic") and rawget(fr, "ring") and p and p.__name == "CDTL3_Lane_1" then out[#out + 1] = fr end
+		end
+		return out
+	end
+	for n = 1, 3 do
+		check("lane " .. n .. ": Finish effect is off by default", CDTL3:SlotSettings("lanes", n)["icons"]["finishFx"] == "NONE")
+	end
+	ready(911)
+	check("None: nothing is drawn when an icon finishes", #poolFrames() == 0, tostring(#poolFrames()))
+	leave()
+
+	local fopt = CDTL3:GetFullOptions().args.lanes.args.lane1.args.icons.args.finishFx
+	check("Lanes > Icons has Finish effect: None, Grow and fade, Gold ring",
+		fopt and fopt.values.NONE == "None" and fopt.values.GROW == "Grow and fade" and fopt.values.RING == "Gold ring")
+	check("  None is first in the menu", fopt and fopt.sorting and table.concat(fopt.sorting, ",") == "NONE,GROW,RING")
+	fopt.set(nil, "GROW")
+	check("  the choice is saved on the lane", lane1["icons"]["finishFx"] == "GROW")
+
+	local Fn = ready(911)
+	local pf = poolFrames()
+	local fr = pf[1]
+	check("Grow and fade: one pooled frame plays once as the icon reaches Ready", #pf == 1 and fr.group.__running == true and fr.group.__plays == 1
+		and fr:IsShown(), tostring(#pf))
+	check("  at the lane's Ready end (left, an icon at 0 percent), sized as the icon", fr and fr.__points[1][1] == "LEFT" and fr.__points[1][2] == fr:GetParent()
+		and fr.__w == lane1["icons"]["size"], fr and tostring(fr.__points[1] and fr.__points[1][1]))
+	check("  grows to 2.2 and fades to 0 in 0.5 s, the icon's picture shown, no ring", fr.pic:IsShown() and not fr.ring:IsShown()
+		and eq(fr.scale.__set.SetScaleTo, 2.2, 2.2) and eq(fr.fade.__set.SetFromAlpha, 1) and eq(fr.fade.__set.SetToAlpha, 0)
+		and eq(fr.fade.__set.SetDuration, 0.5) and eq(fr.scale.__set.SetDuration, 0.5))
+	check("  the icon went on to its Ready frame as before", Fn and pname(Fn.icon) == "CDTL3_Ready_1_MF")
+	fr.group.__scripts.OnFinished(fr.group)
+	check("  when it ends the frame hides", not fr:IsShown())
+	leave()
+
+	lane1["reversed"] = true
+	ready(911)
+	check("Reversed lane: plays at the right end", poolFrames()[2] and poolFrames()[2].__points[1][1] == "RIGHT")
+	leave()
+	lane1["reversed"] = false; lane1["vertical"] = true
+	ready(911)
+	check("Vertical lane: plays at the bottom end; reversed, the top", poolFrames()[3] and poolFrames()[3].__points[1][1] == "BOTTOM")
+	leave()
+	lane1["reversed"] = true
+	ready(911)
+	check("  reversed vertical: the top", poolFrames()[4] and poolFrames()[4].__points[1][1] == "TOP")
+	leave()
+	lane1["reversed"] = false; lane1["vertical"] = false
+
+	fopt.set(nil, "RING")
+	ready(911)
+	pf = poolFrames()
+	-- the fifth finish reuses the first pooled frame
+	fr = pf[1]
+	check("Gold ring: the pool keeps four frames and the fifth finish reuses the first (none made per finish)", #pf == 4
+		and fr.group.__plays == 2, tostring(#pf) .. " frames, plays " .. tostring(fr.group.__plays))
+	check("  a ring grows from 0.6 to 2.4 of the icon size (a 0.6 ring scaled 4 times) round the icon's centre, no picture",
+		fr.ring:IsShown() and not fr.pic:IsShown() and eq(fr.scale.__set.SetScaleTo, 2.4 / 0.6, 2.4 / 0.6)
+		and fr.__w == lane1["icons"]["size"] and math.abs(fr.ring.__w - lane1["icons"]["size"] * 0.6) < 1e-9
+		and fr.ring.__points[1] and fr.ring.__points[1][1] == "CENTER", tostring(fr.ring.__w))
+	check("  over 0.9 s: full for 0.35 s, then fades over 0.55 s", eq(fr.scale.__set.SetDuration, 0.9)
+		and eq(fr.fade.__set.SetStartDelay, 0.35) and math.abs(fr.fade.__set.SetDuration[1] - 0.55) < 1e-9)
+	local sh = fr.shrink
+	check("  the icon shrinks to a fifth and fades into the ring's centre over 0.45 s, on the lane beside the ring (not grown with it)",
+		sh and sh:IsShown() and sh.group.__running and rawget(sh, "__parent") == fr:GetParent() and sh.pic.__tex ~= nil
+		and eq(sh.scale.__set.SetScaleTo, 0.2, 0.2) and eq(sh.scale.__set.SetDuration, 0.45) and eq(sh.fade.__set.SetDuration, 0.45)
+		and eq(sh.fade.__set.SetToAlpha, 0) and sh.__w == lane1["icons"]["size"] and sh.__points[1][1] == fr.__points[1][1],
+		sh and tostring(sh.pic.__tex))
+	leave()
+	local total = #GetAllFrames()
+	ready(911); leave(); ready(911); leave()
+	check("  more finishes make no new frames", #GetAllFrames() == total and #poolFrames() == 4, tostring(#GetAllFrames() - total))
+	fopt.set(nil, "NONE")
+	local plays = 0
+	for _, f2 in ipairs(poolFrames()) do plays = plays + f2.group.__plays end
+	ready(911)
+	local plays2 = 0
+	for _, f2 in ipairs(poolFrames()) do plays2 = plays2 + f2.group.__plays end
+	check("  set back to None: nothing more plays", plays == plays2)
+	leave()
+end
+
+---------------------------------------------------------------- Show and hide animations
+print("[show and hide animations " .. FLAVOR .. "]")
+do
+	local P = CDTL3.db.profile
+	local L1, B1, R1 = P.lanes.lane1, P.barFrames.frame1, P.ready.ready1
+	local lane, bar, rdy = CDTL3_Lane_1, CDTL3_BarFrame_1, CDTL3_Ready_1
+	local function same(a, b) return a and b and a[1] == b[1] and a[2] == b[2] end
+	local function shape(a, type_, d, from, to, loops, bounce)
+		return a.type == type_ and a.duration == d and a.from == from and a.to == to and a.loops == loops and a.bounce == bounce
+	end
+	local function alphaOf(grp, k) return grp.__anims[k] end
+	-- the options setters of lane 1, bar frame 1 and ready 1
+	local function opt(opts, set, dir, name) return opts.args[set].args.showHide.args[dir].args[name] end
+	local lo, bo, ro = CDTL3:GetLaneOptions(), CDTL3:GetBarFrameOptions(), CDTL3:GetReadyOptions()
+
+	check("defaults: lane and Ready frame show FADE 0 to 1 and hide FADE 1 to 0 over 0.3 s, once, no bounce",
+		shape(L1.showAnim, "FADE", 0.3, 0, 1, 1, false) and shape(L1.hideAnim, "FADE", 0.3, 1, 0, 1, false)
+		and shape(R1.showAnim, "FADE", 0.3, 0, 1, 1, false) and shape(R1.hideAnim, "FADE", 0.3, 1, 0, 1, false))
+	check("  bar frames: the same over 1.0 s", shape(B1.showAnim, "FADE", 1, 0, 1, 1, false) and shape(B1.hideAnim, "FADE", 1, 1, 0, 1, false))
+	local all = true
+	for i = 1, 3 do
+		for _, s in ipairs({ P.lanes["lane" .. i], P.ready["ready" .. i] }) do
+			if s.showAnim.duration ~= 0.3 or s.hideAnim.duration ~= 0.3 then all = false end
+		end
+		if P.barFrames["frame" .. i].showAnim.duration ~= 1 then all = false end
+	end
+	check("  the same on lanes, Ready frames and bar frames 2 and 3 (old profiles get them from the defaults)", all)
+
+	CDTL3:RefreshLane(1); CDTL3:RefreshBarFrame(1); CDTL3:RefreshReady(1)
+	local function A(fr, dir) return fr[dir].__anims end
+	local li, lo1 = A(lane, "animateIn"), A(lane, "animateOut")
+	check("a lane's default groups look as before: one Alpha, 0 to its alpha in, its alpha to 0 out, 0.3 s",
+		#li == 1 and li[1].__atype == "Alpha" and same(li[1].__set.SetFromAlpha, { 0 }) == true and li[1].__set.SetToAlpha[1] == L1.alpha
+		and li[1].__set.SetDuration[1] == 0.3 and #lo1 == 1 and lo1[1].__set.SetFromAlpha[1] == L1.alpha and lo1[1].__set.SetToAlpha[1] == 0
+		and lo1[1].__set.SetDuration[1] == 0.3)
+	check("  a bar frame's take 1.0 s, a Ready frame's 0.3 s",
+		A(bar, "animateIn")[1].__set.SetDuration[1] == 1 and A(bar, "animateOut")[1].__set.SetDuration[1] == 1
+		and A(rdy, "animateIn")[1].__set.SetDuration[1] == 0.3)
+
+	-- each kind reads its own settings
+	local g1, g2, g3 = lane.animateIn, bar.animateOut, rdy.animateIn
+	L1.showAnim.duration = 2; B1.hideAnim.duration = 2.5; R1.showAnim.to = 0.5
+	CDTL3:RefreshLane(1); CDTL3:RefreshBarFrame(1); CDTL3:RefreshReady(1)
+	check("each frame kind uses its own settings",
+		lane.animateIn.__anims[1].__set.SetDuration[1] == 2 and lane.animateOut.__anims[1].__set.SetDuration[1] == 0.3
+		and bar.animateOut.__anims[1].__set.SetDuration[1] == 2.5 and bar.animateIn.__anims[1].__set.SetDuration[1] == 1
+		and rdy.animateIn.__anims[1].__set.SetToAlpha[1] == 0.5 and rdy.animateOut.__anims[1].__set.SetFromAlpha[1] == 1)
+	check("  a number changed: the same group, new numbers (nothing piles up)", lane.animateIn == g1 and bar.animateOut == g2 and rdy.animateIn == g3)
+	L1.showAnim.duration = 0.3; B1.hideAnim.duration = 1; R1.showAnim.to = 1
+	CDTL3:RefreshLane(1); CDTL3:RefreshBarFrame(1); CDTL3:RefreshReady(1)
+	local frames = #GetAllFrames()
+	for _ = 1, 5 do CDTL3:RefreshLane(1); CDTL3:RefreshBarFrame(1); CDTL3:RefreshReady(1) end
+	check("  refreshing again makes nothing new", #GetAllFrames() == frames and lane.animateIn == g1)
+
+	-- Scale, through the options
+	local x0, y0, w0, h0 = lane.__points and #lane.__points, 0, lane:GetWidth(), lane:GetHeight()
+	local pts0 = {}
+	for i, p in ipairs(lane.__points or {}) do pts0[i] = table.concat({ tostring(p[1]), tostring(p[2]), tostring(p[3]), tostring(p[4]), tostring(p[5]) }, "|") end
+	opt(lo, "lane1", "show", "type").set({}, "SCALE")
+	opt(lo, "lane1", "hide", "type").set({}, "SCALE")
+	check("Scale picked: from and to change to 0.6 and 1 for show, 1 and 0.6 for hide",
+		shape(L1.showAnim, "SCALE", 0.3, 0.6, 1, 1, false) and shape(L1.hideAnim, "SCALE", 0.3, 1, 0.6, 1, false))
+	check("  a changed type builds a new group", lane.animateIn ~= g1)
+	local sin, sout = A(lane, "animateIn"), A(lane, "animateOut")
+	check("  show: Scale 0.6 to 1 around the centre while the Alpha runs 0 to the lane's alpha",
+		#sin == 2 and sin[1].__atype == "Alpha" and sin[2].__atype == "Scale" and same(sin[2].__set.SetScaleFrom, { 0.6, 0.6 })
+		and same(sin[2].__set.SetScaleTo, { 1, 1 }) and sin[2].__set.SetOrigin[1] == "CENTER" and sin[1].__set.SetFromAlpha[1] == 0
+		and sin[1].__set.SetToAlpha[1] == L1.alpha)
+	check("  hide: Scale 1 to 0.6 while the Alpha runs from the lane's alpha to 0",
+		#sout == 2 and same(sout[2].__set.SetScaleFrom, { 1, 1 }) and same(sout[2].__set.SetScaleTo, { 0.6, 0.6 })
+		and sout[1].__set.SetFromAlpha[1] == L1.alpha and sout[1].__set.SetToAlpha[1] == 0)
+	local pts1 = {}
+	for i, p in ipairs(lane.__points or {}) do pts1[i] = table.concat({ tostring(p[1]), tostring(p[2]), tostring(p[3]), tostring(p[4]), tostring(p[5]) }, "|") end
+	check("  the lane's saved position, points and size are untouched (a Scale animation only draws it)",
+		table.concat(pts0, ";") == table.concat(pts1, ";") and lane:GetWidth() == w0 and lane:GetHeight() == h0 and L1.width == w0 and lane:GetScale() == 1)
+	opt(lo, "lane1", "show", "type").set({}, "FADE")
+	check("  back to Fade: 0 to 1 and 1 to 0 again, one Alpha in the group", shape(L1.showAnim, "FADE", 0.3, 0, 1, 1, false) and #A(lane, "animateIn") == 1)
+	opt(lo, "lane1", "hide", "type").set({}, "FADE")
+
+	-- loops and bounce
+	opt(bo, "barFrame1", "show", "loops").set({}, 3)
+	opt(bo, "barFrame1", "show", "bounce").set({}, true)
+	local bi = A(bar, "animateIn")
+	check("3 loops with bounce: three Alphas in orders 1, 2, 3, the second playing back the other way",
+		#bi == 3 and bi[1].__set.SetOrder[1] == 1 and bi[2].__set.SetOrder[1] == 2 and bi[3].__set.SetOrder[1] == 3
+		and bi[1].__set.SetFromAlpha[1] == 0 and bi[1].__set.SetToAlpha[1] == 1 and bi[2].__set.SetFromAlpha[1] == 1
+		and bi[2].__set.SetToAlpha[1] == 0 and bi[3].__set.SetFromAlpha[1] == 0 and bi[3].__set.SetToAlpha[1] == 1)
+	opt(bo, "barFrame1", "show", "bounce").set({}, false)
+	bi = A(bar, "animateIn")
+	check("  without bounce every loop plays the same way", #bi == 3 and bi[2].__set.SetFromAlpha[1] == 0 and bi[2].__set.SetToAlpha[1] == 1)
+	opt(bo, "barFrame1", "show", "loops").set({}, 1)
+	check("  back to one loop", #A(bar, "animateIn") == 1)
+	opt(ro, "ready1", "hide", "type").set({}, "SCALE")
+	opt(ro, "ready1", "hide", "loops").set({}, 2)
+	opt(ro, "ready1", "hide", "bounce").set({}, true)
+	local rs = A(rdy, "animateOut")
+	check("  Scale with bounce: each loop has its Scale, the second 0.6 back to 1",
+		#rs == 4 and same(rs[2].__set.SetScaleFrom, { 1, 1 }) and same(rs[2].__set.SetScaleTo, { 0.6, 0.6 })
+		and same(rs[4].__set.SetScaleFrom, { 0.6, 0.6 }) and same(rs[4].__set.SetScaleTo, { 1, 1 }))
+	-- the options themselves
+	local range = opt(lo, "lane1", "show", "from")
+	check("options: Length 0.1 to 3, Loops 1 to 10, From and To 0 to 1 for Fade and 0.1 to 2 for Scale",
+		opt(lo, "lane1", "show", "duration").min == 0.1 and opt(lo, "lane1", "show", "duration").max == 3
+		and opt(lo, "lane1", "show", "loops").min == 1 and opt(lo, "lane1", "show", "loops").max == 10
+		and range.min == 0 and range.max == 1 and opt(ro, "ready1", "hide", "toScale").min == 0.1 and opt(ro, "ready1", "hide", "toScale").max == 2)
+	opt(ro, "ready1", "hide", "type").set({}, "FADE")
+	opt(ro, "ready1", "hide", "loops").set({}, 1)
+	opt(ro, "ready1", "hide", "bounce").set({}, false)
+
+	-- a group that runs to its end leaves the frame at rest; a stopped one leaves it alone
+	local gin, gout = lane.animateIn, lane.animateOut
+	lane:SetAlpha(0.2); gin.__scripts.OnFinished(gin, false)
+	check("a show that ends leaves the lane at its alpha", lane:GetAlpha() == L1.alpha, tostring(lane:GetAlpha()))
+	gout.__scripts.OnFinished(gout, false)
+	check("  a hide that ends leaves it at 0", lane:GetAlpha() == 0, tostring(lane:GetAlpha()))
+	lane:SetAlpha(0.7); gout.__scripts.OnFinished(gout, true)
+	check("  a group that was stopped changes nothing", lane:GetAlpha() == 0.7)
+
+	-- Autohide still hides and shows, and Pause while hidden still sees the hidden lane
+	instantFades(lane, L1.alpha); instantFades(bar, 1); instantFades(rdy, 1)
+	CDTL3.combat = false
+	L1.showMode = "COMBAT"
+	CDTL3:RefreshLane(1)
+	check("Autohide: Only in combat, out of combat: the lane hides", lane:GetAlpha() == 0, tostring(lane:GetAlpha()))
+	CDTL3.combat = true
+	CDTL3:RefreshLane(1)
+	check("  in combat: it shows again", lane:GetAlpha() == L1.alpha, tostring(lane:GetAlpha()))
+	CDTL3.combat = false
+	L1.showMode = "GLOBAL"
+	CDTL3:RefreshLane(1)
 end
 
 print(string.format("RESULT show %s: fails=%d lua errors=%d", FLAVOR, fails, #ERRORS - base))

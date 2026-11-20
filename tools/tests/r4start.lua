@@ -216,7 +216,11 @@ do
 	CDTL3:ChatCommand("whatsnew")
 	local w = _G["CDTL3_Firstrun"]
 	check("/cdtl3 whatsnew opens the What's new window", w and w:IsShown())
+	-- made just now and already shown, so the game runs no OnShow for it: the samples start anyway
+	local hl5 = w.samples and w.samples.icons[5].hl
+	check("  its samples play on this first opening (a new frame gets no OnShow)", made ~= 1 or (hl5 and hl5.agBounce and hl5.agBounce.__running == true), made)
 	w:Hide()
+	if w.__scripts.OnHide then w.__scripts.OnHide(w) end
 	CDTL3:ChatCommand("whatsnew")
 	CreateFrame = realCreate
 	check("  opening it again shows the same window", w:IsShown() and _G["CDTL3_Firstrun"] == w and made <= 1, made)
@@ -510,6 +514,111 @@ do
 	check("ExportString LOOK uses the same !CDTL3:2! header as every share string", s2:sub(1, 9) == "!CDTL3:2!" and CDTL3:ReadLookString(s2).name == "Now")
 	check("  the existing kinds still start the same", CDTL3:ExportString("LANE", 1):sub(1, 9) == "!CDTL3:2!" and CDTL3:ExportString("ALL"):sub(1, 9) == "!CDTL3:2!")
 	check("looks: no Lua errors", #ERRORS == base, tostring(#ERRORS - base))
+end
+
+---------------------------------------------------------------- the What's new window's samples
+print("[original looks samples " .. FLAVOR .. "]")
+do
+	local e0 = #ERRORS
+	local made = 0
+	local realCreate = CreateFrame
+	CreateFrame = function(kind, name, ...)
+		if name == "CDTL3_Firstrun" then made = made + 1 end
+				return realCreate(kind, name, ...)
+	end
+	local w = _G["CDTL3_Firstrun"]
+	local existed = w ~= nil
+	if w then w:Hide(); w.__scripts.OnHide(w) end
+	CDTL3:ChatCommand("whatsnew")
+	w = _G["CDTL3_Firstrun"]
+	check("the window has the sample panel", w and w.samples and #w.samples.lanes == 2 and #w.samples.icons == 8)
+	local P = w.samples
+	if existed then
+		w.__scripts.OnShow(w)	-- the game runs OnShow when a hidden window shows again
+	end
+	check("  eight highlight samples, one effect each", P.icons[1].look == "GLOW" and P.icons[8].look == "FLASH" and P.icons[5].look == "BOUNCE")
+	local groups = { PULSE = "agIconPulse", BORDER_FLASH = "agBorderPulse", BOUNCE = "agBounce", SHAKE = "agShake", SCALE = "agScale", FLASH = "agPulse" }
+	local allRun = true
+	for _, ic in ipairs(P.icons) do
+		local key = groups[ic.look]
+		if key and not (ic.hl and ic.hl[key] and ic.hl[key].__running) then allRun = false end
+	end
+	local groups2 = groups
+	groups2.GLOW = "agGlow"
+	check("  every animated effect is playing (glow too)", allRun and P.icons[1].hl and P.icons[1].hl.agGlow
+		and P.icons[1].hl.agGlow.__running and P.icons[1].hl.glow:IsShown())
+	local seen, distinct = {}, true
+	for _, ic in ipairs(P.icons) do
+		local t = ic.tx.__tex
+		if seen[t] then distinct = false end
+		seen[t] = true
+	end
+	for _, ln in ipairs(P.lanes) do
+		if seen[ln.ic.tx.__tex] then distinct = false end
+		seen[ln.ic.tx.__tex] = true
+	end
+	check("  each sample has its own spell picture", distinct)
+	check("  Border and Border Pulse draw an edge with no border texture", P.icons[3].hl and P.icons[3].hl.edge and P.icons[3].hl.edge[1]:IsShown()
+		and P.icons[4].hl.edge and P.icons[4].hl[groups.BORDER_FLASH].__running)
+
+	-- the lane loop: only while the window is shown
+	local lane = P.lanes[1]
+	local function x() local pt = lane.ic.__points[1]; return pt and pt[4] end
+	RunOnUpdate(0.5, 1)
+	local x1 = x()
+	RunOnUpdate(0.5, 1)
+	local x2 = x()
+	check("  the sample icon slides toward the Ready end while shown", x1 and x2 and x2 < x1, tostring(x1) .. " -> " .. tostring(x2))
+	local finishes = 0
+	local fx = CDTL3.IconFx
+	local realFinish = fx.Finish
+	fx.Finish = function(...) finishes = finishes + 1; return realFinish(...) end
+	RunOnUpdate(0.5, 12)	-- 6 s: both lanes slide and finish at least once
+	fx.Finish = realFinish
+	check("  each lane finishes with the real Finish effect (Grow and fade, Gold ring)", finishes >= 2 and P.lanes[1].s.icons.finishFx == "GROW" and P.lanes[2].s.icons.finishFx == "RING", finishes)
+	local frames = 0
+	for _, c in ipairs(GetAllFrames()) do
+		if c.__parent == lane and c ~= lane.ic and c.group then frames = frames + 1 end
+	end
+	check("  the finish drawing is a frame on the sample lane", frames >= 1, frames)
+
+	-- closing it stops everything
+	local before = #GetAllFrames()
+	w:Hide()
+	w.__scripts.OnHide(w)
+	local stopped = true
+	for _, ic in ipairs(P.icons) do
+		for _, key in pairs(groups) do
+			if ic.hl and ic.hl[key] and ic.hl[key].__running then stopped = false end
+		end
+	end
+	check("closing the window stops every highlight animation", stopped)
+	local px = x()
+	RunOnUpdate(0.5, 4)
+	check("  the lane loop does no work while hidden", x() == px, tostring(px) .. " / " .. tostring(x()))
+	check("  closing it made no frames", #GetAllFrames() == before, #GetAllFrames() .. " / " .. before)
+
+	-- opening again reuses them and restarts
+	CDTL3:ChatCommand("whatsnew")
+	w.__scripts.OnShow(w)
+	check("  opening it again reuses the same window and samples", _G["CDTL3_Firstrun"] == w and w.samples == P and #GetAllFrames() == before and made == 0, made)
+	check("  the highlights play again", P.icons[5].hl.agBounce.__running == true)
+
+	-- the size: fits 1366x768 and the text keeps its height
+	local sf = _G["CDTL3_Firstrun_Scroll"]
+	local height = w:GetHeight()
+	local topOffset, sfTop, sfBottom
+	for _, pt in ipairs(w.__points) do if pt[1] == "TOP" then topOffset = -pt[3] end end
+	for _, pt in ipairs(sf.__points) do
+		if pt[1] == "TOP" then sfTop = -pt[3] elseif pt[1] == "BOTTOM" then sfBottom = pt[3] end
+	end
+	local textH = height - sfTop - sfBottom
+	check("  window is 550 x " .. tostring(height) .. ", its top " .. tostring(topOffset) .. " from the screen top: fits 1366x768", w:GetWidth() <= 1366 and height + topOffset <= 768, height .. " + " .. tostring(topOffset))
+	check("  the scrolling text keeps at least its old height (175)", textH >= 175, textH)
+	check("samples: no Lua errors", #ERRORS == e0, ERRORS[e0 + 1])
+	w:Hide()
+	w.__scripts.OnHide(w)
+	CreateFrame = realCreate
 end
 
 print(string.format("RESULT r4start %s %s: fails=%d lua errors=%d", MODE, FLAVOR, fails, #ERRORS - base))

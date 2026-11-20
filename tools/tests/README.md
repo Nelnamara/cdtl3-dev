@@ -88,6 +88,21 @@ One harness by hand: `node tools/tests/run.js <addon folder> <interface> tools/t
 - `profiles.lua`: Profiles tab extras (card 39): the profile a new character starts on, shared Filters entries
   (round trips, other profiles joining and getting them back, Copy From, Reset Profile and imports while shared, a
   logout saving each table once, a reload), profiles by zone and with spec profiles, a deleted profile.
+- `slots.lua`: `CDTL3:SlotSettings` / `CDTL3:SlotFrame` give lane, bar frame and Ready frame 1 to 3, and nil for
+  anything else (0, 4, nil, the string "1"); `SlotOfParent` / `SlotParent`, and where every timer goes for
+  every slot number (frame made, not made, switched off).
+- The 17 Nov 2026 copied-code cleanup added three tests and two diff tools. Each shared piece is checked
+  against what the copies did:
+  - `cdparts.lua`: Cooldown.lua's unlock box, icon and bar texts 1 to 3, the split-lane stretches (against
+    the old blocks, kept in the test as the reference) and the spell countdown. With `dump` it prints
+    every frame call (DUMP lines) to diff two copies of the addon.
+  - `dedupe.lua`: the Paladin lockouts, IconFx Ring / RingShow (also Group.lua's Burst strip) and the
+    debug and unlock boxes' panel.
+  - `framedump.lua`: every object under the lanes, bar frames and ready frames after creation, refreshes,
+    stacking in every direction and the lane texts in every mode, as DUMP lines.
+  - `defaultsdump.lua` (every default setting) and `optionsdump.lua` (the whole options tree, every
+    setter's effect, the saved settings) are diff tools, not tests: dump the old and the new code and
+    diff. How to run each is in its header.
 - The `/cdtl3 probe` test build and its `probe.lua` harness live on branch `cdm-probe`.
 - `lint.js`: Lua 5.1 parse and global-write scan (`node lint.js <addon folder> <files…>`; needs
   `luaparse`).

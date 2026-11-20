@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs every harness against the addon (default: this repo; set R=<folder> for another copy). Prints RESULT and FAIL lines only.
-R=${R:-$(cd "$(dirname "$0")/../.." && pwd -W)}
+R=${R:-$(cd "$(dirname "$0")/../.." && (pwd -W 2>/dev/null || pwd))}   # pwd -W: the Windows path in Git Bash; plain pwd on the Mac
 T=$(dirname "$0")
 # a harness that dies before its RESULT line prints NO RESULT (with its last lines), so a crash can't pass for green
 run() {
@@ -42,3 +42,6 @@ for s in "11509 CooldownTimeline3_Vanilla.toc" "16001 CooldownTimeline3_Camelot.
 for s in "11509 CooldownTimeline3_Vanilla.toc" "16001 CooldownTimeline3_Camelot.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc" "120105 CooldownTimeline3_Mainline.toc"; do set -- $s; run $1 $T/setupbuffs.lua $2; done
 for s in "11509 CooldownTimeline3_Vanilla.toc" "16001 CooldownTimeline3_Camelot.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc" "120105 CooldownTimeline3_Mainline.toc"; do set -- $s; run $1 $T/blizzsound.lua $2; done
 for s in "11509 CooldownTimeline3_Vanilla.toc" "16001 CooldownTimeline3_Camelot.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc" "120105 CooldownTimeline3_Mainline.toc"; do set -- $s; run $1 $T/setupfit.lua $2; done
+for s in "11509 CooldownTimeline3_Vanilla.toc" "16001 CooldownTimeline3_Camelot.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc" "120105 CooldownTimeline3_Mainline.toc"; do set -- $s; run $1 $T/slots.lua $2; done
+for s in "11509 CooldownTimeline3_Vanilla.toc" "16001 CooldownTimeline3_Camelot.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc" "120105 CooldownTimeline3_Mainline.toc"; do set -- $s; run $1 $T/cdparts.lua $2; run $1 $T/dedupe.lua $2; done
+for s in "11509 CooldownTimeline3_Vanilla.toc" "16001 CooldownTimeline3_Camelot.toc" "16001 CooldownTimeline3.toc" "20506 CooldownTimeline3_TBC.toc" "50504 CooldownTimeline3_Mists.toc" "120105 CooldownTimeline3_Mainline.toc"; do set -- $s; run $1 $T/framedump.lua $2; done

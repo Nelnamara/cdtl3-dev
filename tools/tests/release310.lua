@@ -46,8 +46,8 @@ local CT = CDTL3.CombatTimers
 local available = CT and CT:Available()
 
 print("[version " .. FLAVOR .. "]")
-check("version is 3.2.2", CDTL3.version == "3.2.2")
-check("notice version is 3.2 (3.2.0 opens the welcome window once, on every client)", CDTL3.noticeVersion == "3.2")
+check("version is 3.3.0", CDTL3.version == "3.3.0")
+check("notice version is 3.3 (the window opens once on every client for anyone who last saw 3.2.x or older)", CDTL3.noticeVersion == "3.3")
 local function newer(prev)
 	g.previousVersion = prev
 	local ok, v = pcall(CDTL3.IsNewerVersion, CDTL3)
@@ -55,7 +55,7 @@ local function newer(prev)
 end
 local cases = {
 	{ 0, true }, { "0", true }, { "2.6", true }, { "3.0.9", true }, { "3.0.13", true },
-	{ "3.1.0", true }, { "3.1", true }, { "3.1.4", true }, { "3.2.0", false }, { "4.0", false },
+	{ "3.1.0", true }, { "3.1", true }, { "3.1.4", true }, { "3.2.0", true }, { "3.2.2", true }, { "3.3.0", false }, { "3.3", false }, { "4.0", false },
 	{ "3.0.13-test", true }, { "junk", true }, { "", true },
 }
 for _, c in ipairs(cases) do
@@ -92,10 +92,14 @@ check("changelog has 3.2.2 first, then 3.2.1, 3.2.0, 3.1.1, 3.1.0", at322 and at
 	and at322 < at321 and at321 < at320 and at320 < at311 and at311 < at310 and at310 < at3013)
 check("  3.2.2 names the border errors and the cut-off labels", log:find("secret number value", 1, true) ~= nil and log:find("no longer cut off", 1, true) ~= nil)
 check("  3.2.1 names /cdtl3 tour and /cdtl3 whatsnew", log:find("/cdtl3 tour", 1, true) ~= nil and log:find("/cdtl3 whatsnew", 1, true) ~= nil)
+check("changelog has 3.3.0 above 3.2.2, with the highlight effects, the Finish effect and the samples", log:find("Changelog 3.3.0", 1, true) and log:find("Changelog 3.3.0", 1, true) < at322
+	and log:find("Border Pulse", 1, true) and log:find("Finish effect", 1, true) and log:find("live samples", 1, true) and log:find("TeZwo", 1, true))
 check("changelog says every cooldown you pin, not only defensives", log:find("every cooldown you pin", 1, true) ~= nil and log:find("pinned defensive", 1, true) == nil)
 
 print("[take the tour " .. FLAVOR .. "]")
 local win = _G["CDTL3_Firstrun"]
+local shippedVersion = CDTL3.version
+CDTL3.version = "3.3.0"	-- the release this notice version belongs to
 local tourBtn = _G["CDTL3_Firstrun_Tour"]
 check("the window has a Take the tour button", win and tourBtn and tourBtn:GetText() == "Take the tour")
 check("  no tour is up and none is pending before the click", _G["CDTL3_Tour"] == nil and CDTL3.db.global.tourPending == nil)
@@ -110,6 +114,7 @@ if win and tourBtn then
 	xpcall(_G["CDTL3_Tour_Skip"].__scripts.OnClick, ERRH, _G["CDTL3_Tour_Skip"])
 	check("  closing the tour ends it for good", not tour:IsShown() and CDTL3.db.global.tourPending == nil and CDTL3.Start:StartTour() == false)
 end
+CDTL3.version = shippedVersion
 print("[defaults " .. FLAVOR .. "]")
 check("combat timers on by default", g.combatTimers.enabled == true)
 check("Blizzard's Tracked Bars not hidden by default", g.combatTimers.hideBlizzardBars == false)
