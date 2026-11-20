@@ -4,7 +4,7 @@
 
 - The original looks are back: eight highlight effects for spells you mark Highlight in Filters (Lanes › Icons › Highlight Style): Glow, Pulse, Border, Border Pulse, Bounce, Shake, Scale and Flash Icon. Pulse, Bounce, Shake and Scale return from the original Cooldown Timeline, and Border Flash is called Border Pulse again
 - Border and Border Pulse highlights now show without a border texture chosen: they draw a thin edge in the highlight colour (GitHub issue 13). Thanks to TeZwo. Glow is now a gold halo CDTL3 draws itself, so it shows on every client. On a round Masque skin (Cirque and the like) the glow, the plain border and Flash Icon are round too
-- New Finish effect per lane (Lanes › Icons › Finish effect): when an icon reaches the Ready end it can grow and fade, or send out a gold ring. Off by default
+- New Finish effect per lane (Lanes › Icons › Finish effect): when an icon reaches the Ready end it can grow and fade, or shrink away as a gold ring goes out. Off by default
 - The What's new window now has live samples at the top: the two Finish effects on a short lane and each highlight effect on a small icon. It opens once for everyone after this update
 - Split (%) and Split (Time) lanes can now have up to five marks (GitHub issue 14): Split Count goes to 5, each mark has its own position and value sliders, and marks 4 and 5 get their own text slots (Text 6 and Text 7). Nothing changes on a lane until its Split Count is raised
 - Every lane, Ready frame and bar frame has a Show and hide tab: pick Fade or Scale for how it comes in and goes out, with its own length, start and end, number of plays and Bounce. The defaults look exactly as before

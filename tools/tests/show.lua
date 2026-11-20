@@ -724,6 +724,12 @@ do
 		and fr.ring.__points[1] and fr.ring.__points[1][1] == "CENTER", tostring(fr.ring.__w))
 	check("  over 0.9 s: full for 0.35 s, then fades over 0.55 s", eq(fr.scale.__set.SetDuration, 0.9)
 		and eq(fr.fade.__set.SetStartDelay, 0.35) and math.abs(fr.fade.__set.SetDuration[1] - 0.55) < 1e-9)
+	local sh = fr.shrink
+	check("  the icon shrinks to a fifth and fades into the ring's centre over 0.45 s, on the lane beside the ring (not grown with it)",
+		sh and sh:IsShown() and sh.group.__running and rawget(sh, "__parent") == fr:GetParent() and sh.pic.__tex ~= nil
+		and eq(sh.scale.__set.SetScaleTo, 0.2, 0.2) and eq(sh.scale.__set.SetDuration, 0.45) and eq(sh.fade.__set.SetDuration, 0.45)
+		and eq(sh.fade.__set.SetToAlpha, 0) and sh.__w == lane1["icons"]["size"] and sh.__points[1][1] == fr.__points[1][1],
+		sh and tostring(sh.pic.__tex))
 	leave()
 	local total = #GetAllFrames()
 	ready(911); leave(); ready(911); leave()

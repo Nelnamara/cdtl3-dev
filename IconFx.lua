@@ -610,7 +610,8 @@ end
 -- leaves for its Ready frame (Cooldown.lua IconUpdate), one of two things plays once at that end of
 -- the lane: "GROW" is a copy of the icon's picture that grows to 2.2 times and fades over half a
 -- second, "RING" a gold ring round the icon's centre that grows from 0.6 to 2.4 times the icon's size
--- over 0.9 seconds, holding full for the first 0.35 and fading over the rest. A lane keeps
+-- over 0.9 seconds, holding full for the first 0.35 and fading over the rest, while a copy of the icon
+-- shrinks to a fifth of its size and fades into its centre over 0.45 seconds. A lane keeps
 -- FINISH_POOL frames and reuses them in turn (none made per finish). The effect is a drawing only: it
 -- is anchored to the lane (never to the icon, whose size and place can be hidden), sized from the
 -- saved icon size, and its frames are children of the lane so a faded lane hides them.
@@ -620,6 +621,7 @@ FX.RING_TEX, FX.DISC_TEX = private.RING, private.DISC	-- also the round highligh
 private.FINISH_POOL = 4
 private.FINISH_TIME = 0.5
 private.RING_TIME, private.RING_HOLD = 0.9, 0.35
+private.SHRINK_TO, private.SHRINK_TIME = 0.2, 0.45	-- Gold ring: the icon shrinks to a fifth and fades
 private.GROW_TO = 2.2
 private.RING_FROM, private.RING_TO = 0.6, 2.4
 private.finishPools = {}
@@ -628,16 +630,13 @@ private.FinishDone = function(group)
 	group:GetParent():Hide()
 end
 
-private.NewFinishFrame = function(lane)
+-- a frame on the lane with a picture and one scale-and-fade animation that hides it when done
+private.NewFinishPart = function(lane, level)
 	local fr = CreateFrame("Frame", nil, lane)
-	fr:SetFrameLevel(lane:GetFrameLevel() + 10)
+	fr:SetFrameLevel(lane:GetFrameLevel() + level)
 	fr:EnableMouse(false)
 	fr.pic = fr:CreateTexture(nil, "OVERLAY")
 	fr.pic:SetAllPoints(fr)
-	fr.ring = fr:CreateTexture(nil, "OVERLAY")
-	fr.ring:SetPoint("CENTER", fr, "CENTER", 0, 0)	-- sized per finish, round the icon's centre
-	fr.ring:SetTexture(private.RING)
-	fr.ring:SetVertexColor(1, 0.82, 0, 1)
 	local g = fr:CreateAnimationGroup()
 	g:SetToFinalAlpha(true)	-- stays faded until OnFinished hides it (no flash of full alpha)
 	g:SetScript("OnFinished", private.FinishDone)
@@ -653,6 +652,28 @@ private.NewFinishFrame = function(lane)
 	fr.group = g
 	fr:Hide()
 	return fr
+end
+
+-- one pool frame: the grow-and-fade picture or the ring, and beside it (not inside it, so it does not
+-- grow with the ring) the icon's copy that shrinks and fades as the ring goes out
+private.NewFinishFrame = function(lane)
+	local fr = private.NewFinishPart(lane, 10)
+	fr.ring = fr:CreateTexture(nil, "OVERLAY")
+	fr.ring:SetPoint("CENTER", fr, "CENTER", 0, 0)	-- sized per finish, round the icon's centre
+	fr.ring:SetTexture(private.RING)
+	fr.ring:SetVertexColor(1, 0.82, 0, 1)
+	fr.shrink = private.NewFinishPart(lane, 9)
+	return fr
+end
+
+-- scale an animation from one size to another (older clients' SetScale multiplies the size)
+private.ScaleFromTo = function(a, from, to)
+	if a.SetScaleFrom then
+		a:SetScaleFrom(from, from)
+		a:SetScaleTo(to, to)
+	else
+		a:SetScale(to, to)
+	end
 end
 
 -- the next frame of the lane's pool, made the first times it is asked
@@ -700,31 +721,41 @@ function FX:Finish(f, ic, s)
 
 	-- the frame stands where the icon stood, so both effects grow from the icon's centre
 	fr:SetSize(size, size)
-	local from, to, time, hold
+	local pic = ic.tx:GetTexture() or f.data["icon"]
+	local c1, c2, c3, c4, c5, c6, c7, c8 = ic.tx:GetTexCoord()
+	local to, time, hold
 	if mode == "GROW" then
-		fr.pic:SetTexture(ic.tx:GetTexture() or f.data["icon"])
-		fr.pic:SetTexCoord(ic.tx:GetTexCoord())
+		fr.pic:SetTexture(pic)
+		fr.pic:SetTexCoord(c1, c2, c3, c4, c5, c6, c7, c8)
 		fr.pic:Show()
 		fr.ring:Hide()
-		from, to, time, hold = 1, private.GROW_TO, private.FINISH_TIME, 0
+		to, time, hold = private.GROW_TO, private.FINISH_TIME, 0
 	else
 		local small = size * private.RING_FROM
 		fr.ring:SetSize(small, small)
 		fr.pic:Hide()
 		fr.ring:Show()
-		from, to, time, hold = 1, private.RING_TO / private.RING_FROM, private.RING_TIME, private.RING_HOLD
+		to, time, hold = private.RING_TO / private.RING_FROM, private.RING_TIME, private.RING_HOLD
+
+		-- the icon itself shrinks to a fifth and fades into the ring's centre
+		local sh = fr.shrink
+		sh.group:Stop()
+		sh:ClearAllPoints()
+		sh:SetPoint(anchor, lane, anchor, x, y)
+		sh:SetSize(size, size)
+		sh.pic:SetTexture(pic)
+		sh.pic:SetTexCoord(c1, c2, c3, c4, c5, c6, c7, c8)
+		sh.scale:SetDuration(private.SHRINK_TIME)
+		sh.fade:SetDuration(private.SHRINK_TIME)
+		private.ScaleFromTo(sh.scale, 1, private.SHRINK_TO)
+		sh:SetAlpha(1)
+		sh:Show()
+		sh.group:Play()
 	end
 	fr.scale:SetDuration(time)
 	fr.fade:SetStartDelay(hold)
 	fr.fade:SetDuration(time - hold)
-
-	if fr.scale.SetScaleFrom then
-		fr.scale:SetScaleFrom(from, from)
-		fr.scale:SetScaleTo(to, to)
-	else
-		-- older clients: SetScale multiplies the size
-		fr.scale:SetScale(to, to)
-	end
+	private.ScaleFromTo(fr.scale, 1, to)
 	fr:SetAlpha(1)
 	fr:Show()
 	fr.group:Play()
