@@ -448,16 +448,25 @@ end
 -- icon is drawn: nothing here reads the icon's size or position (a riding icon's are hidden), and an
 -- animation never moves the icon's anchors or its texts.
 -- Pulse, Bounce, Scale and Shake act on the icon frame (Shake on its texture: only textures rotate).
-private.plainEdge = { style = "CDTL3 Pixel", size = 1, padding = 1, inset = 0, color = { r = 1, g = 1, b = 1, a = 1 } }
+-- Highlight Style: GLOW, BORDER, BORDER_FLASH, FLASH, PULSE, BOUNCE, SHAKE, SCALE.
+-- Border and Border Pulse with no border texture chosen, and Glow, are drawn with plain textures round
+-- the highlight frame (IconFx.lua FX.Ring), not a backdrop: a backdrop's edge pieces wait for a size the
+-- game can hide (Helpers.lua SetBorder), and the game's action-button glow is not on every client.
+private.EDGE = 2				-- the plain border's thickness
+private.GLOW_COLOR = { 1, 0.82, 0 }	-- the glow's gold
 
--- the border Border / Border Pulse draw: the chosen texture, or a plain thin edge in the same colour
-private.HighlightBorder = function(border, style)
-	if border["style"] ~= "None" or (style ~= "BORDER" and style ~= "BORDER_FLASH" and style ~= "GLOW") then
-		return border
+private.RingColor = function(ring, r, g, b, a)
+	for i = 1, 4 do
+		ring[i]:SetColorTexture(r, g, b, a)
 	end
-	local e = private.plainEdge
-	e["color"] = border["color"]
-	return e
+end
+
+-- the plain edge, made once per icon
+private.HighlightEdge = function(hl)
+	if not hl.edge then
+		hl.edge = CDTL3.IconFx.Ring(hl, private.EDGE, 1, 1, 1, 1)
+	end
+	return hl.edge
 end
 
 private.PlayHighlight = function(hl, key, build)
@@ -475,6 +484,28 @@ private.BuildBorderPulse = function(_, hl)
 	g:SetToFinalAlpha(true)
 	local a = g:CreateAnimation("Alpha")
 	a:SetFromAlpha(0.2)
+	a:SetToAlpha(1)
+	a:SetDuration(0.5)
+	a:SetOrder(1)
+	return g
+end
+
+-- Glow: a gold halo round the icon, a bright inner band and a faint outer one, breathing from dim to
+-- full and back over a second (the frame and its group are made once per icon)
+private.BuildGlow = function(_, hl)
+	local fx, c = CDTL3.IconFx, private.GLOW_COLOR
+	local glow = CreateFrame("Frame", nil, hl)
+	glow:SetAllPoints(hl)
+	glow.inner = fx.Ring(glow, 3, c[1], c[2], c[3], 0.9)
+	local outer = CreateFrame("Frame", nil, glow)
+	outer:SetPoint("TOPLEFT", glow, "TOPLEFT", -3, 3)
+	outer:SetPoint("BOTTOMRIGHT", glow, "BOTTOMRIGHT", 3, -3)
+	glow.outer = fx.Ring(outer, 4, c[1], c[2], c[3], 0.35)
+	hl.glow = glow
+	local g = glow:CreateAnimationGroup()
+	g:SetLooping("BOUNCE")
+	local a = g:CreateAnimation("Alpha")
+	a:SetFromAlpha(0.35)
 	a:SetToAlpha(1)
 	a:SetDuration(0.5)
 	a:SetOrder(1)
@@ -565,9 +596,8 @@ function CDTL3:ApplyHighlight(f, s, style)
 		f.hl.tx = f.hl:CreateTexture()
 	end
 
-	-- Border and Border Pulse with no border texture chosen draw a plain thin edge, so they show
-	-- out of the box; the other styles never use the border (the texture setting is for Border ones)
-	CDTL3:SetBorder(f.hl, private.HighlightBorder(hs["border"], style))
+	-- the chosen border texture (Border and Border Pulse use it; None draws no backdrop edge)
+	CDTL3:SetBorder(f.hl, hs["border"])
 	f.hl:ClearAllPoints()
 	f.hl:SetPoint("CENTER", 0, 0)
 	f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
@@ -581,17 +611,21 @@ function CDTL3:ApplyHighlight(f, s, style)
 	CDTL3:RemoveHighlights(f, s)
 
 	local c = hs["border"]["color"]
-	-- The action-button glow isn't available on every client (e.g. Forever):
-	-- fall back to the plain border highlight there.
-	---@diagnostic disable-next-line: deprecated
-	if style == "GLOW" and ActionButton_ShowOverlayGlow then
-		---@diagnostic disable-next-line: deprecated
-		ActionButton_ShowOverlayGlow(f)
-	elseif style == "BORDER" or style == "GLOW" then
-		f.hl:SetBackdropBorderColor(c["r"], c["g"], c["b"], c["a"])
-	elseif style == "BORDER_FLASH" then
-		f.hl:SetBackdropBorderColor(c["r"], c["g"], c["b"], c["a"])
-		private.PlayHighlight(f.hl, "agBorderPulse", private.BuildBorderPulse)
+	local plain = hs["border"]["style"] == "None"
+	if style == "GLOW" then
+		private.PlayHighlight(f.hl, "agGlow", private.BuildGlow)
+		f.hl.glow:Show()
+	elseif style == "BORDER" or style == "BORDER_FLASH" then
+		if plain then
+			local edge = private.HighlightEdge(f.hl)
+			private.RingColor(edge, c["r"], c["g"], c["b"], c["a"])
+			CDTL3.IconFx.RingShow(edge, true)
+		else
+			f.hl:SetBackdropBorderColor(c["r"], c["g"], c["b"], c["a"])
+		end
+		if style == "BORDER_FLASH" then
+			private.PlayHighlight(f.hl, "agBorderPulse", private.BuildBorderPulse)
+		end
 	elseif style == "FLASH" then
 		f.hl:ClearAllPoints()
 		f.hl:SetPoint("CENTER", 0, 0)

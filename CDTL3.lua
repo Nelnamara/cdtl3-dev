@@ -1491,10 +1491,28 @@ end
 
 -- The samples at the top of the What's new window ("The original looks are back"): the Finish
 -- effect on two short lanes and the eight Highlight Style effects, drawn by the addon's own code
--- (IconFx.lua FX:Finish and Cooldown.lua CDTL3:ApplyHighlight), on made-up spell art. They are made once
+-- (IconFx.lua FX:Finish and Cooldown.lua CDTL3:ApplyHighlight), on spell art picked at random. They are made once
 -- with the window. The window's OnShow starts them and its OnHide stops them; the lane loop is an
 -- OnUpdate on a child of the window, so nothing runs while it is hidden.
-private.SAMPLE_ICON = 132155		-- Gouge, from the era test icons (Data.lua CDTL3.icons)
+private.SAMPLE_ICON = 132155		-- Gouge: the fallback when the test icons are missing
+
+-- n different spell pictures picked at random from the era test icons (Data.lua CDTL3.icons), which
+-- every client has
+private.SampleIcons = function(n)
+	local pool = {}
+	for i, id in ipairs(CDTL3.icons and CDTL3.icons.era or {}) do
+		pool[i] = id
+	end
+	local out = {}
+	for i = 1, n do
+		if #pool == 0 then
+			out[i] = private.SAMPLE_ICON
+		else
+			out[i] = table.remove(pool, math.random(#pool))
+		end
+	end
+	return out
+end
 private.SAMPLE_PANEL = 292		-- the window's top to the scrolling text
 private.SAMPLE_TEXT_H = 175		-- the scrolling text's height (the window was 300 tall with it at 55 from the top)
 private.SAMPLE_SLIDE, private.SAMPLE_CYCLE = 2.4, 4
@@ -1527,6 +1545,7 @@ private.BuildSamples = function(f)
 	local name = f:GetName()
 	local size = private.SAMPLE_ICON_SIZE
 	local grey = function(fs, a) fs:SetTextColor(a, a, a, 1) end
+	local pics = private.SampleIcons(2 + #private.SAMPLE_LOOKS)
 
 	local title = private.SampleText(f, 15, 20, -46, L["The original looks are back"])
 	title:SetTextColor(1, 0.82, 0, 1)
@@ -1544,7 +1563,7 @@ private.BuildSamples = function(f)
 		lane.ic:SetSize(size, size)
 		lane.ic.tx = lane.ic:CreateTexture(nil, "ARTWORK")
 		lane.ic.tx:SetAllPoints(lane.ic)
-		lane.ic.tx:SetTexture(private.SAMPLE_ICON)
+		lane.ic.tx:SetTexture(pics[i])
 		lane.ic.tx:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 		lane.ic.valid, lane.ic.yOffset, lane.ic.sOffset = true, 0, 0
 		-- what FX:Finish reads: a cooldown with a lane number, the lane's icon size, direction and effect
@@ -1567,7 +1586,7 @@ private.BuildSamples = function(f)
 		ic:SetPoint("TOP", f, "TOPLEFT", 48 + (i - 1) * 64, -166)
 		ic.tx = ic:CreateTexture(nil, "ARTWORK")
 		ic.tx:SetAllPoints(ic)
-		ic.tx:SetTexture(private.SAMPLE_ICON)
+		ic.tx:SetTexture(pics[2 + i])
 		ic.tx:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 		ic.look = look[1]
 		local label = private.SampleText(f, 10, nil, nil, look[2], "CENTER", 62)
@@ -1625,6 +1644,10 @@ private.BuildSamples = function(f)
 	end
 	f:SetScript("OnShow", f.samplesStart)
 	f:SetScript("OnHide", f.samplesStop)
+	-- a new frame is already shown, so OnShow does not run for the first opening: start them here
+	if f:IsShown() then
+		f.samplesStart()
+	end
 end
 
 private.CreateFirstRunFrame = function()

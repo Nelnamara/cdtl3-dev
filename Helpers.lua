@@ -2167,7 +2167,7 @@ function CDTL3:PullTrackedBuffs()
 end
 
 -- the highlight effects' animation groups (Cooldown.lua), each made once per icon
-local HIGHLIGHT_GROUPS = { "agBorderPulse", "agPulse", "agIconPulse", "agBounce", "agShake", "agScale" }
+local HIGHLIGHT_GROUPS = { "agGlow", "agBorderPulse", "agPulse", "agIconPulse", "agBounce", "agShake", "agScale" }
 
 function CDTL3:RemoveHighlights(f, s)
 	if not f.hl then
@@ -2181,11 +2181,12 @@ function CDTL3:RemoveHighlights(f, s)
 		end
 	end
 
-	-- the old glow call, existence-guarded
-	---@diagnostic disable-next-line: deprecated
-	if ActionButton_HideOverlayGlow then
-		---@diagnostic disable-next-line: deprecated
-		ActionButton_HideOverlayGlow(f)
+	-- the glow and the plain edge (Cooldown.lua), when made
+	if f.hl.glow then
+		f.hl.glow:Hide()
+	end
+	if f.hl.edge then
+		CDTL3.IconFx.RingShow(f.hl.edge, false)
 	end
 	f.hl:SetBackdropBorderColor(
 		s["icons"]["highlight"]["border"]["color"]["r"],

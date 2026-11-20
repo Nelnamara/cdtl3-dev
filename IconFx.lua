@@ -609,13 +609,15 @@ end
 -- Lane setting Icons > Finish effect (icons.finishFx): when a lane icon reaches the Ready end and
 -- leaves for its Ready frame (Cooldown.lua IconUpdate), one of two things plays once at that end of
 -- the lane: "GROW" is a copy of the icon's picture that grows to 2.2 times and fades over half a
--- second, "RING" a gold ring that grows from 0.6 to 2.4 times the icon's size and fades. A lane keeps
+-- second, "RING" a gold ring round the icon's centre that grows from 0.6 to 2.4 times the icon's size
+-- over 0.9 seconds, holding full for the first 0.35 and fading over the rest. A lane keeps
 -- FINISH_POOL frames and reuses them in turn (none made per finish). The effect is a drawing only: it
 -- is anchored to the lane (never to the icon, whose size and place can be hidden), sized from the
 -- saved icon size, and its frames are children of the lane so a faded lane hides them.
 private.RING = [[Interface\AddOns\CooldownTimeline3\Media\ring.tga]]	-- tools/make-ring.py
 private.FINISH_POOL = 4
 private.FINISH_TIME = 0.5
+private.RING_TIME, private.RING_HOLD = 0.9, 0.35
 private.GROW_TO = 2.2
 private.RING_FROM, private.RING_TO = 0.6, 2.4
 private.finishPools = {}
@@ -631,7 +633,7 @@ private.NewFinishFrame = function(lane)
 	fr.pic = fr:CreateTexture(nil, "OVERLAY")
 	fr.pic:SetAllPoints(fr)
 	fr.ring = fr:CreateTexture(nil, "OVERLAY")
-	fr.ring:SetAllPoints(fr)
+	fr.ring:SetPoint("CENTER", fr, "CENTER", 0, 0)	-- sized per finish, round the icon's centre
 	fr.ring:SetTexture(private.RING)
 	fr.ring:SetVertexColor(1, 0.82, 0, 1)
 	local g = fr:CreateAnimationGroup()
@@ -694,21 +696,25 @@ function FX:Finish(f, ic, s)
 	fr:ClearAllPoints()
 	fr:SetPoint(anchor, lane, anchor, x, y)
 
-	local from, to
+	-- the frame stands where the icon stood, so both effects grow from the icon's centre
+	fr:SetSize(size, size)
+	local from, to, time, hold
 	if mode == "GROW" then
-		fr:SetSize(size, size)
 		fr.pic:SetTexture(ic.tx:GetTexture() or f.data["icon"])
 		fr.pic:SetTexCoord(ic.tx:GetTexCoord())
 		fr.pic:Show()
 		fr.ring:Hide()
-		from, to = 1, private.GROW_TO
+		from, to, time, hold = 1, private.GROW_TO, private.FINISH_TIME, 0
 	else
 		local small = size * private.RING_FROM
-		fr:SetSize(small, small)
+		fr.ring:SetSize(small, small)
 		fr.pic:Hide()
 		fr.ring:Show()
-		from, to = 1, private.RING_TO / private.RING_FROM
+		from, to, time, hold = 1, private.RING_TO / private.RING_FROM, private.RING_TIME, private.RING_HOLD
 	end
+	fr.scale:SetDuration(time)
+	fr.fade:SetStartDelay(hold)
+	fr.fade:SetDuration(time - hold)
 
 	if fr.scale.SetScaleFrom then
 		fr.scale:SetScaleFrom(from, from)

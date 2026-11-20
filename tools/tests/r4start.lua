@@ -216,7 +216,11 @@ do
 	CDTL3:ChatCommand("whatsnew")
 	local w = _G["CDTL3_Firstrun"]
 	check("/cdtl3 whatsnew opens the What's new window", w and w:IsShown())
+	-- made just now and already shown, so the game runs no OnShow for it: the samples start anyway
+	local hl5 = w.samples and w.samples.icons[5].hl
+	check("  its samples play on this first opening (a new frame gets no OnShow)", made ~= 1 or (hl5 and hl5.agBounce and hl5.agBounce.__running == true), made)
 	w:Hide()
+	if w.__scripts.OnHide then w.__scripts.OnHide(w) end
 	CDTL3:ChatCommand("whatsnew")
 	CreateFrame = realCreate
 	check("  opening it again shows the same window", w:IsShown() and _G["CDTL3_Firstrun"] == w and made <= 1, made)
@@ -523,12 +527,15 @@ do
 				return realCreate(kind, name, ...)
 	end
 	local w = _G["CDTL3_Firstrun"]
+	local existed = w ~= nil
 	if w then w:Hide(); w.__scripts.OnHide(w) end
 	CDTL3:ChatCommand("whatsnew")
 	w = _G["CDTL3_Firstrun"]
 	check("the window has the sample panel", w and w.samples and #w.samples.lanes == 2 and #w.samples.icons == 8)
 	local P = w.samples
-	w.__scripts.OnShow(w)	-- the game runs OnShow when the window shows
+	if existed then
+		w.__scripts.OnShow(w)	-- the game runs OnShow when a hidden window shows again
+	end
 	check("  eight highlight samples, one effect each", P.icons[1].look == "GLOW" and P.icons[8].look == "FLASH" and P.icons[5].look == "BOUNCE")
 	local groups = { PULSE = "agIconPulse", BORDER_FLASH = "agBorderPulse", BOUNCE = "agBounce", SHAKE = "agShake", SCALE = "agScale", FLASH = "agPulse" }
 	local allRun = true
@@ -536,8 +543,23 @@ do
 		local key = groups[ic.look]
 		if key and not (ic.hl and ic.hl[key] and ic.hl[key].__running) then allRun = false end
 	end
-	check("  while it is shown every animated effect is playing", allRun)
-	check("  Border and Border Pulse draw an edge with no border texture", P.icons[3].hl and P.icons[3].hl:IsShown() and P.icons[4].hl[groups.BORDER_FLASH].__running)
+	local groups2 = groups
+	groups2.GLOW = "agGlow"
+	check("  every animated effect is playing (glow too)", allRun and P.icons[1].hl and P.icons[1].hl.agGlow
+		and P.icons[1].hl.agGlow.__running and P.icons[1].hl.glow:IsShown())
+	local seen, distinct = {}, true
+	for _, ic in ipairs(P.icons) do
+		local t = ic.tx.__tex
+		if seen[t] then distinct = false end
+		seen[t] = true
+	end
+	for _, ln in ipairs(P.lanes) do
+		if seen[ln.ic.tx.__tex] then distinct = false end
+		seen[ln.ic.tx.__tex] = true
+	end
+	check("  each sample has its own spell picture", distinct)
+	check("  Border and Border Pulse draw an edge with no border texture", P.icons[3].hl and P.icons[3].hl.edge and P.icons[3].hl.edge[1]:IsShown()
+		and P.icons[4].hl.edge and P.icons[4].hl[groups.BORDER_FLASH].__running)
 
 	-- the lane loop: only while the window is shown
 	local lane = P.lanes[1]

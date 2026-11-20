@@ -553,6 +553,7 @@ do
 		{ "SCALE", "agScale", function(fr) return fr.icon end },
 		{ "FLASH", "agPulse", function(fr) return fr.icon.hl end },
 		{ "BORDER_FLASH", "agBorderPulse", function(fr) return fr.icon.hl end },
+		{ "GLOW", "agGlow", function(fr) return fr.icon.hl.glow end },
 	}
 	for _, st in ipairs(STYLES) do
 		hs["style"] = st[1]
@@ -598,15 +599,27 @@ do
 	check("Highlight unticked: its effect stops and the frame hides", F.icon.hl.agIconPulse.__running == false and not F.icon.hl:IsShown())
 	F.data["highlight"] = true
 
-	-- Border and Border Pulse with border None: a plain thin edge
+	-- Border and Border Pulse with border None: a plain edge of four textures, no backdrop edge
+	local function edgeShown(hl)
+		local e = hl.edge
+		if not e then return false end
+		for i = 1, 4 do if not e[i]:IsShown() then return false end end
+		return true
+	end
 	for _, style in ipairs({ "BORDER", "BORDER_FLASH" }) do
 		hs["style"] = style; CDTL3:RefreshAllIcons()
-		local b = F.icon.hl.__backdrop
-		check(style .. " with border None falls back to a visible plain edge", b and b.edgeFile == CDTL3.LSM:Fetch("border", "CDTL3 Pixel")
-			and b.edgeFile ~= nil and b.edgeSize == 1 and F.icon.hl:IsShown(), b and tostring(b.edgeFile))
+		local hl = F.icon.hl
+		local b = hl.__backdrop
+		check(style .. " with border None draws a plain edge of four textures in the border colour, no backdrop edge",
+			edgeShown(hl) and hl:IsShown() and not (b and b.edgeFile == CDTL3.LSM:Fetch("border", "CDTL3 Pixel")), b and tostring(b.edgeFile))
 	end
+	hs["style"] = "GLOW"; CDTL3:RefreshAllIcons()
+	check("Glow: a gold halo frame, no plain edge, no game glow call", F.icon.hl.glow and F.icon.hl.glow:IsShown() and not edgeShown(F.icon.hl))
+	hs["style"] = "PULSE"; CDTL3:RefreshAllIcons()
+	check("  another style hides the halo and the edge", not F.icon.hl.glow:IsShown() and not edgeShown(F.icon.hl))
 	hs["border"]["style"] = "CDTL3 Shadow"; hs["style"] = "BORDER"; CDTL3:RefreshAllIcons()
-	check("  a chosen texture is used as before", F.icon.hl.__backdrop.edgeFile == CDTL3.LSM:Fetch("border", "CDTL3 Shadow"))
+	check("  a chosen texture is used as before, with no plain edge", F.icon.hl.__backdrop.edgeFile == CDTL3.LSM:Fetch("border", "CDTL3 Shadow")
+		and not edgeShown(F.icon.hl))
 	hs["border"]["style"] = "None"
 	hs["style"] = "BORDER"
 	CDTL3:RefreshAllIcons()
@@ -620,6 +633,7 @@ do
 	check("  its tooltip names the Filters Highlight spells", opt.desc:find("Highlight in Filters", 1, true) ~= nil, opt.desc)
 	local ropt = CDTL3:GetFullOptions().args.ready.args.ready1.args.icons.args.highlightStyle
 	check("  the Ready frames offer the same", ropt and ropt.values.BOUNCE == "Bounce")
+	check("  the menu lists them in the samples' order", opt.sorting and table.concat(opt.sorting, ",") == "GLOW,PULSE,BORDER,BORDER_FLASH,BOUNCE,SHAKE,SCALE,FLASH")
 	CDTL3:RemoveHighlights(F.icon, lane1)
 	F.data["currentCD"] = 0
 	SPELLCD[917] = nil
@@ -645,6 +659,7 @@ do
 	local fopt = CDTL3:GetFullOptions().args.lanes.args.lane1.args.icons.args.finishFx
 	check("Lanes > Icons has Finish effect: None, Grow and fade, Gold ring",
 		fopt and fopt.values.NONE == "None" and fopt.values.GROW == "Grow and fade" and fopt.values.RING == "Gold ring")
+	check("  None is first in the menu", fopt and fopt.sorting and table.concat(fopt.sorting, ",") == "NONE,GROW,RING")
 	fopt.set(nil, "GROW")
 	check("  the choice is saved on the lane", lane1["icons"]["finishFx"] == "GROW")
 
@@ -684,9 +699,12 @@ do
 	fr = pf[1]
 	check("Gold ring: the pool keeps four frames and the fifth finish reuses the first (none made per finish)", #pf == 4
 		and fr.group.__plays == 2, tostring(#pf) .. " frames, plays " .. tostring(fr.group.__plays))
-	check("  a ring grows from 0.6 to 2.4 of the icon size (a 0.6 frame scaled 4 times) and fades, no picture",
+	check("  a ring grows from 0.6 to 2.4 of the icon size (a 0.6 ring scaled 4 times) round the icon's centre, no picture",
 		fr.ring:IsShown() and not fr.pic:IsShown() and eq(fr.scale.__set.SetScaleTo, 2.4 / 0.6, 2.4 / 0.6)
-		and math.abs(fr.__w - lane1["icons"]["size"] * 0.6) < 1e-9 and eq(fr.fade.__set.SetDuration, 0.5))
+		and fr.__w == lane1["icons"]["size"] and math.abs(fr.ring.__w - lane1["icons"]["size"] * 0.6) < 1e-9
+		and fr.ring.__points[1] and fr.ring.__points[1][1] == "CENTER", tostring(fr.ring.__w))
+	check("  over 0.9 s: full for 0.35 s, then fades over 0.55 s", eq(fr.scale.__set.SetDuration, 0.9)
+		and eq(fr.fade.__set.SetStartDelay, 0.35) and math.abs(fr.fade.__set.SetDuration[1] - 0.55) < 1e-9)
 	leave()
 	local total = #GetAllFrames()
 	ready(911); leave(); ready(911); leave()

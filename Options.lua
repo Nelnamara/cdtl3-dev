@@ -2576,6 +2576,8 @@ private.AddIconArgs = function(args, s, i, footer)
 				["SCALE"] = L["Scale"],
 				["FLASH"] = L["Flash Icon"],
 			},
+		-- the menu in this order, not sorted by key
+		sorting = { "GLOW", "PULSE", "BORDER", "BORDER_FLASH", "BOUNCE", "SHAKE", "SCALE", "FLASH" },
 		get = function(info)
 				return s["icons"]["highlight"]["style"]
 			end,
@@ -5537,6 +5539,7 @@ private.GetLaneSet = function(i)
 				["GROW"] = L["Grow and fade"],
 				["RING"] = L["Gold ring"],
 			},
+		sorting = { "NONE", "GROW", "RING" },	-- None first, not sorted by key
 		get = function(info)
 				return lane["icons"]["finishFx"]
 			end,
