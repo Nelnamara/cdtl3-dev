@@ -163,7 +163,7 @@ end
 
 CDTL3.version = "3.2.2"
 -- the welcome window (GetSpecialMessage + changelog) opens once for anyone whose last seen version is older
-CDTL3.noticeVersion = "3.2"
+CDTL3.noticeVersion = "3.3"
 CDTL3.cdUID = 999
 -- where to report issues / make suggestions (first-run window, Changelog tab)
 CDTL3.supportlink = "https://github.com/Nelnamara/cdtl3-dev/issues"
@@ -1489,6 +1489,144 @@ function CDTL3:ShowWhatsNew()
 	return private.CreateFirstRunFrame()
 end
 
+-- The samples at the top of the What's new window ("The original looks are back"): the Finish
+-- effect on two short lanes and the eight Highlight Style effects, drawn by the addon's own code
+-- (IconFx.lua FX:Finish and Cooldown.lua CDTL3:ApplyHighlight), on made-up spell art. They are made once
+-- with the window. The window's OnShow starts them and its OnHide stops them; the lane loop is an
+-- OnUpdate on a child of the window, so nothing runs while it is hidden.
+private.SAMPLE_ICON = 132155		-- Gouge, from the era test icons (Data.lua CDTL3.icons)
+private.SAMPLE_PANEL = 292		-- the window's top to the scrolling text
+private.SAMPLE_TEXT_H = 175		-- the scrolling text's height (the window was 300 tall with it at 55 from the top)
+private.SAMPLE_SLIDE, private.SAMPLE_CYCLE = 2.4, 4
+private.SAMPLE_LANE_W, private.SAMPLE_ICON_SIZE = 220, 26
+private.SAMPLE_LOOKS = {
+	{ "GLOW", L["Glow"] }, { "PULSE", L["Pulse"] }, { "BORDER", L["Border"] }, { "BORDER_FLASH", L["Border Pulse"] },
+	{ "BOUNCE", L["Bounce"] }, { "SHAKE", L["Shake"] }, { "SCALE", L["Scale"] }, { "FLASH", L["Flash Icon"] },
+}
+
+private.SampleText = function(f, size, x, y, text, justify, width)
+	local fs = f:CreateFontString(nil, "ARTWORK")
+	fs:SetFont(CDTL3.LSM:Fetch("font", "Fira Sans Condensed") --[[@as string]], size)
+	fs:SetShadowColor(0, 0, 0, 1)
+	fs:SetShadowOffset(1, -1)
+	fs:SetJustifyH(justify or "LEFT")
+	if width then
+		fs:SetWidth(width)
+	end
+	if x then
+		fs:SetPoint("TOPLEFT", x, y)
+	end
+	fs:SetText(text)
+	return fs
+end
+
+-- builds the panel on f once; f.samples holds the parts, f.samplesStart / f.samplesStop run and stop them
+private.BuildSamples = function(f)
+	local P = {}
+	f.samples = P
+	local name = f:GetName()
+	local size = private.SAMPLE_ICON_SIZE
+	local grey = function(fs, a) fs:SetTextColor(a, a, a, 1) end
+
+	local title = private.SampleText(f, 15, 20, -46, L["The original looks are back"])
+	title:SetTextColor(1, 0.82, 0, 1)
+
+	-- the Finish effect: an icon slides to the Ready (left) end of a short lane, then it finishes
+	P.lanes = {}
+	for i, mode in ipairs({ "GROW", "RING" }) do
+		local lane = CreateFrame("Frame", name.."_SampleLane"..i, f)
+		lane:SetSize(private.SAMPLE_LANE_W, 30)
+		lane:SetPoint("TOPLEFT", 40 + (i - 1) * 260, -76)
+		lane.bg = lane:CreateTexture(nil, "BACKGROUND")
+		lane.bg:SetAllPoints(lane)
+		lane.bg:SetColorTexture(0.04, 0.04, 0.04, 0.9)
+		lane.ic = CreateFrame("Frame", name.."_SampleLaneIcon"..i, lane)
+		lane.ic:SetSize(size, size)
+		lane.ic.tx = lane.ic:CreateTexture(nil, "ARTWORK")
+		lane.ic.tx:SetAllPoints(lane.ic)
+		lane.ic.tx:SetTexture(private.SAMPLE_ICON)
+		lane.ic.tx:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+		lane.ic.valid, lane.ic.yOffset, lane.ic.sOffset = true, 0, 0
+		-- what FX:Finish reads: a cooldown with a lane number, the lane's icon size, direction and effect
+		lane.cd = { data = { lane = 900 + i } }
+		lane.s = { vertical = false, reversed = false, icons = { size = size, finishFx = mode } }
+		lane.clock = 0
+		local label = private.SampleText(f, 12, nil, nil, mode == "GROW" and L["Grow and fade"] or L["Gold ring"], "CENTER", private.SAMPLE_LANE_W)
+		label:SetPoint("TOP", lane, "BOTTOM", 0, -4)
+		P.lanes[i] = lane
+	end
+	grey(private.SampleText(f, 11, 20, -130, L["Off by default: turn it on under Lanes › Icons › Finish effect."]), 0.75)
+
+	-- the eight highlight effects, each on a small icon
+	P.icons = {}
+	P.s = { icons = { size = 28, highlight = { style = "BORDER", border = {
+		style = "None", color = { r = 1, g = 1, b = 1, a = 1 }, size = 5, padding = 5, inset = 0, flash = false } } } }
+	for i, look in ipairs(private.SAMPLE_LOOKS) do
+		local ic = CreateFrame("Frame", name.."_SampleHl"..i, f)
+		ic:SetSize(28, 28)
+		ic:SetPoint("TOP", f, "TOPLEFT", 48 + (i - 1) * 64, -166)
+		ic.tx = ic:CreateTexture(nil, "ARTWORK")
+		ic.tx:SetAllPoints(ic)
+		ic.tx:SetTexture(private.SAMPLE_ICON)
+		ic.tx:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+		ic.look = look[1]
+		local label = private.SampleText(f, 10, nil, nil, look[2], "CENTER", 62)
+		label:SetPoint("TOP", ic, "BOTTOM", 0, -6)
+		P.icons[i] = ic
+	end
+	grey(private.SampleText(f, 11, 20, -218, L["For spells you mark Highlight in Filters: Lanes › Icons › Highlight Style."]), 0.75)
+	grey(private.SampleText(f, 11, 20, -240, L["Each lane, Ready frame and bar frame has a Show and hide tab: Fade or Scale, length, loops and Bounce."], "LEFT", 510), 0.75)
+	grey(private.SampleText(f, 11, 20, -268, L["Split lanes can have up to five marks."]), 0.75)
+
+	-- the loop: lane i's icon slides over SAMPLE_SLIDE seconds, then its finish plays until SAMPLE_CYCLE
+	local driver = CreateFrame("Frame", name.."_SampleDriver", f)
+	P.driver = driver
+	driver:SetScript("OnUpdate", function(_, dt)
+		for i = 1, #P.lanes do
+			local lane = P.lanes[i]
+			lane.clock = lane.clock + dt
+			if lane.clock >= private.SAMPLE_CYCLE then
+				lane.clock = 0
+				lane.done = false
+			end
+			if lane.clock < private.SAMPLE_SLIDE then
+				lane.ic:ClearAllPoints()
+				lane.ic:SetPoint("LEFT", lane, "LEFT", (private.SAMPLE_LANE_W - size) * (1 - lane.clock / private.SAMPLE_SLIDE), 0)
+				lane.ic:Show()
+			elseif not lane.done then
+				lane.done = true
+				lane.ic:Hide()
+				if CDTL3.IconFx then
+					CDTL3.IconFx:Finish(lane.cd, lane.ic, lane.s)
+				end
+			end
+		end
+	end)
+	P.running = false
+
+	f.samplesStart = function()
+		for i = 1, #P.lanes do
+			P.lanes[i].clock = (i - 1) * 0.6
+			P.lanes[i].done = false
+		end
+		for _, ic in ipairs(P.icons) do
+			CDTL3:ApplyHighlight(ic, P.s, ic.look)
+		end
+		P.running = true
+	end
+	f.samplesStop = function()
+		for _, ic in ipairs(P.icons) do
+			if ic.hl then
+				CDTL3:RemoveHighlights(ic, P.s)
+				ic.hl:Hide()
+			end
+		end
+		P.running = false
+	end
+	f:SetScript("OnShow", f.samplesStart)
+	f:SetScript("OnHide", f.samplesStop)
+end
+
 private.CreateFirstRunFrame = function()
 	-- made once per session; opening it again shows the same window
 	if private.firstRunFrame then
@@ -1498,8 +1636,8 @@ private.CreateFirstRunFrame = function()
 	local name = "CDTL3_Firstrun"
 	local f = CreateFrame("Frame", name, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
 	private.firstRunFrame = f
-	f:SetPoint("TOP", 0, -150)
-	f:SetSize(550, 300)
+	f:SetPoint("TOP", 0, -80)
+	f:SetSize(550, private.SAMPLE_PANEL + private.SAMPLE_TEXT_H + 70)
 
 	-- BACKGROUND
 	f.bg = f:CreateTexture(nil, "BACKGROUND")
@@ -1524,11 +1662,14 @@ private.CreateFirstRunFrame = function()
 	f:SetScript("OnDragStart", f.StartMoving)
 	f:SetScript("OnDragStop", f.StopMovingOrSizing)
 
+	-- SAMPLES (the original looks, live)
+	private.BuildSamples(f)
+
 	-- SCROLL FRAME
 	local sf = CreateFrame("ScrollFrame", "CDTL3_Firstrun_Scroll", f, "UIPanelScrollFrameTemplate")
 	sf:SetPoint("LEFT", 16, 0)
 	sf:SetPoint("RIGHT", -32, 0)
-	sf:SetPoint("TOP", 0, -55)
+	sf:SetPoint("TOP", 0, -private.SAMPLE_PANEL)
 	sf:SetPoint("BOTTOM", 0, 70)
 
 	-- EDIT BOX

@@ -554,6 +554,63 @@ private.BuildScale = function(f)
 	return g
 end
 
+-- Draws one highlight effect on an icon frame (f needs f.tx and a name): the Highlight Style effects
+-- RefreshIcon gives a highlighted icon, and the samples in the What's new window. s is a lane's (or
+-- Ready frame's) settings, style one of GLOW, BORDER, BORDER_FLASH, FLASH, PULSE, BOUNCE, SHAKE, SCALE.
+function CDTL3:ApplyHighlight(f, s, style)
+	local hs = s["icons"]["highlight"]
+	if not f.hl then
+		f.hl = CreateFrame("Frame", f:GetName().."_BD", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+		f.hl:SetParent(f)
+		f.hl.tx = f.hl:CreateTexture()
+	end
+
+	-- Border and Border Pulse with no border texture chosen draw a plain thin edge, so they show
+	-- out of the box; the other styles never use the border (the texture setting is for Border ones)
+	CDTL3:SetBorder(f.hl, private.HighlightBorder(hs["border"], style))
+	f.hl:ClearAllPoints()
+	f.hl:SetPoint("CENTER", 0, 0)
+	f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
+	-- SetAllPoints(true) fills the parent; the definitions only take a region there
+	---@diagnostic disable-next-line: param-type-mismatch
+	f.hl.tx:SetAllPoints(true)
+	f.hl.tx:SetColorTexture( 1, 1, 1, 0.5 )
+	-- fixed offset above the icon (border is +1); incrementing climbed on every refresh
+	f.hl:SetFrameLevel(f:GetFrameLevel() + 2)
+
+	CDTL3:RemoveHighlights(f, s)
+
+	local c = hs["border"]["color"]
+	-- The action-button glow isn't available on every client (e.g. Forever):
+	-- fall back to the plain border highlight there.
+	---@diagnostic disable-next-line: deprecated
+	if style == "GLOW" and ActionButton_ShowOverlayGlow then
+		---@diagnostic disable-next-line: deprecated
+		ActionButton_ShowOverlayGlow(f)
+	elseif style == "BORDER" or style == "GLOW" then
+		f.hl:SetBackdropBorderColor(c["r"], c["g"], c["b"], c["a"])
+	elseif style == "BORDER_FLASH" then
+		f.hl:SetBackdropBorderColor(c["r"], c["g"], c["b"], c["a"])
+		private.PlayHighlight(f.hl, "agBorderPulse", private.BuildBorderPulse)
+	elseif style == "FLASH" then
+		f.hl:ClearAllPoints()
+		f.hl:SetPoint("CENTER", 0, 0)
+		f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
+		f.hl.tx:SetColorTexture( 1, 1, 1, 1 )
+		private.PlayHighlight(f.hl, "agPulse", private.BuildFlash)
+	elseif style == "PULSE" then
+		private.PlayHighlight(f.hl, "agIconPulse", private.BuildIconPulse)
+	elseif style == "BOUNCE" then
+		private.PlayHighlight(f.hl, "agBounce", private.BuildBounce)
+	elseif style == "SHAKE" then
+		private.PlayHighlight(f.hl, "agShake", private.BuildShake)
+	elseif style == "SCALE" then
+		private.PlayHighlight(f.hl, "agScale", private.BuildScale)
+	end
+
+	f.hl:Show()
+end
+
 function CDTL3:RefreshIcon(cd)
 	local f = cd.icon
 	local s = CDTL3:SlotSettings("lanes", 1)
@@ -649,57 +706,7 @@ function CDTL3:RefreshIcon(cd)
 	local readyFlash = cd.data["readyLit"] and not cd.data["highlight"] and group == "ready"
 	if cd.data["highlight"] or readyFlash then
 		local hs = s["icons"]["highlight"]
-		if not f.hl then
-			f.hl = CreateFrame("Frame", f:GetName().."_BD", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-			f.hl:SetParent(f)
-			f.hl.tx = f.hl:CreateTexture()
-		end
-
-		local style = readyFlash and "FLASH" or hs["style"]
-		-- Border and Border Pulse with no border texture chosen draw a plain thin edge, so they show
-		-- out of the box; the other styles never use the border (the texture setting is for Border ones)
-		CDTL3:SetBorder(f.hl, private.HighlightBorder(hs["border"], style))
-		f.hl:ClearAllPoints()
-		f.hl:SetPoint("CENTER", 0, 0)
-		f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
-		-- SetAllPoints(true) fills the parent; the definitions only take a region there
-		---@diagnostic disable-next-line: param-type-mismatch
-		f.hl.tx:SetAllPoints(true)
-		f.hl.tx:SetColorTexture( 1, 1, 1, 0.5 )
-		-- fixed offset above the icon (border is +1); incrementing climbed on every refresh
-		f.hl:SetFrameLevel(f:GetFrameLevel() + 2)
-
-		CDTL3:RemoveHighlights(f, s)
-
-		local c = hs["border"]["color"]
-		-- The action-button glow isn't available on every client (e.g. Forever):
-		-- fall back to the plain border highlight there.
-		---@diagnostic disable-next-line: deprecated
-		if style == "GLOW" and ActionButton_ShowOverlayGlow then
-			---@diagnostic disable-next-line: deprecated
-			ActionButton_ShowOverlayGlow(f)
-		elseif style == "BORDER" or style == "GLOW" then
-			f.hl:SetBackdropBorderColor(c["r"], c["g"], c["b"], c["a"])
-		elseif style == "BORDER_FLASH" then
-			f.hl:SetBackdropBorderColor(c["r"], c["g"], c["b"], c["a"])
-			private.PlayHighlight(f.hl, "agBorderPulse", private.BuildBorderPulse)
-		elseif style == "FLASH" then
-			f.hl:ClearAllPoints()
-			f.hl:SetPoint("CENTER", 0, 0)
-			f.hl:SetSize(s["icons"]["size"], s["icons"]["size"])
-			f.hl.tx:SetColorTexture( 1, 1, 1, 1 )
-			private.PlayHighlight(f.hl, "agPulse", private.BuildFlash)
-		elseif style == "PULSE" then
-			private.PlayHighlight(f.hl, "agIconPulse", private.BuildIconPulse)
-		elseif style == "BOUNCE" then
-			private.PlayHighlight(f.hl, "agBounce", private.BuildBounce)
-		elseif style == "SHAKE" then
-			private.PlayHighlight(f.hl, "agShake", private.BuildShake)
-		elseif style == "SCALE" then
-			private.PlayHighlight(f.hl, "agScale", private.BuildScale)
-		end
-
-		f.hl:Show()
+		CDTL3:ApplyHighlight(f, s, readyFlash and "FLASH" or hs["style"])
 	else
 		if f.hl then
 			CDTL3:RemoveHighlights(f, s)
