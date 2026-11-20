@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs every harness against the addon (default: this repo; set R=<folder> for another copy). Prints RESULT and FAIL lines only.
-R=${R:-$(cd "$(dirname "$0")/../.." && pwd -W)}
+R=${R:-$(cd "$(dirname "$0")/../.." && (pwd -W 2>/dev/null || pwd))}   # pwd -W: the Windows path in Git Bash; plain pwd on the Mac
 T=$(dirname "$0")
 # a harness that dies before its RESULT line prints NO RESULT (with its last lines), so a crash can't pass for green
 run() {
